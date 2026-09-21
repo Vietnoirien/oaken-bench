@@ -1,0 +1,13 @@
+# The held-out suite ships encrypted as hidden.tar.gz.enc.
+# Never commit the plaintext -- see CANARY.md.
+/hidden/
+
+# Vendored offline dependencies. Restore with scripts/bootstrap.sh.
+node_modules/
+/docker/seed/
+
+# Run artefacts. Only results/*/score.json is published.
+/results/*/*
+!/results/*/score.json
+__pycache__/
+*.pyc

@@ -1,0 +1,26 @@
+{
+  "label": "ceiling-claude",
+  "harness": "claude-code",
+  "model": "claude-opus-5",
+  "exitCode": 0,
+  "wallclockSeconds": 322,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "rate": 1.0
+  },
+  "typecheckClean": true,
+  "hidden": {
+    "passed": 129,
+    "failed": 3,
+    "total": 132,
+    "files": 8,
+    "rate": 0.9773
+  },
+  "harnessMetrics": null,
+  "outcome": "complete",
+  "overfitGap": 0.0227
+}

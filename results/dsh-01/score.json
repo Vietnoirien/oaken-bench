@@ -1,0 +1,78 @@
+{
+  "label": "dsh-01",
+  "harness": "dsh",
+  "model": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 46,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "suiteHung": false,
+  "visible": {
+    "passed": 2,
+    "failed": 50,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.0385
+  },
+  "typecheckClean": false,
+  "hidden": {
+    "passed": 0,
+    "failed": 132,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "permission/preset": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 16,
+      "system/message": 1,
+      "user/message": 2,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session/title-llm-request": 1,
+      "assistant/message": 16,
+      "tool/call": 15,
+      "tool/result": 15,
+      "step/end": 16,
+      "todo/write": 1,
+      "turn/end": 1
+    },
+    "steps": 16,
+    "toolCalls": 15,
+    "tools": [
+      "read",
+      "glob",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "todo_write",
+      "write",
+      "write"
+    ],
+    "usage": {
+      "inputTokens": 19806,
+      "outputTokens": 2925,
+      "cacheReadTokens": 258459
+    },
+    "compactions": 0
+  },
+  "outcome": "declared_done_tests_red",
+  "overfitGap": 0.0385
+}

@@ -1,0 +1,83 @@
+{
+  "label": "dsh-q48kB-01",
+  "harness": "dsh",
+  "model": "Qwen3.8-27B-UD-Q2_K_XL.gguf",
+  "exitCode": 1,
+  "wallclockSeconds": 215,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "suiteHung": false,
+  "visible": {
+    "passed": 3,
+    "failed": 49,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.0577
+  },
+  "typecheckClean": true,
+  "hidden": {
+    "passed": 0,
+    "failed": 132,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "permission/preset": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 14,
+      "system/message": 1,
+      "user/message": 2,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session/title-llm-request": 1,
+      "assistant/message": 14,
+      "tool/call": 21,
+      "tool/result": 21,
+      "step/end": 14,
+      "turn/end": 1
+    },
+    "steps": 14,
+    "toolCalls": 21,
+    "tools": [
+      "read",
+      "bash",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read"
+    ],
+    "usage": {
+      "inputTokens": 45231,
+      "outputTokens": 5512,
+      "cacheReadTokens": 240233
+    },
+    "compactions": 0
+  },
+  "outcome": "crash",
+  "overfitGap": 0.0577
+}

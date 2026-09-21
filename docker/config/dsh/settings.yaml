@@ -1,0 +1,39 @@
+agent-default-model:
+  provider: local-llama
+  model: gemma-4-12B-it-qat-UD-Q4_K_XL.gguf
+
+llm-pi-ai:
+  streamIdleTimeoutMs: 900000
+  providers:
+    anthropic:
+      apiKeyEnv: ANTHROPIC_API_KEY
+      api: anthropic-messages
+      baseURL: https://api.anthropic.com/v1
+      defaultInput: [text]
+      models:
+        - id: claude-opus-5
+          name: Claude Opus 5
+          contextWindow: 200000
+          maxTokens: 32000
+    local-llama:
+      apiKeyEnv: LOCAL_LLAMA_KEY
+      api: openai-completions
+      baseURL: http://llama:8080/v1
+      defaultInput: [text]
+      models:
+        - id: gemma-4-12B-it-qat-UD-Q4_K_XL.gguf
+          name: Gemma4-12B QAT (local)
+          contextWindow: 131072
+          maxTokens: 8192
+        - id: Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+          name: Qwen3.6-35B-A3B (local)
+          contextWindow: 131072
+          maxTokens: 32768
+        - id: Qwen3.8-27B-UD-Q2_K_XL.gguf
+          name: Qwen3.8-27B UD-Q2_K_XL (local)
+          contextWindow: 49152
+          maxTokens: 16384
+        - id: Qwen3.8-27B-UD-IQ2_XXS.gguf
+          name: Qwen3.8-27B UD-IQ2_XXS (local)
+          contextWindow: 131072
+          maxTokens: 16384

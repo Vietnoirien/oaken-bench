@@ -1,0 +1,6 @@
+# Benchmark fairness patch. dsh ships bash-sandbox timeoutMs=60000 while pi's
+# bash has no default timeout at all. Raised to dsh's documented maximum so
+# that neither harness's bash timeout can bind during a run.
+- id: bash-sandbox
+  config:
+    timeoutMs: 600000

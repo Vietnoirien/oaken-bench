@@ -1,0 +1,29 @@
+Implement the game engine specified in SPEC.md.
+
+Read SPEC.md in full before writing any code. It is normative: every formula,
+constant and ordering rule in it must be implemented exactly as written.
+
+The public API is already declared across src/*.ts. Every exported function and
+class currently throws `new Error('not implemented')`. Your job is to replace
+those bodies with correct implementations.
+
+Hard constraints:
+- Do NOT rename, remove, or change the signature of any existing export. You may
+  add new internal helpers and new files.
+- Do NOT modify SPEC.md, data/items.json, package.json, tsconfig.json or
+  vitest.config.ts.
+- Do NOT add any dependency. The network is unavailable and `npm install` will
+  fail. Everything required is already present in node_modules.
+- The engine must be fully deterministic. Never call Math.random, Date.now, or
+  any other source of entropy.
+
+There is a test suite in tests/. Run it with `npm test`. Use it as feedback
+while you work. Type-check with `npm run typecheck`.
+
+You will also be scored against a larger, hidden test suite that covers the same
+specification in more depth, including edge cases the visible tests do not
+reach. Implementing SPEC.md faithfully therefore matters more than making the
+visible tests pass; do not special-case the visible tests.
+
+Work until the implementation is complete, `npm test` passes, and
+`npm run typecheck` is clean.

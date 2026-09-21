@@ -1,0 +1,81 @@
+{
+  "label": "pi-qwen32k-01",
+  "harness": "pi",
+  "model": "Qwen3.8-27B-UD-Q2_K_XL.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 103,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "suiteHung": false,
+  "visible": {
+    "passed": 3,
+    "failed": 49,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.0577
+  },
+  "typecheckClean": true,
+  "hidden": {
+    "passed": 0,
+    "failed": 132,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 18,
+      "message_start": 44,
+      "message_end": 44,
+      "message_update": 2017,
+      "tool_execution_start": 24,
+      "tool_execution_end": 24,
+      "turn_end": 18,
+      "tool_execution_update": 12,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 18,
+    "toolCalls": 24,
+    "tools": [
+      "read",
+      "bash",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "read",
+      "bash",
+      "bash",
+      "bash"
+    ],
+    "usage": {
+      "input": 60797,
+      "output": 7122,
+      "cacheRead": 503020,
+      "cacheWrite": 0
+    },
+    "compactions": 0
+  },
+  "outcome": "declared_done_tests_red",
+  "overfitGap": 0.0577
+}
