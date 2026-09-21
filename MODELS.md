@@ -9,6 +9,14 @@ The short version, and the single most expensive lesson in this repo:
 > allocate a 64k context, report itself ready, and then CUDA-OOM on the first
 > request. Always smoke-test an actual completion before starting a run.
 
+And the harder one, which cost a corrected conclusion in this study:
+
+> **A model that answers is not a model that works either.** When a CUDA
+> allocation fails, llama.cpp does not exit -- it falls back to host memory and
+> keeps serving at roughly **half speed**, with no error on the API. A benchmark
+> run in that state produces data that looks completely normal and is wrong.
+> See §4.1.
+
 ---
 
 ## 1. Register the model in both harnesses
@@ -154,6 +162,54 @@ from the container. `run.sh` checks for this and refuses to start.
 end-of-thinking sequence that breaks llama-server's own response grammar. pi
 died in 5 seconds, every time.
 
+### 4.1 The silent post-OOM fallback
+
+Measured on Gemma 4 12B QAT + MTP draft, q8_0 KV, RTX 5070 12 GB:
+
+| ctx | CUDA path | decode | free VRAM |
+|---|---|---|---|
+| 131072 | clean | ~137 t/s | 1560 MiB |
+| 196608 | clean | ~147 t/s | 646 MiB |
+| 229376 | clean | ~142 t/s | 156 MiB |
+| 245760 | **failed alloc → fallback** | **~70 t/s** | 705 MiB |
+| 262144 | **failed alloc → fallback** | **~70 t/s** | 529 MiB |
+
+Note the trap in the last column: the degraded configurations report **more**
+free VRAM than the working one just below them, because the compute buffer moved
+to host RAM. Free VRAM going *up* as context goes *up* is the signature.
+
+The log tells you plainly, if you look:
+
+```
+ggml_backend_cuda_buffer_type_alloc_buffer: allocating 769.78 MiB on device 0:
+    cudaMalloc failed: out of memory
+ggml_gallocr_reserve_n_impl: failed to allocate CUDA0 buffer of size 807176320
+graph_reserve: failed to allocate compute buffers
+```
+
+Do not confuse this with the benign line that appears at *every* context size:
+
+```
+llama_init_from_model: failed to initialize the context: Gemma4Assistant
+    requires ctx_other to be set (this warning is normal during memory fitting)
+```
+
+One line containing "failed" is normal. Grep for `cudaMalloc failed`
+specifically.
+
+**Guard your launcher.** Refusing to start beats discovering it in the results:
+
+```bash
+if grep -q 'cudaMalloc failed' "$LOG"; then
+  echo "REFUSING: fell back after a failed CUDA allocation at ctx=$CTX" >&2
+  kill -9 "$SRV"; exit 1
+fi
+# and a throughput floor, since the fallback is ~half speed
+awk -v t="$TPS" 'BEGIN{exit !(t < 110)}' && { echo "REFUSING: ${TPS} t/s" >&2; exit 1; }
+```
+
+A worked example is in `examples/launch-gemma.sh`.
+
 ---
 
 ## 5. Smoke-test before committing 30 minutes
@@ -219,3 +275,30 @@ Observed at IQ2_XXS and not at Q2_K_XL on the same model.
   30-minute cap is frequently the binding constraint rather than model capability,
   so anything that changes throughput changes the score for reasons unrelated to
   what you are trying to measure.
+
+---
+
+## 8. Scoring runs in a container, on purpose
+
+`scripts/score.py` does not run the test suites on your machine. It calls
+`docker run --rm --network none` against the same pinned image the trials use.
+
+Three reasons, all learned the hard way:
+
+1. **The held-out suite is decrypted inside the container only.** Plaintext
+   never touches your filesystem, so it cannot be indexed, committed by
+   accident, or swept into a dataset. `/out` receives counts, never test source
+   -- the test *names* are benchmark data too.
+2. **Agent-generated code can fail to terminate.** vitest forks a worker pool;
+   killing the parent on the host once left ~85 orphans pinning four cores for
+   seven hours, which silently corrupted the wall-clock figures of every run
+   scored afterwards. `--rm` reaps the whole tree by construction.
+3. **node and vitest are pinned by the image**, so scores do not drift with
+   whatever your host toolchain happens to be.
+
+The passphrase reaches the container through `OAKEN_HIDDEN_PASS`; override it if
+you re-encrypted with your own. `OAKEN_IMAGE` selects a different image tag.
+
+If you change the scorer, re-validate it against a known result before trusting
+new numbers. The containerised scorer was accepted only after reproducing three
+previously host-scored runs exactly, including typecheck state and tamper flags.

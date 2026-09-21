@@ -25,6 +25,13 @@ llm-pi-ai:
           name: Gemma4-12B QAT (local)
           contextWindow: 131072
           maxTokens: 8192
+        # Same weights, same maxTokens, larger window. dsh retains
+        # contextWindow*0.16, so this moves retention 20971 -> 31457 tokens
+        # (SPEC.md is 10302). Context is the ONLY variable between the two.
+        - id: gemma-ctx196k.gguf
+          name: Gemma4-12B QAT (local, 196608 ctx)
+          contextWindow: 196608
+          maxTokens: 8192
         - id: Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
           name: Qwen3.6-35B-A3B (local)
           contextWindow: 131072

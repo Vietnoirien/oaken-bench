@@ -1,6 +1,13 @@
 #!/bin/bash
 # Usage: entrypoint.sh <harness: pi|dsh> <model-id> <timeout-seconds>
+#        entrypoint.sh score [--detail]        (scoring pass; see scorer.sh)
 set -u
+
+# Scoring runs in this same image so that node and vitest are pinned, the
+# held-out suite can be decrypted without ever touching the host filesystem,
+# and a non-terminating test tree is reaped by container teardown.
+if [ "${1:-}" = "score" ]; then shift; exec /usr/local/bin/scorer.sh "$@"; fi
+
 HARNESS="$1"; MODEL="$2"; TIMEOUT="${3:-3600}"
 OUT=/out
 

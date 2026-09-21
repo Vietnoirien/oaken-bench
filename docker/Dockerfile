@@ -1,7 +1,7 @@
 FROM node:24-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git ca-certificates procps curl \
+      git ca-certificates procps curl openssl python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Harnesses pinned to the versions measured on the host.
@@ -24,5 +24,6 @@ ENV npm_config_offline=true \
     CI=true
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY scorer.sh     /usr/local/bin/scorer.sh
 WORKDIR /work
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

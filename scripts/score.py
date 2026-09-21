@@ -243,6 +243,54 @@ def classify(exit_code, visible_fail, hidden_rate, stderr_text, restored, hung=F
     return 'incomplete_hidden_below_bar'
 
 
+IMAGE = os.environ.get('OAKEN_IMAGE', 'oaken-bench:1.0')
+HIDDEN_ENC = os.path.join(BENCH, 'hidden.tar.gz.enc')
+HIDDEN_PASS = os.environ.get('OAKEN_HIDDEN_PASS', 'oaken-bench-held-out')
+
+
+def score_in_container(result_dir, detail=False, timeout=1800):
+    """Run both suites and the typecheck inside the runner image.
+
+    The held-out suite is decrypted to a container-only path, so its plaintext
+    never lands on the host filesystem and cannot be swept into a dataset. It
+    also means a non-terminating test tree is reaped by container teardown
+    rather than by signalling process groups from here.
+
+    Returns (visible, hidden, typecheck_clean, tampered) or None if the
+    container could not produce results.
+    """
+    if not os.path.exists(HIDDEN_ENC):
+        raise SystemExit(f'missing {HIDDEN_ENC} -- see CANARY.md')
+    out = tempfile.mkdtemp(prefix='scoreout-')
+    cmd = [
+        'docker', 'run', '--rm', '--network', 'none',
+        '-v', f'{result_dir}:/in:ro',
+        '-v', f'{os.path.dirname(HIDDEN_ENC)}:/enc:ro',
+        '-v', f'{out}:/out',
+        '-e', f'OAKEN_HIDDEN_PASS={HIDDEN_PASS}',
+        '-e', f'HOST_UID={os.getuid()}', '-e', f'HOST_GID={os.getgid()}',
+        IMAGE, 'score',
+    ] + (['--detail'] if detail else [])
+    rc, so, se = sh(cmd, timeout=timeout)
+
+    def grab(name, default=None):
+        p = os.path.join(out, name)
+        if not os.path.exists(p):
+            return default
+        try:
+            return json.load(open(p))
+        except Exception:
+            return default
+
+    res = (grab('suite-visible.json'), grab('suite-hidden.json'),
+           grab('typecheck.json', {}), grab('tampered.json', []))
+    shutil.rmtree(out, ignore_errors=True)
+    if res[0] is None and res[1] is None:
+        sys.stderr.write(f'container scoring produced nothing (rc={rc})\n{se[-2000:]}\n')
+    return res
+
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -259,8 +307,7 @@ def main():
     wall = int(read('wallclock.seconds', '0') or 0)
     stderr_text = read('stderr.log')[-20000:]
 
-    work = tempfile.mkdtemp(prefix=f'score-{label}-')
-    restored = restore_workspace(result_dir, work)
+    restored = os.path.exists(os.path.join(result_dir, 'workspace.tgz'))
 
     report = {
         'label': label, 'harness': meta.get('harness'), 'model': meta.get('model'),
@@ -268,38 +315,26 @@ def main():
     }
 
     if restored:
-        report['tamperedFrozenFiles'] = check_frozen(work)
-        # visible suite (as the agent left it, but with the original tests restored)
-        shutil.rmtree(os.path.join(work, 'tests'), ignore_errors=True)
-        shutil.copytree(os.path.join(SEED, 'tests'), os.path.join(work, 'tests'))
         TOT = canonical_totals()
-        vp, vf, vt, _, vhung = vitest(work, 'visible')
-        report['suiteHung'] = bool(vhung)
-        report['visible'] = {'passed': vp, 'failed': vf, 'total': TOT['visible'],
-                             'collected': vt,
+        vis, hid, tc, tampered = score_in_container(result_dir)
+        vis = vis or {}
+        hid = hid or {}
+        report['tamperedFrozenFiles'] = tampered or []
+        report['typecheckClean'] = bool((tc or {}).get('clean'))
+        report['suiteHung'] = bool(vis.get('__hung')) or bool(hid.get('__hung'))
+        vp, vt = vis.get('passed', 0), vis.get('total', 0)
+        hp, ht = hid.get('passed', 0), hid.get('total', 0)
+        report['visible'] = {'passed': vp, 'failed': vis.get('failed', 0),
+                             'total': TOT['visible'], 'collected': vt,
                              'uncollected': TOT['visible'] - vt,
                              'rate': round(vp / TOT['visible'], 4) if TOT['visible'] else 0.0}
-        rc, so, se = sh('npx tsc --noEmit', cwd=work, timeout=600)
-        report['typecheckClean'] = (rc == 0)
-
-        # held-out suite
-        shutil.rmtree(os.path.join(work, 'tests'), ignore_errors=True)
-        os.makedirs(os.path.join(work, 'tests'))
-        n_hidden_files = 0
-        for fn in sorted(os.listdir(HIDDEN)):
-            if fn.endswith('.test.ts'):
-                shutil.copy(os.path.join(HIDDEN, fn), os.path.join(work, 'tests', fn))
-                n_hidden_files += 1
-        hp, hf, ht, raw, hhung = vitest(work, 'hidden')
-        report['suiteHung'] = bool(report.get('suiteHung')) or bool(hhung)
-        report['hidden'] = {'passed': hp, 'failed': hf, 'total': TOT['hidden'],
-                            'collected': ht,
+        report['hidden'] = {'passed': hp, 'failed': hid.get('failed', 0),
+                            'total': TOT['hidden'], 'collected': ht,
                             'uncollected': TOT['hidden'] - ht,
-                            'files': n_hidden_files,
+                            'files': hid.get('files', 0),
                             'rate': round(hp / TOT['hidden'], 4) if TOT['hidden'] else 0.0}
-        if raw is not None:
-            with open(os.path.join(result_dir, 'hidden-detail.json'), 'w') as f:
-                json.dump(raw, f)
+        if hid.get('__error'):
+            report['hidden']['error'] = hid['__error']
     else:
         report['visible'] = {'passed': 0, 'failed': 0, 'total': 0, 'rate': 0.0}
         report['hidden'] = {'passed': 0, 'failed': 0, 'total': 0, 'rate': 0.0}

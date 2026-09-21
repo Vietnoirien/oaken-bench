@@ -109,6 +109,8 @@ seed/              the repo each run starts from (SPEC.md, src stubs, visible te
 hidden.tar.gz.enc  held-out suite, encrypted. `scripts/hidden.sh unlock` -> hidden/
 hidden/            the oracle, once unlocked. Gitignored. Do not read when authoring a task.
 docker/            image, harness configs, entrypoint, PROMPT.txt
+  scorer.sh        runs both suites INSIDE the image (see MODELS.md §8)
+examples/          a guarded llama-server launcher
 scripts/
   bootstrap.sh     one-time setup
   hidden.sh        lock / unlock / verify the held-out suite
