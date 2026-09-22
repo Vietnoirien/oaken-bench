@@ -6,8 +6,11 @@
 node_modules/
 /docker/seed/
 
-# Run artefacts. Only results/*/score.json is published.
+# Run artefacts. Raw traces carry agent-written solution code and stay out
+# (see CANARY.md); score.json and events-summary.json (issue #7 -- derived
+# metrics only, digests never argument text) are the published record.
 /results/*/*
 !/results/*/score.json
+!/results/*/events-summary.json
 __pycache__/
 *.pyc

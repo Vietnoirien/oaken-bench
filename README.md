@@ -88,6 +88,8 @@ llama-server --model /path/to/model.gguf --alias your-model.gguf \
 
 # 3. Run a trial
 ./run.sh <pi|dsh> <model-id> <label> [timeout-seconds]
+# Raw traces are archived to ~/.cache/oaken-bench/<label>/ after the run.
+# Override the location with OAKEN_ARCHIVE.
 
 # 4. Score it
 ./scripts/score.py results/<label>
@@ -101,6 +103,11 @@ failure modes that look like model failures and are not.
 **Read [CANARY.md](CANARY.md) before publishing any score.** The held-out suite
 ships encrypted and carries a canary GUID; a score from a contaminated model is
 not interpretable.
+
+**Read [EVENTS.md](EVENTS.md) before changing anything in `harnessMetrics`.** It
+records the pi and dsh event schemas from a live capture, since neither harness
+documents them, and it names two fields in the committed `score.json` files that
+are derived incorrectly today.
 
 ## Layout
 
@@ -118,10 +125,16 @@ scripts/
   score.py         run both suites, classify the outcome
   summarize.py     aggregate across runs
   gen_items.py     item-data provenance
-results/           one directory per run; only score.json is published
+results/           one directory per run; only score.json is committed. The rest
+                   (pi-events.jsonl, session tarballs, stderr.log, ...) is
+                   gitignored, since it's agent-written solution code and
+                   would undercut CANARY.md -- but run.sh archives it to
+                   ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
+                   isn't lost to a git clean
 FROZEN.sha256      hashes of every frozen input
 MODELS.md          how to add and tune a model  <- start here
 CANARY.md          contamination control
+EVENTS.md          what the pi and dsh event streams carry, field by field
 FINAL-REPORT.md    findings from the original study
 ```
 

@@ -25,14 +25,36 @@ fi
 echo "=== $LABEL : $HARNESS / $MODEL / timeout ${TIMEOUT}s ==="
 START=$(date -u +%s)
 
+# `|| RC=$?` rather than a bare pipeline: under `set -e` with `pipefail`, a
+# container that dies (OOM kill, image fault) would abort the script right
+# here, and everything below -- wallclock, the archive -- would never run. A
+# crashed run is a result, and issue #7 exists because exactly those runs are
+# the ones whose traces get lost.
+RC=0
 docker run --rm \
   --name "bench-$LABEL" \
   --add-host=llama:host-gateway \
   --dns 0.0.0.0 \
   -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
   -v "$OUT:/out" \
-  oaken-bench:1.0 "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log"
+  oaken-bench:1.0 "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" || RC=$?
 
 END=$(date -u +%s)
 echo "$((END - START))" > "$OUT/wallclock.seconds"
-echo "=== $LABEL finished in $((END - START))s ==="
+echo "=== $LABEL finished in $((END - START))s (docker rc=$RC) ==="
+
+# results/<label>/ is gitignored wholesale and looks disposable, but it's the
+# only copy of the raw trace (pi-events.jsonl, dsh-sessions.tgz, stderr.log,
+# ...) that #1-#6's metrics are derived from. Copy it out to a durable,
+# non-repo home so it survives a `git clean` -- see issue #7. This must run
+# after wallclock.seconds is written so the archive is complete.
+ARCHIVE="${OAKEN_ARCHIVE:-$HOME/.cache/oaken-bench}/$LABEL"
+if mkdir -p "$ARCHIVE" && cp -r "$OUT/." "$ARCHIVE/"; then
+  echo "raw trace archived to $ARCHIVE"
+else
+  echo "warning: failed to archive raw trace to $ARCHIVE -- results/$LABEL is the only copy" >&2
+fi
+
+# The container's own exit status is the run's, so surface it rather than
+# reporting success because the archive worked.
+exit "$RC"

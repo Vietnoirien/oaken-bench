@@ -10,9 +10,28 @@ written to <label>/hidden-detail.json and is deliberately not printed.
 """
 import json, os, re, shutil, signal, subprocess, sys, tarfile, tempfile, time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from events import (  # noqa: E402
+    call_metrics, load_dsh_events, load_pi_events, normalize_calls,
+)
+
 BENCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SEED = os.path.join(BENCH, 'seed')
 HIDDEN = os.path.join(BENCH, 'hidden')
+
+# Bump only when a change to normalize_calls()/call_metrics() alters the
+# shape of events-summary.json -- consumers pin to this, not to the harness
+# versions in EVENTS.md, because the extractor can change independently.
+EVENTS_SUMMARY_SCHEMA_VERSION = 1
+
+# Exactly the call_metrics() fields allowed into the published score.json.
+# Extending call_metrics() does not extend this: adding a field here is the
+# deliberate act of publishing it (see merge_events_into_harness_metrics).
+PUBLISHED_CALL_FIELDS = (
+    'toolCalls', 'toolOutcomes', 'errorRate', 'errorsByTool', 'toolHistogram',
+    'unknownTools', 'mutatingCalls', 'repeatedCalls', 'longestRepeatRun',
+    'distinctCallRatio', 'callSequence',
+)
 
 FROZEN_PATHS = [
     'SPEC.md', 'data/items.json', 'package.json', 'tsconfig.json', 'vitest.config.ts',
@@ -224,6 +243,82 @@ def dsh_metrics(result_dir):
                 'usage': usage, 'compactions': compactions}
 
 
+# (harness, trace filename, loader). Order matters only as a tie-break for
+# a result dir that somehow holds both.
+TRACES = (
+    ('pi', 'pi-events.jsonl', load_pi_events),
+    ('dsh', 'dsh-sessions.tgz', load_dsh_events),
+)
+
+
+def _load_calls(result_dir, harness):
+    """The one place score.py decides which raw trace file backs a run.
+
+    `harness` comes from run.meta and is only a hint: it falls back to
+    whichever trace file is actually present. Keying on it alone would mean
+    a run with a missing or misspelt harness= line silently produces no
+    events-summary.json at all -- a run that looks scored but carries none
+    of #1-#3's fields, which is precisely the record loss issue #7 exists
+    to stop. Returns None only when there is genuinely no trace to read.
+    """
+    for name, filename, loader in TRACES:
+        if harness and harness != name:
+            continue
+        f = os.path.join(result_dir, filename)
+        if os.path.exists(f):
+            return normalize_calls(loader(f), name)
+    if harness:                       # the named harness had no trace; try the rest
+        return _load_calls(result_dir, None)
+    return None
+
+
+def merge_events_into_harness_metrics(hm, events_summary):
+    """Fold call_metrics() (via events_summary) into the harnessMetrics dict
+    that pi_metrics()/dsh_metrics() built, replacing the flat per-call
+    `tools` list -- 327 copies of the string "read" in results/pi-01, almost
+    all of that published file's 5.6 KB (issue #3) -- with the equivalent
+    run-length-encoded `callSequence`.
+
+    Existing field names (`events`, `turns`/`steps`, `usage`, `compactions`)
+    are left untouched: other tooling and every already-committed score.json
+    depend on those names, and this function only adds/replaces.
+    """
+    if hm is None or events_summary is None:
+        return hm
+    merged = dict(hm)
+    merged.pop('tools', None)
+    # An allowlist, not a denylist. score.json is published, and the rule
+    # that raw arguments never reach it should hold by construction rather
+    # than because a test happens to cover today's field set -- a denylist
+    # would admit whatever a future call_metrics() starts returning.
+    for k in PUBLISHED_CALL_FIELDS:
+        if k in events_summary:
+            merged[k] = events_summary[k]
+    return merged
+
+
+def build_events_summary(result_dir, label, harness, model):
+    """The committed, backfillable record issue #7 asks for: the raw traces
+    stay gitignored (they carry agent-written solution code), but the
+    metrics derived from them do not have to live only inside score.json,
+    which the 16 pre-existing runs can never regrow a trace to regenerate.
+
+    Returns None if there is no trace to summarise -- callers must not write
+    a file in that case, or a missing trace would silently look like a
+    zero-call run.
+    """
+    calls = _load_calls(result_dir, harness)
+    if calls is None:
+        return None
+    return {
+        'schemaVersion': EVENTS_SUMMARY_SCHEMA_VERSION,
+        'label': label,
+        'harness': harness,
+        'model': model,
+        **call_metrics(calls),
+    }
+
+
 def classify(exit_code, visible_fail, hidden_rate, stderr_text, restored, hung=False):
     if not restored:
         return 'crash'
@@ -341,7 +436,14 @@ def main():
         report['typecheckClean'] = False
         report['tamperedFrozenFiles'] = []
 
-    report['harnessMetrics'] = pi_metrics(result_dir) or dsh_metrics(result_dir)
+    harness = meta.get('harness')
+    hm = pi_metrics(result_dir) or dsh_metrics(result_dir)
+    events_summary = build_events_summary(result_dir, label, harness, meta.get('model'))
+    if events_summary is not None:
+        with open(os.path.join(result_dir, 'events-summary.json'), 'w') as f:
+            json.dump(events_summary, f, indent=2)
+        hm = merge_events_into_harness_metrics(hm, events_summary)
+    report['harnessMetrics'] = hm
     report['outcome'] = classify(exit_code, report['visible']['failed'],
                                  report['hidden']['rate'], stderr_text, restored,
                                  report.get('suiteHung', False))
@@ -367,10 +469,16 @@ def main():
     print(f"  tampered       : {report['tamperedFrozenFiles'] or 'none'}")
     print(f"  wallclock      : {wall}s ({wall/60:.1f} min)   exit={exit_code}")
     print(f"  turns/steps    : {hm.get('turns', hm.get('steps', '?'))}")
-    print(f"  tool calls     : {hm.get('toolCalls', '?')}")
+    print(f"  tool calls     : {hm.get('toolCalls', '?')}  "
+          f"(mutating={hm.get('mutatingCalls', '?')}, errors={hm.get('toolOutcomes', {}).get('error', '?')})")
     print(f"  compactions    : {hm.get('compactions', '?')}")
     print(f"  usage          : {hm.get('usage', {})}")
-    shutil.rmtree(work, ignore_errors=True)
+    if hm.get('unknownTools'):
+        # Silence here is exactly how an unrecognised-tool run would pass
+        # for a normal one -- unknownTools already lands in mutatingCalls
+        # (see events.py), but a reader scanning this table has to be told,
+        # not left to notice the count is one higher than expected.
+        print(f"  UNKNOWN TOOLS  : {hm['unknownTools']}")
 
 
 if __name__ == '__main__':

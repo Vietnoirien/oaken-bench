@@ -24,6 +24,11 @@ for label in ORDER:
         'tc': d.get('typecheckClean'),
         'wall': d.get('wallclockSeconds', 0),
         'tools': hm.get('toolCalls', 0),
+        # mutatingCalls/unknownTools are absent from score.json for runs
+        # scored before this change -- 0 there must read as "not known",
+        # not "confirmed zero writes" (issue #3's whole point).
+        'mut': hm.get('mutatingCalls'),
+        'unknown': hm.get('unknownTools') or [],
         'turns': hm.get('turns', hm.get('steps', 0)),
         'comp': hm.get('compactions', 0),
         'inp': u.get('input', u.get('inputTokens', 0)),
@@ -32,14 +37,30 @@ for label in ORDER:
     })
 
 print(f"{'run':<15} {'outcome':<26} {'hidden':>12} {'visible':>11} {'gap':>7} "
-      f"{'tc':>3} {'wall':>6} {'turns':>6} {'tools':>6} {'cmp':>4}")
-print('-' * 106)
+      f"{'tc':>3} {'wall':>6} {'turns':>6} {'tools':>6} {'mut':>6} {'cmp':>4}")
+print('-' * 113)
 for r in rows:
+    # A bare tool-call total conflates "did nothing" with "worked hard" --
+    # 24 calls/0 writes and 60 calls/75.8% hidden are not comparable on
+    # that number alone (issue #3). mut='0' next to a nonzero tools count
+    # is the thing that must be impossible to miss in this table; '?'
+    # means the run predates mutatingCalls, not that it was actually zero.
+    # One fixed-width token, flag included: a separate flag column would
+    # shift `cmp` right on exactly the rows a reader is scanning for.
+    mut = '?' if r['mut'] is None else str(r['mut'])
+    if r['mut'] == 0 and r['tools']:
+        mut += ' !!'
     print(f"{r['label']:<15} {r['outcome']:<26} "
           f"{r['hid']:>4}/132 {r['hidr']*100:>5.1f}% "
           f"{r['vis']:>3}/52 {r['visr']*100:>5.1f}% "
           f"{r['gap']*100:>+6.1f} "
-          f"{'ok' if r['tc'] else 'X':>3} {r['wall']:>5}s {r['turns']:>6} {r['tools']:>6} {r['comp']:>4}")
+          f"{'ok' if r['tc'] else 'X':>3} {r['wall']:>5}s {r['turns']:>6} {r['tools']:>6} "
+          f"{mut:>6} {r['comp']:>4}")
+    if r['unknown']:
+        # A run full of unrecognised tool names must not read as a normal
+        # row -- see events.py's KNOWN_TOOLS comment on why those calls are
+        # folded into mutatingCalls but still need naming separately.
+        print(f"{'':<15} unknown tools: {r['unknown']}")
 
 print()
 for h in ('pi', 'dsh'):
