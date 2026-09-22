@@ -34,7 +34,10 @@ no new dependencies.
 
 - **Sealed.** One prompt, no human input, no clarifications.
 - **30-minute wall clock**, recorded as its own outcome (cut from 60 after the
-  ceiling probe finished in 5.4 minutes; see Results).
+  ceiling probe finished in 5.4 minutes; see Results). The `*-gemma131k-01`/
+  `-04` pair added later ran with a 60-minute cap and did not reach it (700 s
+  and 196 s), so the cap is not what separated them — but they are not
+  protocol-identical to the original six and should not be pooled with them.
 - **Fresh container per run**, fresh copy of `seed/`.
 - **Pre-declared interfaces** in `seed/src/*.ts` so the held-out suite can bind.
 - **3 runs per harness** at native sampling — variance is the point, so not temp 0.
@@ -192,7 +195,8 @@ scripts/
   gen_items.py     item-data provenance
   toolbattery.py   short tool-calling screening battery, talks to the model directly (issue #8)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
-results/           one directory per run; only score.json is committed. The rest
+results/           one directory per run; score.json and events-summary.json are
+                   committed (issue #7 -- the derived metrics outlive the trace). The rest
                    (pi-events.jsonl, session tarballs, stderr.log, ...) is
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
@@ -276,7 +280,7 @@ mean the probe and the graded runs no longer share a task.
 
 ## Before you trust a number from this
 
-Four limitations, stated up front rather than buried.
+Five limitations, stated up front rather than buried.
 
 1. **One task.** A single spec in a single domain. Three runs of one
    configuration in the original study spanned **0 % to 75.8 %** hidden. One run
@@ -292,10 +296,21 @@ Four limitations, stated up front rather than buried.
    reasons that have nothing to do with reasoning ability.
 4. **The published numbers are not cleanly reproducible.** `score.py` was
    patched mid-study to fix a process leak that corrupted wall-clock figures for
-   runs scored after it appeared, and scoring later moved into a container. The
-   six `dsh-gemma*` runs are the only set produced end-to-end under the current
-   pipeline; everything earlier is historical. Treat `FINAL-REPORT.md` as a
-   record of what was observed, not as a reference scoreboard.
+   runs scored after it appeared, and scoring later moved into a container.
+   `summarize.py` groups the runs it considers comparable and labels what each
+   mean covers; read that grouping rather than averaging the table yourself.
+   Treat `FINAL-REPORT.md` as a record of what was observed, not as a reference
+   scoreboard — one of its findings has since been retracted (§4.1, the
+   compaction ratio), because the extractor that produced it was wrong and the
+   traces needed to recompute it are gone.
+
+   What the grouping still cannot see is the **`llama-server` configuration** a
+   run was made under. Nothing in `score.json` records it, and MODELS.md §4
+   documents that `--reasoning-format` alone decides whether this model's output
+   reaches pi at all and whether dsh collapses. `harnessMetricsVersion` (absent
+   = 1, the buggy extractor; 2 = scored after that was found) is the only
+   in-band signal, and it is a proxy for when a run was scored, not for how the
+   server was configured. See #14.
 5. **Variance dominates.** Four of the six most recent runs exited before 700 s,
    and score tracks how long a run survived far more closely than any parameter
    under test. Expect to throw away runs.
