@@ -212,8 +212,13 @@ Four limitations, stated up front rather than buried.
    reasons that have nothing to do with reasoning ability.
 4. **The published numbers are not cleanly reproducible.** `score.py` was
    patched mid-study to fix a process leak that corrupted wall-clock figures for
-   runs scored after it appeared. Treat `FINAL-REPORT.md` as a record of what was
-   observed, not as a reference scoreboard.
+   runs scored after it appeared, and scoring later moved into a container. The
+   six `dsh-gemma*` runs are the only set produced end-to-end under the current
+   pipeline; everything earlier is historical. Treat `FINAL-REPORT.md` as a
+   record of what was observed, not as a reference scoreboard.
+5. **Variance dominates.** Four of the six most recent runs exited before 700 s,
+   and score tracks how long a run survived far more closely than any parameter
+   under test. Expect to throw away runs.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than a 12 GB consumer card.

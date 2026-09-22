@@ -14,13 +14,18 @@ sub-agent, never read by the implementing agent). **Bar: 80 % hidden.**
 | | |
 |---|---|
 | **Task is solvable** | Claude reached **129/132 (97.7 %)** in **5 m 22 s** |
-| **Best local model** | Gemma 4 12B, **100/132 (75.8 %)** — below the bar |
+| **Best local model** | Gemma 4 12B, **110/132 (83.3 %)** — **clears the bar** |
 | **Qwen3.8-27B @ Q2_K_XL** | **0/132 across 5 configurations** — never wrote a line |
 | **Qwen3.8-27B @ IQ2_XXS** | **0/132** at full 131 k ctx — same behaviour, no quant cliff |
-| **Runs clearing 80 %** | **1** (the Claude ceiling probe) |
+| **Runs clearing 80 %** | **2** (the Claude ceiling probe, and one Gemma run) |
 
 The benchmark and its oracle are sound: a 97.7 % result in under six minutes proves the task is
-well-specified and the hidden suite is fair. **No local model cleared the bar.**
+well-specified and the hidden suite is fair.
+
+**A local model has now cleared the bar.** `dsh-gemma192k-03` scored 110/132 (83.3 %) with a
+clean typecheck, 52/52 visible and an overfit gap of +16.7 — the tightest of any local run. It is
+**one run out of six**, and the same configuration also produced a 23/132, so this says the task
+is reachable by a 12 GB-class model, **not** that Gemma reaches it reliably. See §3.5.
 
 ---
 
@@ -29,7 +34,9 @@ well-specified and the hidden suite is fair. **No local model cleared the bar.**
 | run | harness | model | outcome | hidden | visible | wall | tools | cmp | tc |
 |---|---|---|---|---|---|---|---|---|---|
 | ceiling-claude | — | Claude | complete | **129/132 97.7 %** | 52/52 | 322 s | — | — | ok |
+| dsh-gemma192k-03 | dsh | Gemma 12B @196 k | **complete** | **110/132 83.3 %** | 52/52 | 1458 s | 106 | 4 | ok |
 | pi-03 | pi | Gemma 12B | below bar | **100/132 75.8 %** | 52/52 | 896 s | 60 | 2 | ✗ |
+| dsh-gemma192k-01 | dsh | Gemma 12B @196 k | below bar | 98/132 74.2 % | 52/52 | 687 s | 43 | 0 | ok |
 | dsh-03 | dsh | Gemma 12B | timeout | **98/132 74.2 %** | 51/52 | 1801 s | 92 | 15 | ✗ |
 | dsh-02 | dsh | Gemma 12B | crash | 66/132 50.0 % | 44/52 | 1241 s | 58 | 10 | ✗ |
 | pi-01 | pi | Gemma 12B | timeout | 36/132 27.3 % | 35/52 | 1801 s | 327 | 0 | ✗ |
@@ -42,6 +49,10 @@ well-specified and the hidden suite is fair. **No local model cleared the bar.**
 | dsh-qwen48k-01 | dsh | Qwen 27B Q2 | crash | 0/132 | 3/52 | 238 s | 27 | 2 | ok |
 | dsh-q48kB-01 | dsh | Qwen 27B Q2 | crash | 0/132 | 3/52 | 215 s | 21 | 0 | ok |
 | dsh-q48kC-01 | dsh | Qwen 27B Q2 | crash | 0/132 | 3/52 | 199 s | 22 | 0 | ok |
+| dsh-gemma131k-03 | dsh | Gemma 12B @131 k | crash | 95/132 72.0 % | 48/52 | 1515 s | 86 | 9 | ✗ |
+| dsh-gemma131k-01 | dsh | Gemma 12B @131 k | crash | 58/132 43.9 % | 43/52 | 694 s | 53 | 0 | ✗ |
+| dsh-gemma131k-02 | dsh | Gemma 12B @131 k | crash | 34/132 25.8 % | 33/52 | 343 s | 24 | 0 | ✗ |
+| dsh-gemma192k-02 | dsh | Gemma 12B @196 k | crash | 23/132 17.4 % | 30/52 | 369 s | 27 | 0 | ✗ |
 | dsh-xxs128k-01 | dsh | Qwen 27B **IQ2_XXS** | crash | 0/132 | 3/52 | 568 s | 24 | 0 | ok |
 
 `3/52 visible` is the **stub baseline** — three tests assert pre-declared constants and pass
@@ -151,6 +162,40 @@ read exhaustively and write nothing. **Every one of the seven scored Qwen runs l
 3/52 visible, 0/132 hidden, 0 writes** — across two harnesses, two quantizations and four context
 sizes. That invariance is now the strongest single fact about this model on this task, and it
 points away from quantization as the cause.
+
+### 3.5 Gemma 4 12B, paired context arm — the null result that produced the best run
+
+Six dsh runs, three at `contextWindow` 131072 and three at 196608. Same weights, same
+`maxTokens` (8192), same 30-minute cap, same containerised scorer. Context was the only variable;
+it moves dsh's post-compaction retention from 20 971 to 31 457 tokens against a 10 302-token spec.
+
+| ctx | hidden counts | mean | best |
+|---|---|---|---|
+| 131072 | 34, 58, 95 | 62.3/132 (47.2 %) | 95 (72.0 %) |
+| 196608 | 23, 98, **110** | 77.0/132 (58.3 %) | **110 (83.3 %)** |
+
+**The context effect is not significant.** Exact two-sided Mann-Whitney on n=3 per arm gives
+**p = 0.70**. The ranges are 61 and 87 tests wide and overlap almost completely; 196 k's worst run
+(23) is below 131 k's worst (34). The +11.1-point mean difference is noise at this sample size.
+
+**What the data does point at is survival.** Four of six runs exited early:
+
+| wall clock | hidden |
+|---|---|
+| 343 s | 34 |
+| 369 s | 23 |
+| 687 s | 98 |
+| 694 s | 58 |
+| 1458 s | **110** |
+| 1515 s | 95 |
+
+In both arms the longest-surviving run scored best and the two shortest scored worst. Score tracks
+**how long the run stayed alive**, not how much context it had. This is the third time in this
+study that a structural hypothesis — context window, quantization depth, and now context again —
+has failed to explain the variance, and the second time the 30-minute cap has turned out to be the
+thing actually binding.
+
+**The open question is no longer "does more context help" but "why do four runs in six die early".**
 
 ---
 
@@ -321,7 +366,12 @@ Both were stated with more confidence than the evidence supported. The corrected
    spare 3060 (layer split, `--tensor-split 65,35`) or a different box. **Without it, "is this
    Q2's fault?" cannot be answered on this hardware.**
 3. **Shorten the spec** to test whether deliberation length scales with spec size.
-4. **Re-run the Gemma baseline** with the fixed scorer, for clean wall-clock numbers.
+4. ~~**Re-run the Gemma baseline** with the fixed scorer.~~ **Done — §3.5**, six runs under the
+   containerised scorer. It produced the first local run to clear the bar and a null result on
+   context.
+5. **Find out why four runs in six exit early.** This is now the largest source of variance in the
+   study and the most likely route to a reliable pass, ahead of any model or context change.
+   `exit=1` before 700 s, with the agent mid-task, is not yet explained.
 
 Until (2) exists, the honest statement is: **Qwen3.8-27B does not perform this task on this
 hardware at either quantization tested, and the IQ2_XXS control makes quantization the *less*
