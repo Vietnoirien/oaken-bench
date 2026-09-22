@@ -10,12 +10,18 @@ R = os.path.join(B, 'results')
 # list_result_labels() -- just the preferred order for the ones it names.
 ORDER = ['ceiling-claude', 'pi-01', 'pi-02', 'pi-03', 'dsh-01', 'dsh-02', 'dsh-03']
 
-# README limitation 4: the six dsh-gemma* runs are the only set produced
+# README limitation 4: the dsh-gemma* runs were the only set produced
 # end-to-end under the current (containerized) scoring pipeline. Everything
 # else is historical. Mixing the two into one mean would be misleading, so
 # aggregates are grouped by this label rather than by harness alone.
-GEMMA_GROUP = 'dsh-gemma (current pipeline)'
+#
+# Keyed on the ctx marker rather than on `dsh-gemma`, because that prefix
+# encoded an accident of who had been run at the time, not a property of
+# the pipeline: a pi run at the same context would have been dropped into
+# "historical" purely for not being dsh.
+GEMMA_GROUP = 'gemma 131k/192k (current pipeline)'
 HISTORICAL_GROUP = 'historical (pre-container pipeline)'
+CURRENT_PIPELINE_MARKERS = ('gemma131k', 'gemma192k')
 
 VOID_REASON = 'VOID run (thinkbug) -- excluded from every aggregate'
 
@@ -89,10 +95,19 @@ def exclusion_reason(row):
 
 
 def group_label(row):
-    """Which README-comparable set this row's harness/pipeline combo
-    belongs to, for aggregate grouping. ceiling-claude's harness is
-    'claude-code', not pi/dsh, so it never matches a group here."""
-    if row['label'].startswith('dsh-gemma'):
+    """Which README-comparable set this row's run belongs to, for aggregate
+    grouping. ceiling-claude's harness is 'claude-code', not pi/dsh, so it
+    is excluded upstream by exclusion_reason() and never reaches a group.
+
+    NOTE the marker is the context size, not the harness: `dsh-gemma131k-02`
+    and `pi-gemma131k-01` belong to the same set. What it does NOT capture is
+    the llama-server configuration a run was made under -- MODELS.md section
+    4 records that `--reasoning-format` changes this model's behaviour enough
+    to break one harness outright, and nothing in score.json says which
+    setting was in force. Read `harnessMetricsVersion` (2 = scored after that
+    was discovered) alongside this grouping, not instead of it.
+    """
+    if any(marker in row['label'] for marker in CURRENT_PIPELINE_MARKERS):
         return GEMMA_GROUP
     return HISTORICAL_GROUP
 

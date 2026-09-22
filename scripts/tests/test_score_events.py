@@ -609,19 +609,37 @@ def test_dsh_metrics_matches_capture_after_fix():
 
 def test_derived_decode_rate_pairs_timing_with_throughput():
     from score import _derived_decode_rate
-    hm = {'generationSeconds': 200.0, 'usage': {'outputTokens': 16000}}
-    assert _derived_decode_rate(hm) == 80.0
-    # pi's key name for the same quantity
-    assert _derived_decode_rate({'generationSeconds': 10.0,
-                                 'usage': {'output': 1000}}) == 100.0
+    assert _derived_decode_rate({'generationSeconds': 200.0,
+                                 'generationOutputTokens': 16000}) == 80.0
+
+
+def test_derived_decode_rate_ignores_tokens_with_no_time_in_the_denominator():
+    """The numerator must cover the same windows generationSeconds measures.
+
+    Real case (results/dsh-gemma131k-04): 17791 total output tokens, of which
+    8192 -- exactly maxTokens -- came from a final step that emitted no tool
+    call, so none of its generation time is inside generationSeconds. Using
+    the total gives 172.9 t/s from hardware the server logged at 96-97 t/s.
+    """
+    from score import _derived_decode_rate
+    hm = {'generationSeconds': 102.919, 'generationOutputTokens': 9599,
+          'usage': {'outputTokens': 17791}}
+    rate = _derived_decode_rate(hm)
+    assert rate == pytest.approx(93.3, abs=0.1)
+    # and emphatically NOT the total-tokens figure
+    assert rate < 100
 
 
 def test_derived_decode_rate_is_none_when_either_input_is_missing():
     """pi has no generationSeconds at all (events.PER_CALL_CLOCK), so it gets
-    no rate. An absent rate must not read as a slow one."""
+    no rate. An absent rate must not read as a slow one. Total usage alone is
+    not a fallback -- that is the bug above."""
     from score import _derived_decode_rate
     assert _derived_decode_rate({'generationSeconds': None,
+                                 'generationOutputTokens': 16000}) is None
+    assert _derived_decode_rate({'generationSeconds': 200.0}) is None
+    assert _derived_decode_rate({'generationSeconds': 200.0,
                                  'usage': {'outputTokens': 16000}}) is None
-    assert _derived_decode_rate({'generationSeconds': 200.0, 'usage': {}}) is None
-    assert _derived_decode_rate({'generationSeconds': 0, 'usage': {'outputTokens': 5}}) is None
+    assert _derived_decode_rate({'generationSeconds': 0,
+                                 'generationOutputTokens': 5}) is None
     assert _derived_decode_rate({}) is None

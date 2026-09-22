@@ -268,6 +268,12 @@ def dsh_metrics(result_dir):
     pruned_count = 0
     pruned_shadowed_tokens = 0
     usage = {'inputTokens': 0, 'outputTokens': 0, 'cacheReadTokens': 0}
+    # Output tokens attributed to the (turn, step) that produced them, plus
+    # the set of steps that ended in a tool call. generationSeconds only
+    # measures the wall-clock BETWEEN calls, so only the tokens generated in
+    # those windows belong in a rate built on it -- see _derived_decode_rate.
+    output_by_step = {}
+    steps_with_call = set()
     for e in events:
         if not isinstance(e, dict):
             continue
@@ -294,6 +300,7 @@ def dsh_metrics(result_dir):
             n = d.get('toolName') or d.get('name') or d.get('tool') or e.get('toolName')
             if n:
                 tools.append(n)
+            steps_with_call.add((d.get('turn'), d.get('step')))
         # Usage lives at assistant/message.data.usage only (issue #9). The
         # old fallback (`d.get('usage') if isinstance(..., dict) else d`)
         # treated every OTHER event's whole `data` dict as a usage record,
@@ -306,12 +313,18 @@ def dsh_metrics(result_dir):
                     v = u.get(k)
                     if isinstance(v, (int, float)):
                         usage[k] += v
+                out = u.get('outputTokens')
+                if isinstance(out, (int, float)):
+                    key = (d.get('turn'), d.get('step'))
+                    output_by_step[key] = output_by_step.get(key, 0) + out
     result = {
         'events': counts, 'steps': counts.get('step/start', 0),
         'toolCalls': len(tools), 'tools': tools,
         'usage': usage, 'compactions': compactions,
         'prunedToolResults': {'count': pruned_count,
                               'shadowedTokenCount': pruned_shadowed_tokens},
+        'generationOutputTokens': sum(v for k, v in output_by_step.items()
+                                      if k in steps_with_call),
         'harnessMetricsVersion': HARNESS_METRICS_SCHEMA_VERSION,
     }
     if ambiguous:
@@ -432,8 +445,20 @@ def _derived_decode_rate(hm):
     An absent rate is not a slow one.
     """
     gen = hm.get('generationSeconds')
-    usage = hm.get('usage') or {}
-    out = usage.get('output', usage.get('outputTokens'))
+    # NOT total usage.output. generationSeconds only measures the wall-clock
+    # windows BETWEEN one tool result and the next call, so the numerator has
+    # to be the tokens generated in those windows -- the messages that ended
+    # in a tool call. Tokens from a step that produced no call (a final
+    # answer, or a runaway that burned maxTokens and stopped) have no
+    # corresponding time in the denominator.
+    #
+    # Measured on results/dsh-gemma131k-04, which is exactly that case: of
+    # 17791 output tokens, 8192 -- precisely maxTokens -- came from a final
+    # step that emitted no call. Dividing all of them by 102.9s gives
+    # 172.9 t/s from a server whose own logs report 96-97 t/s for that run.
+    # Using only the 9599 call-producing tokens gives 93.3 t/s, which agrees
+    # with the server. A rate faster than the hardware is the tell.
+    out = hm.get('generationOutputTokens')
     if not isinstance(gen, (int, float)) or gen <= 0:
         return None
     if not isinstance(out, (int, float)) or out <= 0:

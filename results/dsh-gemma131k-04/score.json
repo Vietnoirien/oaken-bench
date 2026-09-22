@@ -1,0 +1,227 @@
+{
+  "label": "dsh-gemma131k-04",
+  "harness": "dsh",
+  "model": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
+  "exitCode": 1,
+  "wallclockSeconds": 196,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": false,
+  "suiteHung": false,
+  "visible": {
+    "passed": 26,
+    "failed": 26,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.5
+  },
+  "hidden": {
+    "passed": 27,
+    "failed": 105,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.2045
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "permission/preset": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 26,
+      "system/message": 1,
+      "user/message": 2,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session/title-llm-request": 1,
+      "assistant/message": 26,
+      "tool/call": 25,
+      "tool/result": 25,
+      "step/end": 26,
+      "todo/write": 8,
+      "turn/end": 1
+    },
+    "steps": 26,
+    "toolCalls": 25,
+    "usage": {
+      "inputTokens": 43326,
+      "outputTokens": 17791,
+      "cacheReadTokens": 853635
+    },
+    "compactions": 0,
+    "prunedToolResults": {
+      "count": 0,
+      "shadowedTokenCount": 0
+    },
+    "generationOutputTokens": 9599,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 25,
+      "error": 0,
+      "unknown": 0
+    },
+    "errorRate": 0.0,
+    "errorsByTool": {},
+    "toolHistogram": {
+      "read": 10,
+      "glob": 1,
+      "todo_write": 8,
+      "write": 6
+    },
+    "unknownTools": [],
+    "mutatingCalls": 6,
+    "repeatedCalls": 1,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 0.96,
+    "callSequence": [
+      [
+        "read",
+        "6f1985105c4491a0",
+        1
+      ],
+      [
+        "glob",
+        "70a9d51f7cfa4192",
+        1
+      ],
+      [
+        "read",
+        "919ec7776ab69441",
+        1
+      ],
+      [
+        "todo_write",
+        "318e50a127e9402f",
+        1
+      ],
+      [
+        "read",
+        "5c2510b2942091e6",
+        1
+      ],
+      [
+        "read",
+        "87daa12fa0625f9e",
+        1
+      ],
+      [
+        "todo_write",
+        "9255605d12e8ba49",
+        1
+      ],
+      [
+        "write",
+        "a99a0cd92018e645",
+        1
+      ],
+      [
+        "todo_write",
+        "3c70852c597bfe16",
+        1
+      ],
+      [
+        "read",
+        "01044a1110757fad",
+        1
+      ],
+      [
+        "write",
+        "bbb60fecde3f7cb1",
+        1
+      ],
+      [
+        "todo_write",
+        "d094a4baeabea7dc",
+        1
+      ],
+      [
+        "read",
+        "ef6ba856d7c37c07",
+        1
+      ],
+      [
+        "write",
+        "113e590977ed8938",
+        1
+      ],
+      [
+        "todo_write",
+        "dc4d1699bdd50b8c",
+        1
+      ],
+      [
+        "read",
+        "a5ab70e6fdc04b9b",
+        1
+      ],
+      [
+        "write",
+        "653730e2d77630b1",
+        1
+      ],
+      [
+        "todo_write",
+        "aa99eaccab4d52af",
+        1
+      ],
+      [
+        "read",
+        "7736df0372ea4f1c",
+        1
+      ],
+      [
+        "write",
+        "9d622b782559ea52",
+        1
+      ],
+      [
+        "todo_write",
+        "5e456f5098206f06",
+        1
+      ],
+      [
+        "read",
+        "7736df0372ea4f1c",
+        1
+      ],
+      [
+        "write",
+        "281b47311d4f7810",
+        1
+      ],
+      [
+        "todo_write",
+        "63c60dcd07b7be8c",
+        1
+      ],
+      [
+        "read",
+        "1badadaa0eba704d",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 5.473,
+    "toolCallIntervals": {
+      "n": 24,
+      "p50Seconds": 2.663,
+      "p95Seconds": 13.9
+    },
+    "generationSeconds": 102.919,
+    "toolExecutionSeconds": 0.41,
+    "derivedDecodeTokensPerSecond": 93.27,
+    "parseErrors": 0
+  },
+  "outcome": "crash",
+  "overfitGap": 0.2955
+}

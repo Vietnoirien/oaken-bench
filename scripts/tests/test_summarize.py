@@ -241,3 +241,24 @@ def test_version_two_compactions_print_unmarked(tmp_path):
 
     assert row['hmv'] == 2
     assert '~' not in format_row(row)
+
+
+def test_a_pi_run_at_the_same_context_joins_the_same_group_as_dsh():
+    """The group marker is the context size, not the harness prefix. Keying
+    on 'dsh-gemma' put a pi run at the identical context into 'historical'
+    purely for not being dsh -- an accident of who had been run, not a
+    property of the pipeline."""
+    import tempfile, pathlib
+    with tempfile.TemporaryDirectory() as td:
+        tmp_path = pathlib.Path(td)
+        write_score(tmp_path, 'dsh-gemma131k-01', harness='dsh')
+        write_score(tmp_path, 'pi-gemma131k-01', harness='pi')
+        write_score(tmp_path, 'pi-01', harness='pi')
+
+        rows = collect_rows(str(tmp_path))
+        groups, _ = aggregate_groups(rows)
+
+    by_label = {r['label']: g['group_label']
+                for g in groups for r in g['rows']}
+    assert by_label['pi-gemma131k-01'] == by_label['dsh-gemma131k-01']
+    assert by_label['pi-01'] != by_label['pi-gemma131k-01']
