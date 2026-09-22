@@ -47,6 +47,17 @@ no new dependencies.
   events, wall clock, and an outcome from
   `{timeout, crash, declared_done_tests_red, context_exhausted, complete}`.
 
+  **Not comparable across the fix for issues #9/#10/#11.** `harnessMetrics`
+  carries a `harnessMetricsVersion`, 2 from here on. The 16 runs committed
+  before the fix carry no such key at all -- *absence is version 1*, and any
+  reader of these files has to treat it that way. Under version 1, `usage`
+  was summed from streaming partials and `compactions` double- (pi)
+  or up to 5.5x- (dsh) counted — both overstated, not by a fixed ratio. The 16
+  runs committed under version 1 keep their original figures (their raw traces
+  are gone, so the old numbers cannot be recomputed) but those figures are
+  known wrong and must not be compared against runs scored after the fix. See
+  [EVENTS.md](EVENTS.md) §1-2 for the measured before/after deltas.
+
 ## Fairness
 
 - **Bash timeout equalised.** dsh ships `timeoutMs: 60000`; pi's bash has no
@@ -106,8 +117,9 @@ not interpretable.
 
 **Read [EVENTS.md](EVENTS.md) before changing anything in `harnessMetrics`.** It
 records the pi and dsh event schemas from a live capture, since neither harness
-documents them, and it names two fields in the committed `score.json` files that
-are derived incorrectly today.
+documents them, and it names two fields (`usage`, `compactions`) whose values
+in `score.json` files committed before `harnessMetricsVersion` 2 were derived
+incorrectly and are not comparable with later runs (see Scoring above).
 
 ## Layout
 

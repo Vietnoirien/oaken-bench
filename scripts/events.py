@@ -21,6 +21,7 @@ import subprocess
 import tarfile
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
 
 
@@ -129,12 +130,23 @@ def load_dsh_events(tgz_path):
     newest file -- see EVENTS.md on why mtime ordering is luck, not a
     rule), and parse its jsonl.
 
-    The tarball can hold more than one session because dsh forks a
-    subagent into its own session file. We pick the one whose header has
-    `delegationDepth == 0` (equivalently, no `parentSession`); anything
-    else is a subagent transcript and reading metrics off it instead of
-    the root would silently score the wrong process tree.
+    Thin wrapper over `load_dsh_root_sessions()`: returns the first root
+    session's events, or `[]` if there is none. If the tarball holds more
+    than one root session -- a real ambiguity, not resolvable by timestamp
+    -- this silently picks the first; callers that need to detect and
+    report that ambiguity (issue #11) should call
+    `load_dsh_root_sessions()` directly and look at its length.
     """
+    roots = load_dsh_root_sessions(tgz_path)
+    return roots[0][1] if roots else []
+
+
+def _iter_dsh_sessions(tgz_path):
+    """Yield (header, events) for every session file in the tarball,
+    root or subagent alike. Internal: extraction + zstd-decompression
+    lives here once, so `load_dsh_root_sessions()` is the only place that
+    walks the tarball and shells out to `zstd` (issue #11's "Related"
+    note about double-decompression)."""
     with tempfile.TemporaryDirectory() as td:
         with tarfile.open(tgz_path) as t:
             t.extractall(td, filter='data')
@@ -143,6 +155,14 @@ def load_dsh_events(tgz_path):
             for fn in files:
                 if fn.endswith('.jsonl.zstd'):
                     session_files.append(os.path.join(root, fn))
+        # Sorted, because os.walk yields in readdir order: without this,
+        # which root session a multi-root tarball hands back varies by
+        # filesystem and by extraction order. That is the same class of
+        # mistake as selecting by mtime (issue #11) -- an incidental
+        # property deciding which transcript a run is scored from. Path
+        # order is arbitrary too, but it is at least reproducible, and
+        # callers are told when the choice was ambiguous.
+        session_files.sort()
 
         for path in session_files:
             proc = subprocess.run(['zstd', '-dc', path], capture_output=True, text=True)
@@ -155,11 +175,6 @@ def load_dsh_events(tgz_path):
                 header = json.loads(lines[0])
             except (ValueError, TypeError):
                 continue
-            is_root = header.get('delegationDepth') == 0 or (
-                header.get('delegationDepth') is None and 'parentSession' not in header
-            )
-            if not is_root:
-                continue
             events = []
             for line in lines:
                 line = line.strip()
@@ -169,8 +184,72 @@ def load_dsh_events(tgz_path):
                     events.append(json.loads(line))
                 except (ValueError, TypeError):
                     continue
-            return events
-    return []
+            yield header, events
+
+
+def _is_dsh_root_header(header):
+    return header.get('delegationDepth') == 0 or (
+        header.get('delegationDepth') is None and 'parentSession' not in header
+    )
+
+
+def load_dsh_root_sessions(tgz_path):
+    """Return `[(header, events), ...]` for every ROOT session in the
+    tarball: header has `delegationDepth == 0`, or no `delegationDepth`
+    and no `parentSession` at all.
+
+    The tarball can hold more than one session because dsh forks a
+    subagent into its own session file -- a subagent's header carries
+    `parentSession` and `delegationDepth >= 1`. Ordinarily this returns
+    exactly one root. More than one is a genuine ambiguity (two runs'
+    worth of root-level history in one archive); it is returned as-is
+    and it is the caller's job to detect and report that, not to resolve
+    it by mtime or any other guess (issue #11).
+    """
+    return [(h, e) for h, e in _iter_dsh_sessions(tgz_path) if _is_dsh_root_header(h)]
+
+
+def _parse_iso_ms(ts):
+    """Parse an ISO-8601 timestamp (pi's `session.timestamp`, e.g.
+    "2026-09-22T13:01:37.393Z") to epoch milliseconds, or None if it
+    doesn't parse. `Z` is normalised to `+00:00` for Pythons whose
+    `fromisoformat` predates PEP 615's `Z` support."""
+    if not isinstance(ts, str):
+        return None
+    s = ts[:-1] + '+00:00' if ts.endswith('Z') else ts
+    try:
+        return int(datetime.fromisoformat(s).timestamp() * 1000)
+    except (ValueError, TypeError):
+        return None
+
+
+def stream_start_ms(events, harness):
+    """The run's own wall-clock anchor, used only to express
+    `timeToFirstToolCall` (issue #5) relative to when the harness itself
+    started producing events -- not to container boot or model load time,
+    which happen before either trace's first event.
+
+    pi has no numeric top-level timestamp on most events; its `session`
+    event carries the run's start as an ISO string. dsh's `session` header
+    carries no `time` of its own (unlike every other dsh event), so this
+    falls through to the first event that does.
+
+    Returns None if the stream never says -- callers must then leave
+    `timeToFirstToolCall` null, not compute it against a guess.
+    """
+    if harness == 'pi':
+        for e in events:
+            if isinstance(e, dict) and e.get('type') == 'session':
+                ms = _parse_iso_ms(e.get('timestamp'))
+                if ms is not None:
+                    return ms
+        return None
+    if harness == 'dsh':
+        for e in events:
+            if isinstance(e, dict) and isinstance(e.get('time'), (int, float)):
+                return e['time']
+        return None
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -321,13 +400,145 @@ def _dsh_error_text(item):
 # Metrics
 # ---------------------------------------------------------------------------
 
-def call_metrics(calls):
-    """Aggregate a list of `Call`s into the fields issues #1-#3 asked for.
+def _percentile(sorted_values, pct):
+    """Linear-interpolated percentile (numpy's default 'linear' method)
+    over an already-sorted list. `sorted_values` is non-empty."""
+    n = len(sorted_values)
+    if n == 1:
+        return sorted_values[0]
+    idx = (pct / 100.0) * (n - 1)
+    lo = int(idx)
+    hi = min(lo + 1, n - 1)
+    frac = idx - lo
+    return sorted_values[lo] + (sorted_values[hi] - sorted_values[lo]) * frac
+
+
+def _calls_per_turn(calls):
+    """Issue #6: group calls by turn (pi: `turn`; dsh: `(turn, step)`, per
+    EVENTS.md section 3 -- a dsh "turn" is the whole conversation turn, so
+    calls-per-assistant-step needs the finer `(turn, step)` key. For pi,
+    `step` is always None, so the same key degenerates to grouping by
+    `turn` alone.
+    """
+    groups = {}
+    for c in calls:
+        if c.turn is None:
+            continue
+        groups.setdefault((c.turn, c.step), []).append(c)
+    counts = [len(v) for v in groups.values()]
+    if not counts:
+        return {'mean': 0.0, 'max': 0}, 0
+    mean = round(sum(counts) / len(counts), 4)
+    return {'mean': mean, 'max': max(counts)}, sum(1 for n in counts if n > 1)
+
+
+# Harnesses whose tool events carry their own timestamps, so a call's
+# execution time can be separated from the generation that preceded it.
+#
+# dsh qualifies: `tool/call` and `tool/result` are distinct events, each
+# with its own `time`. pi does NOT: its `tool_execution_start` and
+# `tool_execution_end` carry no timestamp at all (verified against the
+# archived capture -- their only keys are toolCallId/toolName/args and
+# toolCallId/toolName/result/isError). The only clock pi exposes near a
+# call is `message.timestamp`, and that is a single creation stamp,
+# identical on `message_start` and `message_end`, written when the
+# assistant message is created -- i.e. at the START of generation, 1ms
+# after the previous tool result came back. So for pi:
+#
+#   ended_ms - started_ms   = generation AND execution, inseparable
+#   next started_ms - ended_ms = ~1ms of bookkeeping, not generation
+#
+# On the archived pi capture that yields 208.65s of "tool execution" in a
+# 239.5s run whose tools are local file reads, and a "generation" figure
+# of 30.88s that is really the 5 completed compactions: 29 of its 34
+# inter-call gaps are under 10ms. Publishing either number would assert
+# something plainly false, so pi reports None for both. See EVENTS.md.
+PER_CALL_CLOCK = frozenset({'dsh'})
+
+
+def _call_timing(calls, run_start_ms, per_call_clock=True):
+    """Issue #5. Built entirely from `Call.started_ms`/`ended_ms` -- for
+    pi those are the turn-level surrogates EVENTS.md documents (the
+    enclosing `turn_end.message.timestamp` / `toolResults[].timestamp`),
+    for dsh the call's own `tool/call`/`tool/result` `time`. Whichever
+    harness produced them, the same arithmetic applies:
+
+    - a call's own `toolExecutionSeconds` contribution is its
+      `ended_ms - started_ms` (EVENTS.md: "the gap between them is the
+      tool's own execution time");
+    - the `generationSeconds` between two calls is the previous call's
+      `ended_ms` to the next call's `started_ms` ("the gap between one
+      turn's result and the next turn's message is generation time").
+
+    Any field this cannot compute (no timestamps at all, or fewer than 2
+    calls for the interval/generation figures) comes back None rather
+    than a fabricated 0 -- silence is not the same fact as "instant".
+    """
+    ordered = [c for c in calls if isinstance(c.started_ms, (int, float))]
+
+    time_to_first = None
+    if run_start_ms is not None and ordered:
+        time_to_first = round(max(0, ordered[0].started_ms - run_start_ms) / 1000.0, 3)
+
+    starts = [c.started_ms for c in ordered]
+    gaps = [b - a for a, b in zip(starts, starts[1:]) if b >= a]
+    intervals = None
+    if gaps:
+        gaps_sorted = sorted(gaps)
+        intervals = {
+            'n': len(gaps),
+            'p50Seconds': round(_percentile(gaps_sorted, 50) / 1000.0, 3),
+            'p95Seconds': round(_percentile(gaps_sorted, 95) / 1000.0, 3),
+        }
+
+    exec_ms, exec_n = 0, 0
+    for c in calls:
+        if (isinstance(c.started_ms, (int, float)) and isinstance(c.ended_ms, (int, float))
+                and c.ended_ms >= c.started_ms):
+            exec_ms += c.ended_ms - c.started_ms
+            exec_n += 1
+    tool_execution_seconds = round(exec_ms / 1000.0, 3) if exec_n else None
+
+    gen_ms, gen_n, prev_end = 0, 0, None
+    for c in calls:
+        if (prev_end is not None and isinstance(c.started_ms, (int, float))
+                and c.started_ms >= prev_end):
+            gen_ms += c.started_ms - prev_end
+            gen_n += 1
+        if isinstance(c.ended_ms, (int, float)):
+            prev_end = c.ended_ms
+    generation_seconds = round(gen_ms / 1000.0, 3) if gen_n else None
+
+    if not per_call_clock:
+        # The harness gave us no clock that distinguishes the two, and a
+        # plausible-looking number here is worse than an absent one: it
+        # would be read as a measurement. #5's other two fields survive,
+        # and they are the ones its motivating pathology needs.
+        generation_seconds = None
+        tool_execution_seconds = None
+
+    return {
+        'timeToFirstToolCall': time_to_first,
+        'toolCallIntervals': intervals,
+        'generationSeconds': generation_seconds,
+        'toolExecutionSeconds': tool_execution_seconds,
+    }
+
+
+def call_metrics(calls, run_start_ms=None, harness=None):
+    """Aggregate a list of `Call`s into the fields issues #1-#3, #5 and #6
+    asked for.
 
     Never returns raw arguments -- only `args_digest`. That is not an
     oversight to double check later: it is the fix for issue #2, whose
     complaint is precisely that agent-written solution code (`edit`
     arguments) could end up in a published `results/*/score.json`.
+
+    `run_start_ms` is optional and only affects `timeToFirstToolCall`
+    (issue #5): it is the run's own anchor from `stream_start_ms()`, not
+    part of a `Call`, because it is a property of the whole stream, not of
+    any one call. Omit it (or pass None) and that one field comes back
+    null; every other field here needs no such anchor.
     """
     total = len(calls)
     ok = sum(1 for c in calls if c.ok is True)
@@ -382,6 +593,10 @@ def call_metrics(calls):
     denom = ok + error
     error_rate = round(error / denom, 4) if denom else 0.0
 
+    tool_calls_per_turn, parallel_turns = _calls_per_turn(calls)
+    timing = _call_timing(calls, run_start_ms,
+                          per_call_clock=harness in PER_CALL_CLOCK)
+
     return {
         'toolCalls': total,
         'toolOutcomes': {'ok': ok, 'error': error, 'unknown': unknown},
@@ -394,4 +609,7 @@ def call_metrics(calls):
         'longestRepeatRun': longest_run,
         'distinctCallRatio': distinct_ratio,
         'callSequence': [[t, dg, n] for t, dg, n in sequence],
+        'toolCallsPerTurn': tool_calls_per_turn,
+        'parallelTurns': parallel_turns,
+        **timing,
     }

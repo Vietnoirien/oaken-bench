@@ -1,0 +1,243 @@
+"""Tests for scripts/summarize.py (issue #12).
+
+Fixtures are synthetic score.json trees built under tmp_path -- never real
+data from the repo's results/ directory. Real run data belongs in results/,
+not committed as a test fixture.
+"""
+import json
+import os
+import sys
+
+import pytest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from summarize import (  # noqa: E402
+    ORDER, aggregate_groups, build_row, collect_rows, exclusion_reason,
+    format_row, list_result_labels,
+)
+
+
+def write_score(results_dir, label, harness='dsh', outcome='complete',
+                 hidden_passed=10, hidden_total=132, visible_passed=5,
+                 visible_total=52, overfit_gap=0.0, typecheck_clean=True,
+                 wallclock=100, mutating_calls=None, unknown_tools=None,
+                 tool_calls=0, turns=0, compactions=0):
+    """Write a minimal synthetic score.json for `label` under results_dir."""
+    run_dir = results_dir / label
+    run_dir.mkdir(parents=True, exist_ok=True)
+    harness_metrics = {
+        'toolCalls': tool_calls,
+        'turns': turns,
+        'compactions': compactions,
+        'usage': {},
+    }
+    if mutating_calls is not None:
+        harness_metrics['mutatingCalls'] = mutating_calls
+    if unknown_tools is not None:
+        harness_metrics['unknownTools'] = unknown_tools
+    data = {
+        'harness': harness,
+        'outcome': outcome,
+        'hidden': {'passed': hidden_passed, 'total': hidden_total,
+                   'rate': hidden_passed / hidden_total},
+        'visible': {'passed': visible_passed, 'total': visible_total,
+                    'rate': visible_passed / visible_total},
+        'overfitGap': overfit_gap,
+        'typecheckClean': typecheck_clean,
+        'wallclockSeconds': wallclock,
+        'harnessMetrics': harness_metrics,
+    }
+    (run_dir / 'score.json').write_text(json.dumps(data))
+    return run_dir
+
+
+# ---------------------------------------------------------------------------
+# list_result_labels / collect_rows: ordering and coverage
+# ---------------------------------------------------------------------------
+
+def test_run_not_in_order_still_appears(tmp_path):
+    write_score(tmp_path, 'dsh-01')
+    write_score(tmp_path, 'dsh-gemma131k-01')
+
+    labels = list_result_labels(str(tmp_path))
+
+    assert 'dsh-gemma131k-01' in labels
+
+
+def test_order_runs_keep_relative_order_and_come_first(tmp_path):
+    # Write in an order deliberately scrambled relative to ORDER, plus
+    # some extras not in ORDER at all.
+    for label in ['dsh-03', 'zzz-extra', 'pi-01', 'aaa-extra',
+                  'ceiling-claude', 'dsh-01', 'pi-03', 'dsh-02', 'pi-02']:
+        write_score(tmp_path, label)
+
+    labels = list_result_labels(str(tmp_path))
+
+    order_present = [l for l in labels if l in ORDER]
+    assert order_present == ORDER  # relative order preserved
+    assert labels[:len(ORDER)] == ORDER  # and they come first
+    # everything else appended after, sorted
+    assert labels[len(ORDER):] == ['aaa-extra', 'zzz-extra']
+
+
+def test_collect_rows_covers_every_scored_run(tmp_path):
+    labels = ['dsh-01', 'dsh-gemma131k-01', 'pi-qwen32k-01', 'dsh-q48kB-01']
+    for label in labels:
+        write_score(tmp_path, label, harness='pi' if label.startswith('pi') else 'dsh')
+
+    rows = collect_rows(str(tmp_path))
+
+    assert {r['label'] for r in rows} == set(labels)
+
+
+def test_run_without_score_json_is_ignored(tmp_path):
+    write_score(tmp_path, 'dsh-01')
+    (tmp_path / 'no-score-run').mkdir()
+
+    labels = list_result_labels(str(tmp_path))
+
+    assert labels == ['dsh-01']
+
+
+# ---------------------------------------------------------------------------
+# VOID exclusion
+# ---------------------------------------------------------------------------
+
+def test_void_run_is_excluded_from_every_mean(tmp_path):
+    write_score(tmp_path, 'dsh-qwen32k-01', harness='dsh',
+                hidden_passed=100, hidden_total=132)
+    write_score(tmp_path, 'dsh-qwen32k-VOID-thinkbug', harness='dsh',
+                hidden_passed=0, hidden_total=132)
+    write_score(tmp_path, 'pi-qwen32k-VOID-thinkbug', harness='pi',
+                hidden_passed=0, hidden_total=132)
+
+    rows = collect_rows(str(tmp_path))
+    groups, excluded = aggregate_groups(rows)
+
+    excluded_labels = {r['label'] for r, _reason in excluded}
+    assert excluded_labels == {'dsh-qwen32k-VOID-thinkbug', 'pi-qwen32k-VOID-thinkbug'}
+    for r, reason in excluded:
+        assert 'VOID' in reason
+
+    for group in groups:
+        group_labels = {r['label'] for r in group['rows']}
+        assert not (group_labels & excluded_labels)
+
+
+def test_void_run_is_still_visible_in_collect_rows(tmp_path):
+    write_score(tmp_path, 'dsh-qwen32k-VOID-thinkbug', harness='dsh')
+
+    rows = collect_rows(str(tmp_path))
+
+    assert any(r['label'] == 'dsh-qwen32k-VOID-thinkbug' for r in rows)
+
+
+def test_exclusion_reason_is_none_for_a_normal_run(tmp_path):
+    row = build_row(str(write_score(tmp_path, 'dsh-01').parent), 'dsh-01')
+    assert exclusion_reason(row) is None
+
+
+# ---------------------------------------------------------------------------
+# Aggregate grouping: labeled, not one mean over everything
+# ---------------------------------------------------------------------------
+
+def test_aggregate_groups_are_labeled_with_the_set_they_cover(tmp_path):
+    write_score(tmp_path, 'dsh-01', harness='dsh')
+    write_score(tmp_path, 'dsh-gemma131k-01', harness='dsh')
+
+    rows = collect_rows(str(tmp_path))
+    groups, _excluded = aggregate_groups(rows)
+
+    assert len(groups) == 2
+    labels = {g['group_label'] for g in groups}
+    assert len(labels) == 2  # each group names a distinct set
+    for g in groups:
+        assert g['group_label']  # non-empty: every mean says what it covers
+
+
+def test_gemma_and_historical_runs_are_not_mixed_into_one_mean(tmp_path):
+    write_score(tmp_path, 'dsh-01', harness='dsh', hidden_passed=0, hidden_total=132)
+    write_score(tmp_path, 'dsh-gemma131k-01', harness='dsh', hidden_passed=132, hidden_total=132)
+
+    rows = collect_rows(str(tmp_path))
+    groups, _excluded = aggregate_groups(rows)
+
+    dsh_groups = [g for g in groups if g['harness'] == 'dsh']
+    assert len(dsh_groups) == 2  # historical and gemma stay separate
+    for g in dsh_groups:
+        # each group's rows are internally consistent with its own mean,
+        # i.e. no group contains both the 0% and the 100% run
+        rates = {r['hid'] for r in g['rows']}
+        assert rates in ({0}, {132})
+
+
+def test_group_only_contains_matching_harness(tmp_path):
+    write_score(tmp_path, 'dsh-01', harness='dsh')
+    write_score(tmp_path, 'pi-01', harness='pi')
+
+    rows = collect_rows(str(tmp_path))
+    groups, _excluded = aggregate_groups(rows)
+
+    for g in groups:
+        assert all(r['harness'] == g['harness'] for r in g['rows'])
+
+
+def test_non_pi_dsh_harness_is_excluded_with_a_stated_reason(tmp_path):
+    """ceiling-claude must not be averaged into pi or dsh -- but issue #12 is
+    about runs leaving the table without comment, so it must be reported as
+    excluded rather than silently skipped."""
+    write_score(tmp_path, 'ceiling-claude', harness='claude-code')
+
+    rows = collect_rows(str(tmp_path))
+    groups, excluded = aggregate_groups(rows)
+
+    assert groups == []
+    assert [r['label'] for r, _ in excluded] == ['ceiling-claude']
+    assert 'claude-code' in excluded[0][1]
+
+
+# ---------------------------------------------------------------------------
+# mutatingCalls '?' preservation (still exercised at the row-building seam)
+# ---------------------------------------------------------------------------
+
+def test_missing_mutating_calls_reads_as_unknown_not_zero(tmp_path):
+    write_score(tmp_path, 'dsh-01', harness='dsh', mutating_calls=None)
+
+    row = build_row(str(tmp_path), 'dsh-01')
+
+    assert row['mut'] is None
+
+
+def test_present_mutating_calls_is_preserved(tmp_path):
+    write_score(tmp_path, 'dsh-01', harness='dsh', mutating_calls=0, tool_calls=5)
+
+    row = build_row(str(tmp_path), 'dsh-01')
+
+    assert row['mut'] == 0
+
+
+# ---------------------------------------------------------------------------
+# harnessMetricsVersion: version-1 compaction counts must not read as sound
+# ---------------------------------------------------------------------------
+
+def test_absent_harness_metrics_version_reads_as_version_one(tmp_path):
+    """The 16 pre-fix runs carry no harnessMetricsVersion key at all.
+    Absence is version 1, not 'unversioned and therefore fine'."""
+    write_score(tmp_path, 'dsh-01', harness='dsh', compactions=25)
+
+    row = build_row(str(tmp_path), 'dsh-01')
+
+    assert row['hmv'] == 1
+    assert '25~' in format_row(row)
+
+
+def test_version_two_compactions_print_unmarked(tmp_path):
+    run_dir = write_score(tmp_path, 'dsh-01', harness='dsh', compactions=2)
+    data = json.loads((run_dir / 'score.json').read_text())
+    data['harnessMetrics']['harnessMetricsVersion'] = 2
+    (run_dir / 'score.json').write_text(json.dumps(data))
+
+    row = build_row(str(tmp_path), 'dsh-01')
+
+    assert row['hmv'] == 2
+    assert '~' not in format_row(row)

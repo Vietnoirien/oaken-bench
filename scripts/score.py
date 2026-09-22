@@ -12,7 +12,8 @@ import json, os, re, shutil, signal, subprocess, sys, tarfile, tempfile, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from events import (  # noqa: E402
-    call_metrics, load_dsh_events, load_pi_events, normalize_calls,
+    call_metrics, load_dsh_events, load_dsh_root_sessions, load_pi_events,
+    normalize_calls, stream_start_ms,
 )
 
 BENCH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,7 +23,26 @@ HIDDEN = os.path.join(BENCH, 'hidden')
 # Bump only when a change to normalize_calls()/call_metrics() alters the
 # shape of events-summary.json -- consumers pin to this, not to the harness
 # versions in EVENTS.md, because the extractor can change independently.
-EVENTS_SUMMARY_SCHEMA_VERSION = 1
+#
+# v2 (issues #5, #6): added toolCallsPerTurn, parallelTurns,
+# timeToFirstToolCall, toolCallIntervals, generationSeconds and
+# toolExecutionSeconds to call_metrics()'s output and to
+# PUBLISHED_CALL_FIELDS below. Timestamps only -- no raw arguments.
+EVENTS_SUMMARY_SCHEMA_VERSION = 2
+
+# Bump when a change to pi_metrics()/dsh_metrics() alters what `usage` or
+# `compactions` in `harnessMetrics` MEAN, as opposed to their shape.
+# EVENTS_SUMMARY_SCHEMA_VERSION above pins events-summary.json's fields
+# (from call_metrics(), via normalize_calls()); this pins the separate,
+# older `harnessMetrics.usage`/`.compactions` fields that pi_metrics() and
+# dsh_metrics() have produced since before events.py existed, and that 16
+# committed score.json files still carry with the pre-fix (wrong) meaning.
+# Runs scored under version 1 summed streaming partials into `usage` and
+# double-/over-counted `compactions` (issues #9, #10) and could pick a
+# subagent transcript instead of the run for dsh (issue #11); version 2 is
+# the first to fix all three. See EVENTS.md sections 1-2 and README's
+# Fairness section for the before/after figures.
+HARNESS_METRICS_SCHEMA_VERSION = 2
 
 # Exactly the call_metrics() fields allowed into the published score.json.
 # Extending call_metrics() does not extend this: adding a field here is the
@@ -31,6 +51,13 @@ PUBLISHED_CALL_FIELDS = (
     'toolCalls', 'toolOutcomes', 'errorRate', 'errorsByTool', 'toolHistogram',
     'unknownTools', 'mutatingCalls', 'repeatedCalls', 'longestRepeatRun',
     'distinctCallRatio', 'callSequence',
+    # Issue #6 (calls per turn / parallel tool calling) and issue #5
+    # (per-call timing). All aggregates or timestamps derived from them --
+    # never raw arguments -- so publishing these is not a change to what
+    # the allowlist is for, only to its length.
+    'toolCallsPerTurn', 'parallelTurns',
+    'timeToFirstToolCall', 'toolCallIntervals', 'generationSeconds',
+    'toolExecutionSeconds',
 )
 
 FROZEN_PATHS = [
@@ -167,7 +194,9 @@ def pi_metrics(result_dir):
     if not os.path.exists(f):
         return None
     counts, usage = {}, {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0}
-    tools, compactions = [], 0
+    tools = []
+    compactions = 0
+    compactions_aborted = 0
     for line in open(f, errors='replace'):
         line = line.strip()
         if not line:
@@ -178,69 +207,117 @@ def pi_metrics(result_dir):
             continue
         t = e.get('type', '?')
         counts[t] = counts.get(t, 0) + 1
-        if 'compact' in t.lower():
+        # A compaction is one `compaction_start` (issue #10): pi also emits
+        # a matching `compaction_end`, and a substring test on the event
+        # type ('compact' in t.lower()) matched both and double-counted.
+        # `compaction_end` still carries information worth keeping --
+        # `aborted` marks a compaction that did not complete -- so it is
+        # tallied separately rather than folded into `compactions` or
+        # dropped.
+        if t == 'compaction_start':
             compactions += 1
+        elif t == 'compaction_end' and e.get('aborted'):
+            compactions_aborted += 1
         if t == 'tool_execution_start':
             d = e.get('data') or {}
             n = (e.get('toolName') or e.get('name') or e.get('tool')
                  or d.get('toolName') or d.get('name'))
             if n:
                 tools.append(n)
-        u = e.get('usage') or (e.get('data') or {}).get('usage')
-        if isinstance(u, dict):
-            for k in usage:
-                v = u.get(k)
-                if isinstance(v, (int, float)):
-                    usage[k] += v
+        # Usage lives at message.usage (issue #9): `e['usage']` /
+        # `e['data']['usage']` matches nothing but `message_update`, the
+        # per-chunk streaming deltas, which are cumulative snapshots, not
+        # increments -- summing them overstates every figure. The real
+        # value appears once per message, but on BOTH `message_end` and
+        # `turn_end`; summing wherever it appears double-counts. Pick
+        # `turn_end` alone: it fires exactly once per assistant turn.
+        if t == 'turn_end':
+            u = (e.get('message') or {}).get('usage')
+            if isinstance(u, dict):
+                for k in usage:
+                    v = u.get(k)
+                    if isinstance(v, (int, float)):
+                        usage[k] += v
     return {'events': counts, 'turns': counts.get('turn_start', 0),
             'toolCalls': len(tools), 'tools': tools,
-            'usage': usage, 'compactions': compactions}
+            'usage': usage, 'compactions': compactions,
+            'compactionsAborted': compactions_aborted,
+            'harnessMetricsVersion': HARNESS_METRICS_SCHEMA_VERSION}
 
 
 def dsh_metrics(result_dir):
     tgz = os.path.join(result_dir, 'dsh-sessions.tgz')
     if not os.path.exists(tgz):
         return None
-    with tempfile.TemporaryDirectory() as td:
-        with tarfile.open(tgz) as t:
-            t.extractall(td, filter='data')
-        sessions = []
-        for root, _, files in os.walk(td):
-            for fn in files:
-                if fn.endswith('.jsonl.zstd'):
-                    sessions.append(os.path.join(root, fn))
-        if not sessions:
-            return None
-        sessions.sort(key=os.path.getmtime)
-        rc, so, se = sh(['zstd', '-dc', sessions[-1]], timeout=120)
-        counts, tools, compactions = {}, [], 0
-        usage = {'inputTokens': 0, 'outputTokens': 0, 'cacheReadTokens': 0}
-        for line in so.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                e = json.loads(line)
-            except Exception:
-                continue
-            t = e.get('type', '?')
-            counts[t] = counts.get(t, 0) + 1
-            if 'compact' in json.dumps(e)[:2000].lower():
-                compactions += 1
-            d = e.get('data') or {}
-            if t == 'tool/call':
-                n = d.get('toolName') or d.get('name') or d.get('tool') or e.get('toolName')
-                if n:
-                    tools.append(n)
-            u = d.get('usage') if isinstance(d.get('usage'), dict) else d
+    # Select the ROOT session the same way events.load_dsh_events() does
+    # (issue #11), instead of re-walking the tarball and sorting by mtime:
+    # a subagent transcript can outlive its parent, which inverts mtime
+    # order and would silently read the whole run's metrics off 20 events
+    # instead of the run. Sharing load_dsh_root_sessions() also means this
+    # no longer re-implements (and re-bugs) the loader's own extraction.
+    roots = load_dsh_root_sessions(tgz)
+    if not roots:
+        return None
+    # More than one root session is a real ambiguity -- report it, don't
+    # resolve it by timestamp or any other guess.
+    ambiguous = len(roots) > 1
+    events = roots[0][1]
+
+    counts, tools = {}, []
+    compactions = 0
+    pruned_count = 0
+    pruned_shadowed_tokens = 0
+    usage = {'inputTokens': 0, 'outputTokens': 0, 'cacheReadTokens': 0}
+    for e in events:
+        if not isinstance(e, dict):
+            continue
+        t = e.get('type', '?')
+        counts[t] = counts.get(t, 0) + 1
+        d = e.get('data')
+        d = d if isinstance(d, dict) else {}
+        # A compaction is one `compaction/start` (issue #10): the previous
+        # heuristic substring-matched 'compact' against the first 2000
+        # chars of the whole serialised event, which caught
+        # compaction/start, /end, /summary AND /prune, plus any prose
+        # (e.g. a user/message) that happened to use the word.
+        if t == 'compaction/start':
+            compactions += 1
+        elif t == 'compaction/prune':
+            # The model-free tool-result pruner (README's Fairness
+            # section) -- a different mechanism from compaction, not a
+            # subtype of it. Recorded separately, not folded in.
+            pruned_count += 1
+            v = d.get('shadowedTokenCount')
+            if isinstance(v, (int, float)):
+                pruned_shadowed_tokens += v
+        if t == 'tool/call':
+            n = d.get('toolName') or d.get('name') or d.get('tool') or e.get('toolName')
+            if n:
+                tools.append(n)
+        # Usage lives at assistant/message.data.usage only (issue #9). The
+        # old fallback (`d.get('usage') if isinstance(..., dict) else d`)
+        # treated every OTHER event's whole `data` dict as a usage record,
+        # absorbing any stray key shaped like `inputTokens` anywhere in
+        # the stream -- deleted, not narrowed.
+        if t == 'assistant/message':
+            u = d.get('usage')
             if isinstance(u, dict):
                 for k in usage:
                     v = u.get(k)
                     if isinstance(v, (int, float)):
                         usage[k] += v
-        return {'events': counts, 'steps': counts.get('step/start', 0),
-                'toolCalls': len(tools), 'tools': tools,
-                'usage': usage, 'compactions': compactions}
+    result = {
+        'events': counts, 'steps': counts.get('step/start', 0),
+        'toolCalls': len(tools), 'tools': tools,
+        'usage': usage, 'compactions': compactions,
+        'prunedToolResults': {'count': pruned_count,
+                              'shadowedTokenCount': pruned_shadowed_tokens},
+        'harnessMetricsVersion': HARNESS_METRICS_SCHEMA_VERSION,
+    }
+    if ambiguous:
+        result['rootSessionAmbiguous'] = True
+        result['rootSessionCount'] = len(roots)
+    return result
 
 
 # (harness, trace filename, loader). Order matters only as a tie-break for
@@ -251,6 +328,17 @@ TRACES = (
 )
 
 
+def _ordered_traces(harness):
+    """TRACES, with the named harness's entry (if any) moved to the front.
+    `harness` is only a hint (see `_load_calls`), so every candidate stays
+    in the list -- just reordered -- rather than being dropped."""
+    if not harness:
+        return TRACES
+    matched = [t for t in TRACES if t[0] == harness]
+    rest = [t for t in TRACES if t[0] != harness]
+    return matched + rest
+
+
 def _load_calls(result_dir, harness):
     """The one place score.py decides which raw trace file backs a run.
 
@@ -259,17 +347,42 @@ def _load_calls(result_dir, harness):
     a run with a missing or misspelt harness= line silently produces no
     events-summary.json at all -- a run that looks scored but carries none
     of #1-#3's fields, which is precisely the record loss issue #7 exists
-    to stop. Returns None only when there is genuinely no trace to read.
+    to stop.
+
+    A candidate whose file exists but whose loader yields zero raw events
+    is not taken at face value either: `docker/entrypoint.sh` tars up
+    `dsh-sessions.tgz` unconditionally for every run, pi included, so a pi
+    result directory always contains a ~45-byte stub archive with no
+    session inside it. Before this fix, a pi run only avoided being scored
+    off that empty stub because TRACES happens to list pi first when
+    `harness` is missing or wrong -- an ordering accident, not a rule. Now
+    every candidate whose trace is present is tried in order, and the
+    first one that actually yields events wins; a present-but-empty trace
+    is remembered as a last-resort fallback rather than accepted outright,
+    so a genuinely empty run (the harness ran and captured nothing at all)
+    still gets a real, zeroed summary instead of silently returning None.
+
+    Returns `(calls, run_start_ms, resolved_harness)`, or
+    `(None, None, None)` only when no trace file exists at all. The third
+    value is the harness the trace itself identifies, which is what the
+    timing fields must key on -- run.meta's `harness=` is a hint this
+    function is already willing to override, so passing that hint on to
+    call_metrics() would reintroduce the same mistake one layer up.
     """
-    for name, filename, loader in TRACES:
-        if harness and harness != name:
-            continue
+    fallback = None
+    for name, filename, loader in _ordered_traces(harness):
         f = os.path.join(result_dir, filename)
-        if os.path.exists(f):
-            return normalize_calls(loader(f), name)
-    if harness:                       # the named harness had no trace; try the rest
-        return _load_calls(result_dir, None)
-    return None
+        if not os.path.exists(f):
+            continue
+        events = loader(f)
+        if events:
+            return normalize_calls(events, name), stream_start_ms(events, name), name
+        if fallback is None:
+            fallback = (name, events)
+    if fallback is not None:
+        name, events = fallback
+        return normalize_calls(events, name), stream_start_ms(events, name), name
+    return None, None, None
 
 
 def merge_events_into_harness_metrics(hm, events_summary):
@@ -307,7 +420,7 @@ def build_events_summary(result_dir, label, harness, model):
     a file in that case, or a missing trace would silently look like a
     zero-call run.
     """
-    calls = _load_calls(result_dir, harness)
+    calls, run_start_ms, resolved_harness = _load_calls(result_dir, harness)
     if calls is None:
         return None
     return {
@@ -315,7 +428,8 @@ def build_events_summary(result_dir, label, harness, model):
         'label': label,
         'harness': harness,
         'model': model,
-        **call_metrics(calls),
+        **call_metrics(calls, run_start_ms=run_start_ms,
+                       harness=resolved_harness),
     }
 
 

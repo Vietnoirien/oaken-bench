@@ -219,6 +219,27 @@ pi makes ~2.8× more tool calls in smaller steps; dsh compacts ~4× more often, 
 lower trigger (`0.8 × ctx` vs `ctx − 16384`) predicts. Decision Q14 — equalise bash timeout,
 leave compaction as shipped — is what preserved this difference as a measurable signal.
 
+> **Retracted: the compaction row, and the ~4× claim that rests on it.** Both figures came
+> from the version-1 extractor, which counted compactions wrongly on both harnesses and
+> wrongly *in different ways* (issue #10, fixed; see EVENTS.md §1–2). pi's count included
+> every `compaction_end` as well as its `compaction_start`. dsh's was a substring test for
+> the word "compact" against each serialised event, which swept in `compaction/end`,
+> `compaction/summary`, the model-free `compaction/prune` pruner — a different mechanism
+> entirely — and ordinary prose that happened to use the word.
+>
+> On the one capture where both could be measured against ground truth, pi was overstated
+> 1.8× (11 counted, 6 real) and dsh 5.5× (11 counted, 2 real). Those factors cannot be
+> applied to the runs above: the dsh factor in particular depends on how many prune events
+> fired and how often the word appeared in that run's prose, neither of which is constant.
+> And these runs' raw traces no longer exist (issue #7), so the real counts cannot be
+> recovered at all.
+>
+> What survives: dsh's trigger *is* lower (`0.8 × ctx` vs `ctx − 16384`), so it should
+> compact more often, and the mechanism argument in §4.2 stands on its own. What does not
+> survive is the measurement — the error is larger on the dsh side, which is the side the
+> claim needs. **“~4×” is not supported by anything now in this repo, and the tool-call
+> row (463 vs 165) is the only quantitative half of this table still standing.**
+
 ### 4.2 pi's compaction is degenerate below a 32 k window
 
 | pi setting | value |

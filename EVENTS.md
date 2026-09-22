@@ -96,56 +96,110 @@ about a turn lands in `turn_end`:
   exactly one call. That reproduces the 1:1 ratio noted in issue #6 on a
   different model, so it is not a property of the models in the study.
 - **Timestamps (issue #5)** are epoch milliseconds, on `message.timestamp` and
-  on each `toolResults[].timestamp`. The gap between them is the tool's own
-  execution time; the gap between one turn's result and the next turn's message
-  is generation time.
+  on each `toolResults[].timestamp`. **An earlier version of this file said the
+  gap between them is the tool's own execution time, and that the gap between
+  one turn's result and the next turn's message is generation time. Both were
+  wrong**, and the correction is what issue #5 actually turns on for pi:
+
+  `message.timestamp` is a single creation stamp, not a start/end pair. It is
+  byte-identical on `message_start` and `message_end` for the same message, and
+  the next turn's assistant message is stamped ~1ms after the previous
+  `toolResults[].timestamp`. So it marks the moment the assistant message was
+  created -- the *start* of generation -- and therefore:
+
+  | gap | what it actually is |
+  |---|---|
+  | `message.timestamp` -> `toolResults[].timestamp` | generation **and** execution, inseparable |
+  | one turn's result -> the next turn's message | ~1ms of bookkeeping, not generation |
+
+  There is no second clock to recover the split from: `tool_execution_start`
+  and `tool_execution_end` carry **no timestamp at all** (their only keys are
+  `toolCallId`/`toolName`/`args` and `toolCallId`/`toolName`/`result`/`isError`).
+
+  Taken literally, the old reading gives this capture 208.65 s of "tool
+  execution" out of a 239.5 s run whose tools are local file reads, and 30.88 s
+  of "generation" that is really the five completed compactions -- 29 of the 34
+  inter-call gaps are under 10 ms. `call_metrics()` therefore reports
+  `generationSeconds` and `toolExecutionSeconds` as `null` for pi
+  (`events.PER_CALL_CLOCK`). dsh times `tool/call` and `tool/result`
+  independently and keeps both figures.
 - `stopReason` was `toolUse` 34 times and `length` once. `length` means the
   model hit `maxTokens` mid-answer and is worth surfacing.
 
-### Two bugs in the current extractor, found while reading this
+### Two bugs in the extractor, fixed (#9, #10)
 
-Both are pre-existing and affect every committed `score.json`. Neither is fixed
-here; they are recorded so the numbers are not read as sound. Filed as #9
-(usage) and #10 (compactions).
+Both were pre-existing and affect the 16 `score.json` files committed before
+this fix (see "Comparability" below) — their traces are gone (#7), so those
+figures cannot be recomputed, only marked. `pi_metrics()` now reads correctly:
 
-1. **`usage` is summed from streaming partials.** `pi_metrics()` reads
-   `e['usage']` / `e['data']['usage']`, which matches nothing in the table above
-   except `message_update` — of which there were 17658. Those are cumulative
-   per-chunk snapshots, added together as though they were increments. On this
-   capture that gives `input 242002, output 31721, cacheRead 781969` against a
-   real per-message total of `input 146608, output 17785, cacheRead 418442`:
-   output overstated by 78%, input by 65%, and by a ratio that varies with how
-   many chunks each message streamed in.
+1. **`usage` is `turn_end.message.usage`, summed once per turn.** The old code
+   read `e['usage']` / `e['data']['usage']`, which matches nothing in the table
+   above except `message_update` — of which there were 17658. Those are
+   cumulative per-chunk snapshots, added together as though they were
+   increments. On this capture that gave `input 242002, output 31721,
+   cacheRead 781969` against the real total.
 
-   Retargeting to `e['message']['usage']` is not enough by itself. The same
+   Retargeting to `e['message']['usage']` is not enough by itself: the same
    message's usage appears on both `message_end` and `turn_end`, so summing it
    wherever it appears double-counts. (`message_start` carries a `usage` dict
-   too, but its values are zero.) A fix has to name one event type.
-2. **Compactions are double-counted.** `if 'compact' in t.lower()` matches
-   `compaction_start` *and* `compaction_end`. This capture had 6 starts and 5
-   ends and would report 11. `results/pi-03/score.json` says `compactions: 2`
-   for a run whose trace held one start and one end.
+   too, but its values are zero.) The fix reads `turn_end` only — it fires
+   exactly once per assistant turn.
+
+   | | input | output | cacheRead |
+   |---|---|---|---|
+   | old (`message_update` sum) | 242,002 | 31,721 | 781,969 |
+   | fixed (`turn_end.message.usage` sum) | **146,608** | **17,785** | **418,442** |
+
+   Output was overstated by 78%, input by 65%, cacheRead by 87% — and by a
+   ratio that varied with how many chunks each message streamed in, so the old
+   figures were not even comparable to each other across runs.
+
+2. **Compactions count `compaction_start` only.** `if 'compact' in t.lower()`
+   matched `compaction_start` *and* `compaction_end`. This capture had 6 starts
+   and 5 ends and reported 11; the fix reports **6**. `compaction_end` still
+   carries information worth keeping — `aborted` (and `willRetry`) mark a
+   compaction that did not complete — so it is now tallied separately as
+   `compactionsAborted` rather than folded in or dropped. This capture had 0
+   aborted compactions.
 
 ---
 
 ## 2. dsh — `dsh-sessions.tgz`
 
 The tarball holds `.dsh/sessions/<cwd-slug>/<session>/session.v3.jsonl.zstd`.
-Decompress with `zstd -dc`. One JSON object per line; every event carries
-`type`, `seq`, `time` (epoch ms) and `data`.
+Decompress with `zstd -dc`. One JSON object per line. Every event carries
+`type`; all but the first also carry `seq`, `time` (epoch ms) and `data`.
 
-### Pick the root session, not the newest file (#11)
+**The `session` header is the exception, and it matters.** It is the first
+line, and it holds its fields at the TOP level with no `data` wrapper at all:
+
+```jsonc
+{"type":"session","version":3,"id":"session-80a66c44-...","createdAt":1790082353977,
+ "cwd":"/work","isSeeded":false,"delegationDepth":0}
+```
+
+A subagent's header is the same shape plus `parentSession` and
+`origin: "subagent"`, with `delegationDepth: 1`. Root-session selection reads
+these keys off the event itself -- looking for them under `data` finds nothing
+and silently classifies every session as non-root.
+
+### The root session is picked by header, not by mtime (#11, fixed)
 
 The capture produced **two** session files. The second was a subagent: its
 `session` header carries `parentSession` and `origin`, and the trace contains a
 `subagent/descriptor` event. The root session's header has
 `delegationDepth: 0` and no `parentSession`.
 
-`dsh_metrics()` currently selects `sessions[-1]` after sorting by mtime. In this
-capture that happened to land on the root session by four seconds. It is luck:
-a subagent that outlives its parent inverts the order and the run's metrics are
-then read off the subagent. Select on `delegationDepth == 0` / absence of
-`parentSession`.
+`dsh_metrics()` used to select `sessions[-1]` after sorting by mtime. In this
+capture that happened to land on the root session by four seconds — luck, not
+a rule: a subagent that outlives its parent inverts the order, and the run's
+metrics would then be read off the subagent. `dsh_metrics()` now selects on
+`delegationDepth == 0` / absence of `parentSession`, via
+`events.load_dsh_root_sessions()` — the same selection `load_dsh_events()`
+already used, so there is now one implementation instead of two. If a tarball
+ever holds more than one root session, that is a real ambiguity and is
+reported (`rootSessionAmbiguous` / `rootSessionCount` in `harnessMetrics`), not
+resolved by timestamp.
 
 ### Observed types (root session)
 
@@ -199,7 +253,7 @@ Differences from pi that an extractor has to handle:
   pairing at all. The capture's distribution was `{1: 37}`: one call per step,
   the same result as pi.
 
-### Usage and compaction
+### Usage and compaction (#9, #10, fixed)
 
 Usage is on `assistant/message`:
 
@@ -207,20 +261,37 @@ Usage is on `assistant/message`:
 "usage":{"inputTokens":7128,"outputTokens":17,"totalTokens":7146,"cacheReadTokens":1}
 ```
 
-`dsh_metrics()` reaches this correctly, but its fallback — `u = d.get('usage')
-if isinstance(d.get('usage'), dict) else d` — treats every other event's `data`
-as a usage record and will absorb any stray `inputTokens` key that appears
-elsewhere.
+`dsh_metrics()` reached this correctly, but its fallback — `u = d.get('usage')
+if isinstance(d.get('usage'), dict) else d` — treated every other event's
+`data` as a usage record and absorbed any stray `inputTokens`-shaped key that
+appeared elsewhere in the stream. The fallback is deleted: only
+`assistant/message.data.usage` is summed now. On this capture:
 
-Compactions are `compaction/start`, and there were 2. The current heuristic
-(`'compact' in json.dumps(e)[:2000].lower()`) matches 11 events on this capture:
-2 `compaction/start`, 2 `compaction/end`, 2 `compaction/summary`, 3
-`compaction/prune` — and 2 `user/message` events that merely use the word.
-`results/dsh-03/score.json` reports 15. See #10.
+| | inputTokens | outputTokens | cacheReadTokens |
+|---|---|---|---|
+| fixed (`assistant/message.data.usage` sum) | 76,178 | 16,225 | 637,155 |
+
+(No "old" row: the pre-fix `else d` fallback's total depends on whatever
+stray shapes happened to be in the stream, and isn't a meaningful number to
+carry forward — unlike pi's `usage`, dsh's old figure wasn't consistently a
+multiple of the real one.)
+
+Compactions count `compaction/start` only, and there were 2. The old heuristic
+(`'compact' in json.dumps(e)[:2000].lower()`) matched 11 events on this
+capture: 2 `compaction/start`, 2 `compaction/end`, 2 `compaction/summary`, 3
+`compaction/prune` — and 2 `user/message` events that merely used the word.
+`results/dsh-03/score.json` reported 15. See #10.
 
 `compaction/prune` is dsh's model-free tool-result pruner, the mechanism README
-describes under Fairness. It is not a compaction and should be counted
-separately if it is counted at all.
+describes under Fairness. It is not a compaction and is counted separately, as
+`prunedToolResults` in `harnessMetrics` — a count and the sum of
+`shadowedTokenCount`. This capture had 3 prunes shadowing 18,701 tokens total,
+against 2 real compactions:
+
+| | old (`compact` substring) | fixed |
+|---|---|---|
+| `compactions` | 11 | **2** |
+| `prunedToolResults.count` | (folded into the 11 above) | **3** |
 
 ---
 
@@ -234,11 +305,15 @@ separately if it is counted at all.
 | tool arguments | `args` (object) | `data.arguments` (JSON string) |
 | call id | `toolCallId` | `data.callId` |
 | ok / error | `isError` on `tool_execution_end` | `data.message.content[].isError` on `tool/result` |
-| call start time | — (use enclosing `turn_end.message.timestamp`) | `time` on `tool/call` |
+| call start time | — (enclosing `turn_end.message.timestamp`, which is generation start, not call start) | `time` on `tool/call` |
 | call end time | `turn_end.toolResults[].timestamp` | `time` on `tool/result` |
+| generation vs execution split | **not available** — see §1 | `tool/call` → `tool/result` vs result → next call |
+| calls per turn / parallelTurns | group by `turn` | group by `(data.turn, data.step)` |
 | calls per turn | count `toolCall` blocks in `turn_end.message.content` | group `tool/call` by `(data.turn, data.step)` |
 | usage | `turn_end.message.usage` (once per message) | `assistant/message.data.usage` |
 | compactions | count `compaction_start` | count `compaction/start` |
+| aborted compactions | `compaction_end` where `aborted` is truthy | — |
+| pruned tool results | — | count `compaction/prune`, sum `data.shadowedTokenCount` |
 | stop reason | `turn_end.message.stopReason` | `assistant/message.data.message.source.replayState.response.stopReason` |
 
 ## 4. Re-capturing
