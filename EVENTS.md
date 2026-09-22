@@ -105,18 +105,24 @@ about a turn lands in `turn_end`:
 ### Two bugs in the current extractor, found while reading this
 
 Both are pre-existing and affect every committed `score.json`. Neither is fixed
-here; they are recorded so the numbers are not read as sound.
+here; they are recorded so the numbers are not read as sound. Filed as #9
+(usage) and #10 (compactions).
 
 1. **`usage` is summed from streaming partials.** `pi_metrics()` reads
    `e['usage']` / `e['data']['usage']`, which matches nothing in the table above
-   except `message_update` — of which there were 17658. The real per-message
-   figure lives at `e['message']['usage']`, and it appears three times for the
-   same message (`message_start`, `message_end`, `turn_end`), so summing that
-   naively triple-counts instead. On the capture the two methods gave
-   `input 45786` and `input 48934` for the same run. Neither is the right
-   number.
+   except `message_update` — of which there were 17658. Those are cumulative
+   per-chunk snapshots, added together as though they were increments. On this
+   capture that gives `input 242002, output 31721, cacheRead 781969` against a
+   real per-message total of `input 146608, output 17785, cacheRead 418442`:
+   output overstated by 78%, input by 65%, and by a ratio that varies with how
+   many chunks each message streamed in.
+
+   Retargeting to `e['message']['usage']` is not enough by itself. The same
+   message's usage appears on both `message_end` and `turn_end`, so summing it
+   wherever it appears double-counts. (`message_start` carries a `usage` dict
+   too, but its values are zero.) A fix has to name one event type.
 2. **Compactions are double-counted.** `if 'compact' in t.lower()` matches
-   `compaction_start` *and* `compaction_end`. The capture had 6 starts and 5
+   `compaction_start` *and* `compaction_end`. This capture had 6 starts and 5
    ends and would report 11. `results/pi-03/score.json` says `compactions: 2`
    for a run whose trace held one start and one end.
 
@@ -128,7 +134,7 @@ The tarball holds `.dsh/sessions/<cwd-slug>/<session>/session.v3.jsonl.zstd`.
 Decompress with `zstd -dc`. One JSON object per line; every event carries
 `type`, `seq`, `time` (epoch ms) and `data`.
 
-### Pick the root session, not the newest file
+### Pick the root session, not the newest file (#11)
 
 The capture produced **two** session files. The second was a subagent: its
 `session` header carries `parentSession` and `origin`, and the trace contains a
@@ -207,10 +213,10 @@ as a usage record and will absorb any stray `inputTokens` key that appears
 elsewhere.
 
 Compactions are `compaction/start`, and there were 2. The current heuristic
-(`'compact' in json.dumps(e)[:2000].lower()`) also matches `compaction/end`,
-`compaction/summary` and `compaction/prune`, and any assistant message that uses
-the word — 9 events here before counting prose. `results/dsh-03/score.json`
-reports 15.
+(`'compact' in json.dumps(e)[:2000].lower()`) matches 11 events on this capture:
+2 `compaction/start`, 2 `compaction/end`, 2 `compaction/summary`, 3
+`compaction/prune` — and 2 `user/message` events that merely use the word.
+`results/dsh-03/score.json` reports 15. See #10.
 
 `compaction/prune` is dsh's model-free tool-result pruner, the mechanism README
 describes under Fairness. It is not a compaction and should be counted
