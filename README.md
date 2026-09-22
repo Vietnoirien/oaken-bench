@@ -121,6 +121,59 @@ documents them, and it names two fields (`usage`, `compactions`) whose values
 in `score.json` files committed before `harnessMetricsVersion` 2 were derived
 incorrectly and are not comparable with later runs (see Scoring above).
 
+## Screening a model before spending GPU-hours on it
+
+The main task above is expensive (README's own arithmetic: ~4.5 GPU-hours for
+nine runs) and confounded for screening purposes -- a 0/132 hidden score can
+mean the model cannot call tools, cannot hold the spec in context, cannot
+write TypeScript, or just ran out of clock, and the harness's own
+retry/compaction logic sits between the model and the failure. `scripts/toolbattery.py`
+is a minutes-per-model battery that talks to the model's OpenAI-compatible
+endpoint DIRECTLY (no pi, no dsh) and scores five tool-calling dimensions
+independently, so a bad result says *what* broke instead of just *that*
+something did:
+
+```bash
+./scripts/toolbattery.py --model your-model.gguf \
+  --base-url http://172.17.0.1:8080/v1     # your llama-server, same as the main task
+# writes toolbattery-results/toolbattery-<model>-<timestamp>.json
+```
+
+- **schemaAdherence** -- required params present, types correct, no invented params
+- **toolSelection** -- picks the right tool out of a set with plausible decoys
+- **multiStepDependency** -- call 2 must use the value call 1's (simulated) result returned, not an invented one
+- **errorRecovery** -- call 1 is made to fail; does call 2 repeat it verbatim, or adapt? Reuses
+  `events.py`'s own repeated-call digest (`call_metrics()`'s `longestRepeatRun`), so "repeated
+  verbatim" means exactly what it means in a `score.json`, not a second, parallel definition.
+  **Sensitive to `--max-tokens`**: at a tight budget, Gemma 4 12B's inline `<|channel>thought`
+  reasoning (MODELS.md §4) can eat the whole completion before a tool call is even emitted --
+  scored as a failure to probe (not a failure to recover), and the case record says so. Give this
+  battery at least ~700 output tokens on a model that reasons inline, or its measurements will be
+  bound by the token budget rather than by tool-calling capability -- the exact failure mode this
+  battery exists to distinguish, one more time.
+- **refusal** -- no supplied tool applies; does the model call one anyway (the false-positive direction)
+
+A case that never exercised its dimension is reported as **not attempted** and left out of that
+dimension's denominator -- it is not scored as a pass. This matters more than it sounds: a model
+that answers in text instead of retrying has not recovered from anything, and counting that as a
+pass had Gemma 4 12B reporting `errorRecovery 2/2 (100%)` on a run where neither case recovered.
+It now reports `0/1 [1 not attempted]`. A dimension with nothing attempted scores `null`, not
+`0.0` -- no evidence is not the same fact as failed everything, the same distinction
+`harnessMetrics.parseErrors` and the `mut ?` column make elsewhere.
+
+The prompts and tool schemas are fresh and generic (a fictional weather/calendar/customer-support
+assistant) -- **not** drawn from `SPEC.md`, `seed/`, or the held-out suite, per CANARY.md. They
+are, however, a new contaminable asset in their own right, committed in plaintext with none of the
+held-out suite's protections; see [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
+for why, and for the recommendation on how much confidence to put in a score from it.
+
+The artefact is a JSON file with a `schemaVersion`, one block per dimension, and a `cases` list per
+block -- shaped after `events-summary.json`'s conventions, not embedded in `results/*/score.json`
+(this script never touches `results/`). It stores the actual tool-call arguments the model produced,
+not just digests: unlike `edit`/`write` arguments in a real harness trace, these are short generic
+values answering fixed public prompts, not agent-written solution code against a held-out spec, so
+there is no CANARY.md-style asset at risk in keeping them legible.
+
 ## Layout
 
 ```
@@ -137,6 +190,8 @@ scripts/
   score.py         run both suites, classify the outcome
   summarize.py     aggregate across runs
   gen_items.py     item-data provenance
+  toolbattery.py   short tool-calling screening battery, talks to the model directly (issue #8)
+toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
 results/           one directory per run; only score.json is committed. The rest
                    (pi-events.jsonl, session tarballs, stderr.log, ...) is
                    gitignored, since it's agent-written solution code and
