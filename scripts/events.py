@@ -427,7 +427,13 @@ def _calls_per_turn(calls):
         groups.setdefault((c.turn, c.step), []).append(c)
     counts = [len(v) for v in groups.values()]
     if not counts:
-        return {'mean': 0.0, 'max': 0}, 0
+        # No turn attribution to group on -- either the run made no calls at
+        # all, or it made calls whose events carried no `turn`. Returning
+        # 0.0/0/0 here would put a plausible-looking "never batched a call"
+        # next to a nonzero toolCalls total, which is the false negative
+        # this file refuses everywhere else (see _call_timing's None returns
+        # and score.py's resolve_parse_errors). Mean of nothing is not zero.
+        return {'mean': None, 'max': None}, None
     mean = round(sum(counts) / len(counts), 4)
     return {'mean': mean, 'max': max(counts)}, sum(1 for n in counts if n > 1)
 

@@ -357,10 +357,35 @@ def test_calls_per_turn_all_singletons_reports_no_parallel_turns():
     assert m['parallelTurns'] == 0
 
 
-def test_calls_per_turn_zeroed_on_empty_stream():
+def test_calls_per_turn_is_null_not_zero_on_an_empty_stream():
+    """No calls means calls-per-turn is undefined, not 0.0. toolCalls: 0
+    already records that nothing happened; a 0.0 mean here would read as a
+    measured "never batched"."""
     m = call_metrics(normalize_calls([], 'pi'))
-    assert m['toolCallsPerTurn'] == {'mean': 0.0, 'max': 0}
-    assert m['parallelTurns'] == 0
+    assert m['toolCallsPerTurn'] == {'mean': None, 'max': None}
+    assert m['parallelTurns'] is None
+
+
+def test_calls_present_but_unattributed_to_turns_is_null_not_zero():
+    """The dangerous case: dsh's `tool/call` events carry `turn` in `data`,
+    and a stream missing it would otherwise publish parallelTurns 0 beside a
+    nonzero toolCalls -- a plausible-looking "this model never batched a
+    call" derived from absent metadata rather than from behaviour."""
+    events = []
+    for i in range(3):
+        cid = f'c{i}'
+        events.append({'type': 'tool/call', 'time': i,
+                       'data': {'callId': cid, 'name': 'read', 'arguments': '{}'}})
+        events.append({'type': 'tool/result', 'time': i, 'data': {
+            'message': {'content': [{'type': 'tool-result', 'toolCallId': cid,
+                                     'content': [], 'isError': False}]}}})
+    calls = normalize_calls(events, 'dsh')
+    assert all(c.turn is None for c in calls)
+    m = call_metrics(calls, harness='dsh')
+
+    assert m['toolCalls'] == 3
+    assert m['toolCallsPerTurn'] == {'mean': None, 'max': None}
+    assert m['parallelTurns'] is None
 
 
 # ---------------------------------------------------------------------------

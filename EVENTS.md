@@ -308,6 +308,7 @@ against 2 real compactions:
 | call start time | — (enclosing `turn_end.message.timestamp`, which is generation start, not call start) | `time` on `tool/call` |
 | call end time | `turn_end.toolResults[].timestamp` | `time` on `tool/result` |
 | generation vs execution split | **not available** — see §1 | `tool/call` → `tool/result` vs result → next call |
+| derived decode rate | **not available** (no generationSeconds) | output tokens / generationSeconds |
 | calls per turn / parallelTurns | group by `turn` | group by `(data.turn, data.step)` |
 | calls per turn | count `toolCall` blocks in `turn_end.message.content` | group `tool/call` by `(data.turn, data.step)` |
 | usage | `turn_end.message.usage` (once per message) | `assistant/message.data.usage` |
@@ -330,3 +331,25 @@ both harnesses briefly against any registered model and survey the result:
 A capture needs the error paths as well as the happy path, so it needs a model
 weak enough to get tool calls wrong. A strong model produces a clean trace that
 pins less.
+
+## 5. Reading the timing fields
+
+Issue #5's caveat: a timing figure is not interpretable without the run's
+throughput, because decode rate on this hardware varies with what else is
+resident (MODELS.md §3 — a desktop app reopening mid-run costs ~700 MiB and
+can flip a configuration into the post-OOM fallback at half speed).
+
+So `harnessMetrics` carries `derivedDecodeTokensPerSecond` alongside the
+timing fields. **Derived, not measured**: nothing in this repo records
+llama-server's own `timings.predicted_per_second` per run, because the
+harness makes the requests and that figure never reaches the trace. This is
+output tokens divided by generation seconds, an *effective* rate whose
+denominator is wall-clock between one tool result and the next call — it
+includes prefill and harness overhead and reads lower than a bare decode
+benchmark. On the archived dsh capture: 16225 output tokens over 208.5 s,
+77.81 t/s.
+
+It is `null` for pi, because `generationSeconds` is itself unavailable there
+(§1). An absent rate is not a slow one — and a pi run's timing fields
+therefore have no throughput to be read against, which is a real limitation
+of pi's event stream rather than something this repo chose.

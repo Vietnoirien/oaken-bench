@@ -601,3 +601,27 @@ def test_dsh_metrics_matches_capture_after_fix():
     assert hm['compactions'] == 2
     assert hm['prunedToolResults']['count'] == 3
     assert not hm.get('rootSessionAmbiguous')
+
+
+# ---------------------------------------------------------------------------
+# Issue #5's caveat: timing must not be published without a throughput figure
+# ---------------------------------------------------------------------------
+
+def test_derived_decode_rate_pairs_timing_with_throughput():
+    from score import _derived_decode_rate
+    hm = {'generationSeconds': 200.0, 'usage': {'outputTokens': 16000}}
+    assert _derived_decode_rate(hm) == 80.0
+    # pi's key name for the same quantity
+    assert _derived_decode_rate({'generationSeconds': 10.0,
+                                 'usage': {'output': 1000}}) == 100.0
+
+
+def test_derived_decode_rate_is_none_when_either_input_is_missing():
+    """pi has no generationSeconds at all (events.PER_CALL_CLOCK), so it gets
+    no rate. An absent rate must not read as a slow one."""
+    from score import _derived_decode_rate
+    assert _derived_decode_rate({'generationSeconds': None,
+                                 'usage': {'outputTokens': 16000}}) is None
+    assert _derived_decode_rate({'generationSeconds': 200.0, 'usage': {}}) is None
+    assert _derived_decode_rate({'generationSeconds': 0, 'usage': {'outputTokens': 5}}) is None
+    assert _derived_decode_rate({}) is None

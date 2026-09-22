@@ -407,7 +407,38 @@ def merge_events_into_harness_metrics(hm, events_summary):
     for k in PUBLISHED_CALL_FIELDS:
         if k in events_summary:
             merged[k] = events_summary[k]
+    merged['derivedDecodeTokensPerSecond'] = _derived_decode_rate(merged)
     return merged
+
+
+def _derived_decode_rate(hm):
+    """Issue #5's caveat: "Any timing metric should be reported next to the
+    measured t/s for that run, not on its own." Decode rate on this hardware
+    varies with what else is resident -- MODELS.md section 3 notes a desktop
+    app reopening mid-run costs ~700 MiB and can flip a configuration into
+    the post-OOM fallback at half speed -- so a timing figure read without
+    it is not interpretable.
+
+    Nothing in this repo records the server's own `timings.predicted_per_second`
+    per run: the harness makes the requests, not score.py, and llama-server's
+    figure never reaches the trace. What the trace does support is
+    output tokens / generation seconds, which is why this is `derived`, not
+    `measured`. It is an EFFECTIVE rate: the denominator is wall-clock
+    between one tool result and the next call, so it includes prefill and
+    harness overhead and will read lower than a bare decode benchmark.
+
+    None unless both inputs exist -- which means None for pi, whose
+    generationSeconds is itself unavailable (see events.PER_CALL_CLOCK).
+    An absent rate is not a slow one.
+    """
+    gen = hm.get('generationSeconds')
+    usage = hm.get('usage') or {}
+    out = usage.get('output', usage.get('outputTokens'))
+    if not isinstance(gen, (int, float)) or gen <= 0:
+        return None
+    if not isinstance(out, (int, float)) or out <= 0:
+        return None
+    return round(out / gen, 2)
 
 
 def build_events_summary(result_dir, label, harness, model):

@@ -40,6 +40,17 @@ grow a second scoring path (see issue #8's Dependency note).
 Stdlib only at runtime: `urllib.request`, not `requests` (README: no
 runtime deps).
 
+On issue #8's Dependency note, which names #1, #2 *and* #4: #1/#2's metrics
+are reused (`call_metrics`, `_canonical_digest`). #4's are deliberately not,
+and the reason is structural rather than an oversight. `parseErrors` and the
+`malformed_tool_calls` outcome are derived from `stderr.log` -- a file the
+container's entrypoint produces by redirecting a *harness* process's stderr.
+This battery runs no harness and no container, so there is no such stream to
+scan. The equivalent signal here is already first-class instead: an
+unparseable `arguments` string is recorded per call as `parse_error` by
+parse_message() and scored under schemaAdherence, which is a strictly better
+place for it than a log grep.
+
 On raw model output in the artefact: unlike `edit`/`write` arguments in the
 real harness traces (agent-written solution code against a held-out spec --
 see events.py's module docstring and CANARY.md), what these probes elicit
