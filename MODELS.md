@@ -162,6 +162,47 @@ from the container. `run.sh` checks for this and refuses to start.
 end-of-thinking sequence that breaks llama-server's own response grammar. pi
 died in 5 seconds, every time.
 
+**On Gemma 4 12B QAT, neither reasoning setting serves both harnesses.**
+Measured 2026-09-22, ctx 131072, clean CUDA path (136.3 t/s, 1569 MiB free):
+
+| server setting | raw API | pi | dsh |
+|---|---|---|---|
+| default (no `--reasoning-format`) | `content: ""`, all text in `reasoning_content` | sees empty assistant messages | untested |
+| `--reasoning-format none` | `content` carries `<\|channel>thought` markers inline | **healthy** — 30 calls in 240 s, all four tool types | **collapses** — 1 call, exit 1 at 64 s |
+
+pi's `models.json` declares `"reasoning": false` for this model, so the default
+setting gives it nothing to read. Turn thinking inline instead and dsh gets the
+raw `<\|channel>thought` / `<channel\|>` markers in message text, does not strip
+them, and the second assistant message runs to the full 8192 `maxTokens`
+restating the spec instead of acting. `dsh-stdout.log` for that run is pages of
+repeated `<\|channel>thought`. This is almost certainly what the two
+`*-VOID-thinkbug` runs under `results/` were voided for.
+
+**So a graded pi-vs-dsh comparison on this model is not currently fair at any
+single server setting**, and one must be found -- or the difference accounted
+for -- before running one. The capture pair is archived at
+`~/.cache/oaken-bench/parallel-check-{pi,dsh}/`.
+
+**Parallel tool calls: the endpoint is not the limit (issue #6).** Every run in
+this study shows exactly one tool call per turn, and it was an open question
+whether that is the models, the harnesses, or llama.cpp's OpenAI-compatible
+endpoint. It is not the endpoint. Asked directly, with three files to read and
+an explicit instruction to batch, Gemma 4 12B through `/v1/chat/completions`
+returns all three in a single message:
+
+```
+finish_reason: tool_calls
+  read {"path":"a.txt"}
+  read {"path":"b.txt"}
+  read {"path":"c.txt"}
+```
+
+The same model under pi, on the real seed task, made 30 calls across 30 turns
+with `parallelTurns: 0`. So the capability is present at the endpoint and does
+not appear in a run. Whether the harness suppresses it or the task never
+invites it is **not** separated by this experiment, and `toolCallsPerTurn`
+should not be read as a model property until it is.
+
 ### 4.1 The silent post-OOM fallback
 
 Measured on Gemma 4 12B QAT + MTP draft, q8_0 KV, RTX 5070 12 GB:

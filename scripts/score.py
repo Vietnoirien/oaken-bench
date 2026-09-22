@@ -433,7 +433,70 @@ def build_events_summary(result_dir, label, harness, model):
     }
 
 
-def classify(exit_code, visible_fail, hidden_rate, stderr_text, restored, hung=False):
+# --- issue #4: pi aborts fatally on one malformed llama-server response ---
+#
+# MODELS.md section 6 and FINAL-REPORT.md section 4.3 are the ONLY surviving
+# evidence for this failure. The archived captures at
+# ~/.cache/oaken-bench/schema-capture-{pi,dsh}/stderr.log are both 0 bytes --
+# those two runs succeeded -- and the 11 aborts FINAL-REPORT 4.3 counted by
+# hand came from stderr.log files that no longer exist (issue #7). So this
+# pattern is reconstructed from that prose, NOT verified against a real
+# captured abort. If a real one is ever captured, check this against it and
+# correct the pattern/comment -- do not assume it is right just because it
+# is here.
+#
+# The docs name exactly one signature: llama-server's `peg-native`
+# parser/grammar, which pi relays to stderr verbatim (docker/entrypoint.sh
+# redirects pi's stderr to stderr.log, so the capture path is sound even
+# though no real sample exists to check the string against). FINAL-REPORT
+# 4.3 is explicit that the failure originates in llama-server, not in
+# either harness, and that dsh survived the identical responses -- so no
+# distinct dsh-side error string is documented anywhere in this repo. Since
+# both harnesses talk to the same llama-server and dsh's stderr is captured
+# the same way (entrypoint.sh), this one pattern is applied to both rather
+# than inventing a second, wholly unverified string for dsh. If dsh is ever
+# observed logging its own distinct text for this failure, add it here.
+PARSE_ERROR_PATTERN = re.compile(r'peg[-_]native', re.IGNORECASE)
+
+
+def count_parse_errors(stderr_text):
+    """How many times the malformed-tool-call signature appears in
+    stderr.log. See PARSE_ERROR_PATTERN's comment above for the "derived
+    from documentation, not matched against a real trace" caveat."""
+    if not stderr_text:
+        return 0
+    return len(PARSE_ERROR_PATTERN.findall(stderr_text))
+
+
+def resolve_parse_errors(stderr_present, stderr_text):
+    """The harnessMetrics.parseErrors value for one run: null when
+    stderr.log was never written (no evidence either way -- we did not
+    look), 0 when it exists and the signature is absent (a real negative
+    result: we looked and found none), else the match count.
+
+    Split out from main() so the null-vs-0 boundary this repo cares about
+    (see mutatingCalls in events.py, and HARNESS_METRICS_SCHEMA_VERSION's
+    comment on what `usage`/`compactions` MEAN) is exercised directly by a
+    test instead of only implicitly, through a full scoring run.
+    """
+    if not stderr_present:
+        return None
+    return count_parse_errors(stderr_text)
+
+
+# MODELS.md section 6's advice: "Always check wallclock.seconds: anything
+# under ~20s did not engage with the task." The issue's proposal says
+# scripts/batch.sh already retries on this pattern and asks to share that
+# detection rather than re-deriving it -- but batch.sh (and
+# batch-gemma-ctx.sh, run.sh, docker/entrypoint.sh) were grepped for any
+# wallclock/retry/threshold logic and none exists; only wallclock.seconds is
+# read, and only to print it. There is nothing to share, so this constant is
+# the first place the ~20s threshold is encoded anywhere in this repo.
+NO_ENGAGEMENT_WALLCLOCK_SECONDS = 20
+
+
+def classify(exit_code, visible_fail, hidden_rate, stderr_text, restored, hung=False,
+            wall_seconds=None):
     if not restored:
         return 'crash'
     if hung:
@@ -443,6 +506,24 @@ def classify(exit_code, visible_fail, hidden_rate, stderr_text, restored, hung=F
     low = (stderr_text or '').lower()
     if 'context overflow recovery failed' in low or 'context_window_exceeded' in low:
         return 'context_exhausted'
+    # Placed ahead of the exit!=0 crash branch below, per the issue: pi
+    # EXITS 0 on this abort (FINAL-REPORT 4.3), so a branch placed after an
+    # exit-code check would never fire for the case it exists to catch.
+    # Checked against both exit 0 and nonzero, since the signature is more
+    # informative than a generic crash either way.
+    if count_parse_errors(stderr_text) > 0:
+        return 'malformed_tool_calls'
+    # The short-wallclock guard MODELS.md section 6 gives as advice, now
+    # code instead of prose. Placed after the more specific signals above
+    # (a parse-error abort explains WHY better than a generic "too fast"
+    # would), but still ahead of the exit!=0 catch-all and the hidden-rate
+    # branches below: a run that exited in a few seconds without engaging
+    # is mischaracterized by both 'crash' (implies something broke mid
+    # attempt) and by the hidden-rate outcomes (imply a scored attempt
+    # happened at all). It only ever applies to restored runs -- the
+    # `not restored` branch above already claims everything else.
+    if wall_seconds is not None and wall_seconds < NO_ENGAGEMENT_WALLCLOCK_SECONDS:
+        return 'no_engagement'
     if exit_code != 0:
         return 'crash'
     if hidden_rate >= 0.80:
@@ -513,7 +594,21 @@ def main():
 
     meta = dict(kv.split('=', 1) for kv in read('run.meta').split() if '=' in kv)
     exit_code = int(read('exit.code', '-1') or -1)
-    wall = int(read('wallclock.seconds', '0') or 0)
+    wall_raw = read('wallclock.seconds', '').strip()
+    wall = int(wall_raw or 0)
+    # `wall` keeps defaulting to 0 for the published wallclockSeconds field,
+    # which is what the existing rows carry. But classify()'s no_engagement
+    # branch must NOT see that 0: a run whose wallclock.seconds was never
+    # written (an older run, or a container killed before run.sh got to it)
+    # would then be classified "did not engage with the task" on the strength
+    # of a missing file. Absent is not the same fact as fast -- the same
+    # null-vs-zero distinction resolve_parse_errors() makes just below.
+    wall_for_classify = wall if wall_raw else None
+    # Existence, not just content: read()'s default ('') makes "the file is
+    # empty" and "the file was never written" look identical, but they mean
+    # different things for parseErrors below (see the null-vs-0 comment at
+    # its assignment).
+    stderr_present = os.path.exists(os.path.join(result_dir, 'stderr.log'))
     stderr_text = read('stderr.log')[-20000:]
 
     restored = os.path.exists(os.path.join(result_dir, 'workspace.tgz'))
@@ -557,10 +652,25 @@ def main():
         with open(os.path.join(result_dir, 'events-summary.json'), 'w') as f:
             json.dump(events_summary, f, indent=2)
         hm = merge_events_into_harness_metrics(hm, events_summary)
+    if hm is not None:
+        # null, not 0, when stderr.log was never written: 0 means "we
+        # looked and found none" (a real result -- both 0-byte
+        # schema-capture-{pi,dsh}/stderr.log archives are exactly this:
+        # present, empty, genuinely no parse errors because those two runs
+        # succeeded), while null means "we have no evidence either way".
+        # mutatingCalls (events.py) draws the same line for its read-only
+        # case, and HARNESS_METRICS_SCHEMA_VERSION's own comment treats
+        # `usage`/`compactions`' meaning as worth this level of care -- a
+        # bare 0 here would silently claim "no parse errors" for every run
+        # that predates stderr.log capture, or whose container never wrote
+        # one, which is exactly the kind of false negative issue #7 is
+        # about.
+        hm['parseErrors'] = resolve_parse_errors(stderr_present, stderr_text)
     report['harnessMetrics'] = hm
     report['outcome'] = classify(exit_code, report['visible']['failed'],
                                  report['hidden']['rate'], stderr_text, restored,
-                                 report.get('suiteHung', False))
+                                 report.get('suiteHung', False),
+                                 wall_for_classify)
     report['overfitGap'] = round(report['visible']['rate'] - report['hidden']['rate'], 4)
 
     with open(os.path.join(result_dir, 'score.json'), 'w') as f:
