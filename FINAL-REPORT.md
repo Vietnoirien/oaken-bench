@@ -5,7 +5,7 @@
 **Grading:** 52 visible tests (in-repo) + **132 hidden tests** (written blind by a Sonnet
 sub-agent, never read by the implementing agent). **Bar: 80 % hidden.**
 **Conditions:** sealed prompt, no human input, network off, container per run, 30-min cap.
-**Hardware:** RTX 5070 12 GB, i9-9900KF, 128 GB RAM.
+**Hardware:** RTX 5070 12 GB, i9-9900KF, 128 GB RAM. From §3.6 on, an RTX 3060 12 GB beside it.
 
 ---
 
@@ -14,16 +14,23 @@ sub-agent, never read by the implementing agent). **Bar: 80 % hidden.**
 | | |
 |---|---|
 | **Task is solvable** | Claude reached **129/132 (97.7 %)** in **5 m 22 s** |
-| **Best local model** | Gemma 4 12B, **110/132 (83.3 %)** — **clears the bar** |
+| **Best local configuration** | Qwen3.6-35B-A3B UD-Q4_K_S on 5070 + 3060, llama.cpp b10751 — **6/6 runs clear the bar**, 93.9-99.2 % |
+| **Best single-card model** | Gemma 4 12B, **110/132 (83.3 %)** — clears the bar once in 14 runs |
 | **Qwen3.8-27B @ Q2_K_XL** | **0/132 across 5 configurations** — never wrote a line |
 | **Qwen3.8-27B @ IQ2_XXS** | **0/132** at full 131 k ctx — same behaviour, no quant cliff |
-| **Runs clearing 80 %** | **2** (the Claude ceiling probe, and one Gemma run) |
+| **Runs clearing 80 %** | **9** — the Claude ceiling probe, one Gemma run, seven Qwen3.6 runs |
 
 The benchmark and its oracle are sound: a 97.7 % result in under six minutes proves the task is
 well-specified and the hidden suite is fair.
 
-**A local model has now cleared the bar.** `dsh-gemma192k-03` scored 110/132 (83.3 %) with a
-clean typecheck, 52/52 visible and an overfit gap of +16.7 — the tightest of any local run. It is
+**A local configuration now clears the bar reliably.** Qwen3.6-35B-A3B split across the 5070 and
+a 3060 scored between 124 and 131 of 132 in all six graded runs on llama.cpp b10751, three per
+harness, with overfit gaps of +0.8 to +6.1 — the Claude probe's is +2.3. One dsh run scored
+131/132, above the probe. See §3.6. It is not comparable with anything single-card: it decodes
+at ~99 t/s, and the cap binds less at that speed (README limitation 3).
+
+**On one card, the bar was cleared once.** `dsh-gemma192k-03` scored 110/132 (83.3 %) with a
+clean typecheck, 52/52 visible and an overfit gap of +16.7 — the tightest of any Gemma run. It is
 **one run out of six**, and the same configuration also produced a 23/132, so this says the task
 is reachable by a 12 GB-class model, **not** that Gemma reaches it reliably. See §3.5.
 
@@ -54,12 +61,25 @@ is reachable by a 12 GB-class model, **not** that Gemma reaches it reliably. See
 | dsh-gemma131k-02 | dsh | Gemma 12B @131 k | crash | 34/132 25.8 % | 33/52 | 343 s | 24 | 0 | ✗ |
 | dsh-gemma192k-02 | dsh | Gemma 12B @196 k | crash | 23/132 17.4 % | 30/52 | 369 s | 27 | 0 | ✗ |
 | dsh-xxs128k-01 | dsh | Qwen 27B **IQ2_XXS** | crash | 0/132 | 3/52 | 568 s | 24 | 0 | ok |
+| dsh-qwen35q4ks-b10751-02 | dsh | Qwen3.6 35B-A3B, b10751 | timeout | **131/132 99.2 %** | 52/52 | 1801 s | 100 | 1 | ok |
+| pi-qwen35q4ks-b10751-03 | pi | Qwen3.6 35B-A3B, b10751 | complete | 128/132 97.0 % | 52/52 | 500 s | 58 | 0 | ok |
+| pi-qwen35q4ks-b10751-01 | pi | Qwen3.6 35B-A3B, b10751 | complete | 127/132 96.2 % | 52/52 | 529 s | 73 | 0 | ok |
+| dsh-qwen35q4ks-b10751-03 | dsh | Qwen3.6 35B-A3B, b10751 | complete | 127/132 96.2 % | 52/52 | 1228 s | 77 | 1 | ok |
+| pi-qwen35q4ks-b10751-02 | pi | Qwen3.6 35B-A3B, b10751 | complete | 125/132 94.7 % | 52/52 | 944 s | 91 | 1 | ok |
+| dsh-qwen35q4ks-b10751-01 | dsh | Qwen3.6 35B-A3B, b10751 | complete | 124/132 93.9 % | 52/52 | 875 s | 60 | 0 | ok |
+| dsh-qwen35q4ks-02 | dsh | Qwen3.6 35B-A3B, b9716 | complete | 127/132 96.2 % | 52/52 | 1479 s | 113 | 1 | ok |
+| dsh-qwen35q4ks-01 | dsh | Qwen3.6 35B-A3B, b9716 | crash | 5/132 3.8 % | 14/52 | 577 s | 31 | 0 | ✗ |
+| pi-qwen35q4ks-01 | pi | Qwen3.6 35B-A3B, b9716 | no engagement | 0/132 | 3/52 | 5 s | 0 | 0 | ok |
+| pi-qwen35q4ks-02 | pi | Qwen3.6 35B-A3B, b9716 | no engagement | 0/132 | 3/52 | 5 s | 0 | 0 | ok |
 
 `3/52 visible` is the **stub baseline** — three tests assert pre-declared constants and pass
 against unimplemented code. Every Qwen typecheck is "clean" only because **the seed was never
 modified**.
 
-Not in the table: **17 pi runs that aborted in 3–16 s** on a llama-server parse error (§5).
+Not in the table: **17 pi runs that aborted in 3–16 s** on a llama-server parse error (§4.3).
+The two 5 s Qwen3.6 pi runs are in it, because their cause is now known (§3.6).
+
+Every Qwen3.6 run is on the 5070 + 3060; every other local run is on the 5070 alone.
 
 ---
 
@@ -197,6 +217,59 @@ thing actually binding.
 
 **The open question is no longer "does more context help" but "why do four runs in six die early".**
 
+### 3.6 Qwen3.6-35B-A3B UD-Q4_K_S on two cards — six of six clear the bar
+
+The model is a MoE: 256 experts with 8 active, full attention on only every 4th of 40 blocks with
+2 KV heads, so KV is ~10.9 KB/token at q8_0. Its UD-Q4_K_XL (21.3 GiB) could not hold 64k context
+across both cards under any placement tried; UD-Q4_K_S (19.45 GiB) serves 131072 with attention,
+KV and the first 15 blocks' experts on the 5070 and the other 25 blocks' experts on the 3060.
+~99 t/s decode on a short prompt, 57.6 t/s with 115k tokens filled. Layout, guards and the traps
+found on the way are in MODELS.md §4.2.
+
+**On llama.cpp b10751, n=3 per harness:**
+
+| | runs | hidden | mean | wall |
+|---|---|---|---|---|
+| pi | 3 | 127, 125, 128 | **96.0 %** | 529, 944, 500 s |
+| dsh | 3 | 124, 131, 127 | **96.5 %** | 875, 1801, 1228 s |
+
+All six typecheck clean, none is tampered, visible is 52/52 every time, and the overfit gap runs
++0.8 to +6.1. Gemma's ran +16 to +40, so this is the finding of §3.2 turned round: the model
+implements the spec rather than the visible tests, about as well as Claude did. Zero
+`cudaMalloc failed` and zero parse errors across all six. One run timed out, still working, at
+131/132; the other five ended on their own.
+
+**Contamination is ruled out twice.** By date: the suite's first commit is 2026-09-21, and this
+model's GGUFs were public by April 2026. By CANARY.md's check: asked three times to complete the
+canary GUID, it produced nothing GUID-shaped.
+
+**The same configuration on b9716 was a different result.** Four runs:
+
+| run | outcome | hidden | what happened |
+|---|---|---|---|
+| pi-qwen35q4ks-01 | no engagement | 0/132 | 5 s — see below |
+| pi-qwen35q4ks-02 | no engagement | 0/132 | 5 s, identical |
+| dsh-qwen35q4ks-01 | crash | 5/132 | wrote 161 lines, then looped inside one `write()` until `maxTokens` |
+| dsh-qwen35q4ks-02 | complete | 127/132 | the first local run above 95 % |
+
+Both pi runs died on the model's opening `read` of SPEC.md, which came out with a doubled
+`</parameter>`. llama-server logged `unparsed peg-native output`, dropped the call and aborted the
+stream; pi treated that as fatal and exited 0. That is llama.cpp
+[#24807](https://github.com/ggml-org/llama.cpp/issues/24807), fixed after b9754. On b10751 pi never
+hit it. **A parser bug in the server, not the model and not the harness, is what produced pi's 0 %
+on this configuration** — which is why these four runs are kept and grouped apart, not averaged in.
+
+dsh-01's loop is the other open item. 32 768 tokens of the same two statements inside a file write,
+472 s of a 577 s run, is MODELS.md §6's over-quantization signature. It did not recur in the three
+b10751 dsh runs, so across five Qwen3.6 dsh runs it is one event, not a rate.
+
+**What this does and does not say.** It says a MoE model at ~4 bits, on two consumer cards, does
+this task reliably. It does not say Qwen is a better model than Gemma: the Qwen runs have ~6× the
+throughput, twice the VRAM and a newer llama.cpp, and each of those moves the score on its own.
+Nor does it answer §7.5 for Gemma. That no b10751 Qwen run exited early is weak evidence that
+the harnesses alone do not cause early exits — weak, because a different model on different
+hardware is exactly what §6.3 says not to compare across.
+
 ---
 
 ## 4. Harness findings (pi vs dsh)
@@ -277,6 +350,17 @@ conclusive**. dsh survived every one of these responses.
 
 ---
 
+### 4.4 On Qwen3.6-35B-A3B — indistinguishable on score, pi faster
+
+At n=3 each on b10751, pi's hidden range is 94.7-97.0 % and dsh's 93.9-99.2 %. They overlap; the
+means differ by half a point. Tool calls are close too (pi 222, dsh 237 across three runs each) —
+unlike Gemma's 463 against 165. The one consistent difference is wall clock: pi's runs took a
+median 529 s, dsh's 1228 s, and dsh's slowest ran out the cap. Whether that is dsh's heavier
+compaction or its longer steps is not separated by these runs.
+
+pi's abort-on-parse-error (§4.3) is still pi's behaviour. What changed is that on b10751 nothing
+triggered it.
+
 ## 5. Hardware and quantization
 
 ### 5.1 What fits on 12 GB
@@ -321,7 +405,14 @@ Quesma's agentic benchmark found UD-Q2_K_XL at **~74 % Terminal-Bench 2.1 vs ~76
 within noise at n=89. That is *not* what we observed here, but Terminal-Bench tasks are short and
 this task is long-horizon.
 
-### 5.3 llama-server configuration traps
+### 5.3 Two cards: what the RTX 3060 buys
+
+For a dense model that fits one card, nothing: a layer split runs at the 3060's pace (Gemma 12B
+73.0 t/s alone, 50.9 at 50/50, 58.4 at 3:1). For a MoE, the difference between not fitting and
+99 t/s at 131k — provided no expert lands on the CPU, where four blocks' worth halves decode. The
+measurements are in MODELS.md §4.2.
+
+### 5.4 llama-server configuration traps
 
 - **`n_parallel` defaults to 4** — allocates 4× KV *and* 4× the recurrent-state cache for the
   Gated DeltaNet layers. `--parallel 1` is mandatory on 12 GB. This is why `llama-bench` numbers
@@ -331,6 +422,9 @@ this task is long-horizon.
   own peg-native grammar.
 - **Desktop VRAM is a real budget line.** Discord alone grew to 699 MiB and was the difference
   between 32 k and not loading at all.
+- **The llama.cpp build is part of the configuration.** It moved Qwen3.6 on pi from 0 % to 96 %
+  (§3.6). No run before `examples/launch-qwen35moe.sh` recorded its build, including every
+  Qwen3.8 and Gemma run in this report.
 
 ---
 
@@ -383,17 +477,26 @@ Both were stated with more confidence than the evidence supported. The corrected
 
 1. ~~**Run UD-IQ2_XXS** as a downward control.~~ **Done — §3.4. It wrote nothing. The failure is
    not a quantization cliff between Q2 and IQ2.**
-2. **Find an upward control.** Q4_K_M needs ~17 GB and does not fit. This requires either the
-   spare 3060 (layer split, `--tensor-split 65,35`) or a different box. **Without it, "is this
-   Q2's fault?" cannot be answered on this hardware.**
+2. **Find an upward control.** Q4_K_M needs ~17 GB and does not fit one card. The 3060 is now
+   installed, so UD-Q4_K_M (15.33 GiB) split across both is possible — at roughly 20 t/s by
+   extrapolation from Q2_K_XL's split rate, not measured. **Not yet run, so "is this Q2's fault?"
+   is still open.** Rerun on a llama.cpp after b9754 either way: the Qwen3.8 runs were made on a
+   build nothing recorded, and §3.6 shows a build alone can decide a pi result.
 3. **Shorten the spec** to test whether deliberation length scales with spec size.
 4. ~~**Re-run the Gemma baseline** with the fixed scorer.~~ **Done — §3.5**, six runs under the
    containerised scorer. It produced the first local run to clear the bar and a null result on
    context.
-5. **Find out why four runs in six exit early.** This is now the largest source of variance in the
-   study and the most likely route to a reliable pass, ahead of any model or context change.
-   `exit=1` before 700 s, with the agent mid-task, is not yet explained.
+5. **Find out why four Gemma runs in six exit early.** This is the largest source of variance in
+   the Gemma data. `exit=1` before 700 s, with the agent mid-task, is not yet explained. §3.6 is
+   one data point against: none of six Qwen runs on b10751 exited early under the same harnesses.
+6. **Run a second model on the two-card setup.** gpt-oss-20b (128k native, 122-126 t/s split in
+   llama-bench) and GLM-4.7-Flash are the candidates. Without one, §3.6 cannot separate "Qwen3.6
+   does this task" from "this hardware and build do".
 
-Until (2) exists, the honest statement is: **Qwen3.8-27B does not perform this task on this
-hardware at either quantization tested, and the IQ2_XXS control makes quantization the *less*
-likely explanation — but it cannot be ruled out, because both tested quants are 2-bit.**
+Until (2) exists, the honest statement is: **Qwen3.8-27B does not perform this task on one card at
+either quantization tested, and the IQ2_XXS control makes quantization the *less* likely
+explanation — but it cannot be ruled out, because both tested quants are 2-bit, and a llama.cpp
+parser bug of the §3.6 kind cannot be ruled out either, because nothing recorded the build.**
+
+**Qwen3.6-35B-A3B does perform it**, six times out of six, on two cards and a current llama.cpp.
+That is the strongest positive result in this report and it rests on n=3 per harness.

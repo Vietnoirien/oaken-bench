@@ -4,14 +4,38 @@ Measures which agent harness drives a local model further through a
 **long-horizon** implementation task, and whether their differing context
 strategies help or hurt.
 
+## Where it stands
+
+| | hidden | |
+|---|---|---|
+| Claude ceiling probe | 129/132 (97.7 %) | not harness-mediated |
+| **Qwen3.6-35B-A3B UD-Q4_K_S, RTX 5070 + 3060** | **pi 94.7-97.0 %, dsh 93.9-99.2 %** (n=3 each) | **six of six clear the 80 % bar** |
+| Gemma 4 12B, RTX 5070 | 0-83.3 % across 14 runs, not n=3 per harness | one run clears the bar |
+
+The task is solvable by a local model on consumer hardware, and reliably so:
+Qwen3.6-35B-A3B split across two 12 GB cards, on a llama.cpp build after b9754.
+On the older b9716 the same configuration scored 0 % on pi twice, from a
+llama.cpp parser bug, not the model. See [FINAL-REPORT.md](FINAL-REPORT.md) §3.6.
+
+**Which harness is better is still unanswered.** On Qwen the two are
+indistinguishable at n=3; on Gemma the spread swamped the difference. The one
+consistent gap is speed: pi finished the Qwen task in a median 529 s against
+dsh's 1228 s.
+
 ## Under test
 
-- **Model (head-to-head):** Gemma 4 12B QAT Q4_K_XL + MTP — 93.7 t/s, 131k ctx, native sampling.
-- **Confirmatory:** Qwen 3.6 35B-A3B Q4_K_XL — 15.3 t/s, on the winning harness only.
-- **Excluded:** gpt-oss-20b — its 32k context cap disqualifies it from a
-  long-horizon task by construction. Reported as a finding, not run.
+- **Original head-to-head:** Gemma 4 12B QAT Q4_K_XL + MTP — 93.7 t/s, 131k ctx,
+  native sampling, one RTX 5070.
+- **Two-card run:** Qwen 3.6 35B-A3B UD-Q4_K_S — ~99 t/s, 131k ctx, q8_0 KV,
+  RTX 5070 + RTX 3060. Planned as a one-run confirmatory at 15.3 t/s on the winning
+  harness; with no winner and ~6x the budgeted speed, it ran n=3 on both. Not
+  comparable with any single-card run (limitation 3 below).
+- **Not yet run:** gpt-oss-20b. It was excluded for a "32k context cap", which is
+  wrong: its GGUF declares 131072 (YaRN from 4096). What was true is that its
+  12 GiB of weights leave no room for context on one 12 GB card. Split across
+  two, llama-bench measured 122-126 t/s. It is a candidate, not a finding.
 
-## Run matrix (9 runs)
+## Run matrix (9 runs, as originally planned)
 
 | Phase | Runs | Purpose |
 |---|---|---|
@@ -21,6 +45,12 @@ strategies help or hurt.
 
 If the ceiling probe cannot clear the 80% bar within 60 minutes, the spec is
 ambiguous or the slice is oversized — cut scope **before** spending Gemma runs.
+
+What actually ran departs from this in two places. The Gemma head-to-head grew
+to 14 runs across two context arms (FINAL-REPORT §3.5). The confirmatory became
+10 Qwen runs: four on llama.cpp b9716 (two pi, both aborted; two dsh), then n=3
+per harness on b10751 once the pi aborts were traced to a parser bug fixed upstream. The
+b9716 runs stay in `results/` and `summarize.py` keeps the builds apart.
 
 ## The task
 
@@ -185,7 +215,7 @@ hidden.tar.gz.enc  held-out suite, encrypted. `scripts/hidden.sh unlock` -> hidd
 hidden/            the oracle, once unlocked. Gitignored. Do not read when authoring a task.
 docker/            image, harness configs, entrypoint, PROMPT.txt
   scorer.sh        runs both suites INSIDE the image (see MODELS.md §8)
-examples/          a guarded llama-server launcher
+examples/          guarded llama-server launchers: Gemma on one card, Qwen3.6-35B-A3B on two
 scripts/
   bootstrap.sh     one-time setup
   hidden.sh        lock / unlock / verify the held-out suite
@@ -206,7 +236,7 @@ FROZEN.sha256      hashes of every frozen input
 MODELS.md          how to add and tune a model  <- start here
 CANARY.md          contamination control
 EVENTS.md          what the pi and dsh event streams carry, field by field
-FINAL-REPORT.md    findings from the original study
+FINAL-REPORT.md    findings, the original study and the two-card Qwen runs
 ```
 
 ## Known spec gaps (deliberately not fixed)
@@ -268,6 +298,27 @@ from ~9h to ~4.5h.
 pass-rate still climbing at the cut, the cap bound the result rather than the
 harness — rerun those at 60 minutes and say so.
 
+### Qwen3.6-35B-A3B on RTX 5070 + RTX 3060 — six of six clear the bar
+
+| run | outcome | hidden | wall | gap |
+|---|---|---|---|---|
+| pi-qwen35q4ks-b10751-01 | complete | 127/132 96.2 % | 529 s | +3.8 |
+| pi-qwen35q4ks-b10751-02 | complete | 125/132 94.7 % | 944 s | +5.3 |
+| pi-qwen35q4ks-b10751-03 | complete | 128/132 97.0 % | 500 s | +3.0 |
+| dsh-qwen35q4ks-b10751-01 | complete | 124/132 93.9 % | 875 s | +6.1 |
+| dsh-qwen35q4ks-b10751-02 | timeout | **131/132 99.2 %** | 1801 s | +0.8 |
+| dsh-qwen35q4ks-b10751-03 | complete | 127/132 96.2 % | 1228 s | +3.8 |
+
+All six typecheck clean, none tampered, every overfit gap +6.1 or less (Gemma's
+ran +16 to +40). dsh-02 timed out still working and scored above the ceiling
+probe. The model is not contaminated: it predates the suite by five months, and
+asked for the canary GUID three times it produced nothing GUID-shaped.
+
+Served by `examples/launch-qwen35moe.sh` on llama.cpp b10751 — the layout,
+build requirement and measurements are in MODELS.md §4.2. **On b9716 the same
+setup gave pi 0/132 twice** (llama.cpp #24807) and dsh 3.8 % and 96.2 %; those
+four runs are kept and grouped separately.
+
 ### Known trap: no `@types/node`
 
 The seed ships no `@types/node`, so `import ... from 'node:fs'` fails
@@ -292,8 +343,10 @@ Five limitations, stated up front rather than buried.
    reflect shared assumptions.
 3. **The 30-minute cap is often the binding constraint**, not model capability.
    Half the original runs ended at the wall clock. Anything that changes
-   throughput — quantization, context size, a busy GPU — changes the score for
-   reasons that have nothing to do with reasoning ability.
+   throughput — quantization, context size, a busy GPU, a second card — changes
+   the score for reasons that have nothing to do with reasoning ability. The
+   two-card Qwen runs decode at ~99 t/s where the plan budgeted 15.3; their
+   scores say what that setup does, not how Qwen compares to Gemma.
 4. **The published numbers are not cleanly reproducible.** `score.py` was
    patched mid-study to fix a process leak that corrupted wall-clock figures for
    runs scored after it appeared, and scoring later moved into a container.
@@ -311,9 +364,17 @@ Five limitations, stated up front rather than buried.
    = 1, the buggy extractor; 2 = scored after that was found) is the only
    in-band signal, and it is a proxy for when a run was scored, not for how the
    server was configured. See #14.
-5. **Variance dominates.** Four of the six most recent runs exited before 700 s,
-   and score tracks how long a run survived far more closely than any parameter
-   under test. Expect to throw away runs.
+
+   The **llama.cpp build** belongs in the same sentence. It moved one
+   configuration from 0 % to 96 % on pi without changing anything else.
+   `examples/launch-qwen35moe.sh` writes the binary and version into the server
+   log that each run's archive keeps; no earlier run recorded its build, and
+   `score.json` still does not.
+5. **Variance dominates on Gemma.** Four of its six context-arm runs exited
+   before 700 s, and score tracked how long a run survived far more closely than
+   any parameter under test. The Qwen runs on b10751 are the exception: a
+   5.3-point spread, no early exits. Whether that is the model or luck at n=3 is
+   not known; until it is, expect to throw away runs.
 
 Contributions that would help most: additional task instances, a task generator
-(see CANARY.md), and results on hardware other than a 12 GB consumer card.
+(see CANARY.md), and results on hardware other than 12 GB consumer cards.
