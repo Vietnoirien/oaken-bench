@@ -28,8 +28,15 @@ CURRENT_PIPELINE_MARKERS = ('gemma131k', 'gemma192k')
 # README limitation 3 it is not comparable with the Gemma set either. Without
 # its own marker it fell through to HISTORICAL_GROUP, which is where any
 # unrecognised label still lands -- give a new set a marker before its runs.
-QWEN_DUAL_GROUP = 'qwen35 q4_k_s 5070+3060 (current pipeline)'
+QWEN_DUAL_GROUP = 'qwen35 q4_k_s 5070+3060, llama.cpp b9716'
 QWEN_DUAL_MARKERS = ('qwen35q4ks',)
+
+# Same model, quant and layout on llama.cpp b10751. b9716 predates the fix for
+# llama.cpp #24807, the malformed-XML abort that killed every pi run on it, so
+# the two builds are different measurements. Checked first: its labels contain
+# the b9716 marker too.
+QWEN_DUAL_B10751_GROUP = 'qwen35 q4_k_s 5070+3060, llama.cpp b10751'
+QWEN_DUAL_B10751_MARKERS = ('qwen35q4ks-b10751',)
 
 VOID_REASON = 'VOID run (thinkbug) -- excluded from every aggregate'
 
@@ -115,6 +122,8 @@ def group_label(row):
     setting was in force. Read `harnessMetricsVersion` (2 = scored after that
     was discovered) alongside this grouping, not instead of it.
     """
+    if any(marker in row['label'] for marker in QWEN_DUAL_B10751_MARKERS):
+        return QWEN_DUAL_B10751_GROUP
     if any(marker in row['label'] for marker in QWEN_DUAL_MARKERS):
         return QWEN_DUAL_GROUP
     if any(marker in row['label'] for marker in CURRENT_PIPELINE_MARKERS):

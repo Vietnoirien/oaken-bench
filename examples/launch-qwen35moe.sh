@@ -19,6 +19,12 @@ ALIAS=Qwen3.6-35B-A3B-UD-Q4_K_S.gguf
 LOG=/tmp/qwen35moe-server-$CTX.log
 : > "$LOG"
 
+# The build is part of the result: conda-forge b9716 carries llama.cpp #24807,
+# under which this model's malformed tool calls abort pi's stream; b9754+ does
+# not. Nothing else records which binary a run was served by, so the log does.
+echo "llama-server: $(command -v llama-server)" | tee -a "$LOG"
+llama-server --version 2>&1 | grep -E 'version|built' | tee -a "$LOG"
+
 free_mib() { nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | sed -n "$(( $1 + 1 ))p"; }
 used_mib() { nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | sed -n "$(( $1 + 1 ))p"; }
 

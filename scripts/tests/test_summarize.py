@@ -282,3 +282,18 @@ def test_dual_gpu_qwen_runs_do_not_join_the_historical_mean(tmp_path):
     assert by_label['pi-qwen35q4ks-01'] == by_label['dsh-qwen35q4ks-01']
     assert by_label['pi-qwen35q4ks-01'] != by_label['pi-01']
     assert by_label['pi-qwen35q4ks-01'] != by_label['pi-gemma131k-01']
+
+
+def test_runs_on_a_newer_llama_cpp_build_do_not_pool_with_the_old_one(tmp_path):
+    """b9716 aborts this model's pi stream on llama.cpp #24807 and b10751 does
+    not, so the same model, quant and layout are two different measurements
+    across that line. The newer label also contains the older marker, which
+    is exactly how it would have slipped in."""
+    write_score(tmp_path, 'pi-qwen35q4ks-01', harness='pi')
+    write_score(tmp_path, 'pi-qwen35q4ks-b10751-01', harness='pi')
+
+    groups, _ = aggregate_groups(collect_rows(str(tmp_path)))
+    by_label = {r['label']: g['group_label']
+                for g in groups for r in g['rows']}
+
+    assert by_label['pi-qwen35q4ks-b10751-01'] != by_label['pi-qwen35q4ks-01']
