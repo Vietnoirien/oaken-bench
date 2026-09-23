@@ -299,6 +299,14 @@ expert size comes out of the GGUF tensor table, not the file size.
   -ot 'blk\.(1[5-9]|[23][0-9])\.ffn_.*_exps\.=CUDA1'
 ```
 
+**It needs llama.cpp newer than b9754.** On conda-forge b9716 the model's
+opening `read` of SPEC.md came out with a doubled `</parameter>`, llama-server
+logged `unparsed peg-native output`, and pi aborted in 5 s, exit 0 -- twice, on
+the identical call. That is llama.cpp
+[#24807](https://github.com/ggml-org/llama.cpp/issues/24807), fixed after b9754.
+On b10751 all six graded runs completed or timed out with 93.9-99.2 % hidden and
+zero parse errors. Check `llama-server --version` before blaming the model.
+
 `examples/launch-qwen35moe.sh` wraps this, and refuses to hand over a server if the
 cards already hold more than they did when it was measured, if a `cudaMalloc`
 failed, if the §5 tool call does not come back well-formed, or if decode is under
