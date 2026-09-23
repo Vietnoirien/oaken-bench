@@ -1,0 +1,79 @@
+{
+  "label": "pi-qwen35q4ks-02",
+  "harness": "pi",
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 5,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": true,
+  "suiteHung": false,
+  "visible": {
+    "passed": 3,
+    "failed": 49,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.0577
+  },
+  "hidden": {
+    "passed": 0,
+    "failed": 132,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 1,
+      "message_start": 3,
+      "message_end": 3,
+      "message_update": 51,
+      "turn_end": 1,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 1,
+    "toolCalls": 0,
+    "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 0,
+      "error": 0,
+      "unknown": 0
+    },
+    "errorRate": 0.0,
+    "errorsByTool": {},
+    "toolHistogram": {},
+    "unknownTools": [],
+    "mutatingCalls": 0,
+    "repeatedCalls": 0,
+    "longestRepeatRun": 0,
+    "distinctCallRatio": 0.0,
+    "callSequence": [],
+    "toolCallsPerTurn": {
+      "mean": null,
+      "max": null
+    },
+    "parallelTurns": null,
+    "timeToFirstToolCall": null,
+    "toolCallIntervals": null,
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "no_engagement",
+  "overfitGap": 0.0577
+}

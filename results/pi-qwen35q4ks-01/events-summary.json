@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 2,
+  "label": "pi-qwen35q4ks-01",
+  "harness": "pi",
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+  "toolCalls": 0,
+  "toolOutcomes": {
+    "ok": 0,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {},
+  "unknownTools": [],
+  "mutatingCalls": 0,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 0,
+  "distinctCallRatio": 0.0,
+  "callSequence": [],
+  "toolCallsPerTurn": {
+    "mean": null,
+    "max": null
+  },
+  "parallelTurns": null,
+  "timeToFirstToolCall": null,
+  "toolCallIntervals": null,
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

@@ -1,0 +1,259 @@
+{
+  "label": "dsh-qwen35q4ks-01",
+  "harness": "dsh",
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+  "exitCode": 1,
+  "wallclockSeconds": 577,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": false,
+  "suiteHung": false,
+  "visible": {
+    "passed": 14,
+    "failed": 38,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.2692
+  },
+  "hidden": {
+    "passed": 5,
+    "failed": 127,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.0379
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "permission/preset": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 9,
+      "system/message": 1,
+      "user/message": 2,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session/title-llm-request": 1,
+      "assistant/message": 9,
+      "tool/call": 31,
+      "tool/result": 31,
+      "step/end": 9,
+      "todo/write": 2,
+      "turn/end": 1
+    },
+    "steps": 9,
+    "toolCalls": 31,
+    "usage": {
+      "inputTokens": 47705,
+      "outputTokens": 36834,
+      "cacheReadTokens": 289931
+    },
+    "compactions": 0,
+    "prunedToolResults": {
+      "count": 0,
+      "shadowedTokenCount": 0
+    },
+    "generationOutputTokens": 4066,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 30,
+      "error": 1,
+      "unknown": 0
+    },
+    "errorRate": 0.0323,
+    "errorsByTool": {
+      "read": 1
+    },
+    "toolHistogram": {
+      "read": 23,
+      "glob": 4,
+      "todo_write": 2,
+      "write": 2
+    },
+    "unknownTools": [],
+    "mutatingCalls": 2,
+    "repeatedCalls": 0,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 1.0,
+    "callSequence": [
+      [
+        "read",
+        "785692d4476c9fe8",
+        1
+      ],
+      [
+        "glob",
+        "f7d75e9733e30071",
+        1
+      ],
+      [
+        "glob",
+        "28f1d5d272ad1b6e",
+        1
+      ],
+      [
+        "glob",
+        "70a9d51f7cfa4192",
+        1
+      ],
+      [
+        "glob",
+        "c218f69c9a14ccdf",
+        1
+      ],
+      [
+        "read",
+        "4c76be9dfff0357c",
+        1
+      ],
+      [
+        "read",
+        "aa2e3fbbb6e22729",
+        1
+      ],
+      [
+        "read",
+        "55bda7ef491d7dee",
+        1
+      ],
+      [
+        "read",
+        "bd23a78dca258e11",
+        1
+      ],
+      [
+        "read",
+        "bcb20ef0a7ca46c7",
+        1
+      ],
+      [
+        "read",
+        "b3d5a35c5cc97f47",
+        1
+      ],
+      [
+        "read",
+        "7867568cacedb46d",
+        1
+      ],
+      [
+        "read",
+        "c4493db730df1494",
+        1
+      ],
+      [
+        "read",
+        "239085a6361b50eb",
+        1
+      ],
+      [
+        "read",
+        "e23f62c2a89958cc",
+        1
+      ],
+      [
+        "read",
+        "a8a4fc8165543a32",
+        1
+      ],
+      [
+        "read",
+        "0040d1213aad81b0",
+        1
+      ],
+      [
+        "read",
+        "5000dca7a462212e",
+        1
+      ],
+      [
+        "read",
+        "2008089235783e73",
+        1
+      ],
+      [
+        "read",
+        "8ae8e684b6669e0f",
+        1
+      ],
+      [
+        "read",
+        "117eee66d0a61505",
+        1
+      ],
+      [
+        "read",
+        "0229d400887b9062",
+        1
+      ],
+      [
+        "read",
+        "f4ff689f301560f8",
+        1
+      ],
+      [
+        "read",
+        "fd1182ea570a8290",
+        1
+      ],
+      [
+        "read",
+        "97b86f7cc53a812f",
+        1
+      ],
+      [
+        "read",
+        "3a72ccb38d8d1cdd",
+        1
+      ],
+      [
+        "read",
+        "ebc96c98add7ff12",
+        1
+      ],
+      [
+        "todo_write",
+        "6fd7371ccae15a2e",
+        1
+      ],
+      [
+        "write",
+        "bc0df1c40ca1f32f",
+        1
+      ],
+      [
+        "todo_write",
+        "5ecabd7272d6fec2",
+        1
+      ],
+      [
+        "write",
+        "c310bd3dd5caa4a7",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 3.875,
+      "max": 10
+    },
+    "parallelTurns": 4,
+    "timeToFirstToolCall": 9.6,
+    "toolCallIntervals": {
+      "n": 30,
+      "p50Seconds": 0.001,
+      "p95Seconds": 19.126
+    },
+    "generationSeconds": 91.149,
+    "toolExecutionSeconds": 0.882,
+    "derivedDecodeTokensPerSecond": 44.61,
+    "parseErrors": 0
+  },
+  "outcome": "crash",
+  "overfitGap": 0.2313
+}
