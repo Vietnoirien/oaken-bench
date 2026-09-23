@@ -262,3 +262,23 @@ def test_a_pi_run_at_the_same_context_joins_the_same_group_as_dsh():
                 for g in groups for r in g['rows']}
     assert by_label['pi-gemma131k-01'] == by_label['dsh-gemma131k-01']
     assert by_label['pi-01'] != by_label['pi-gemma131k-01']
+
+
+def test_dual_gpu_qwen_runs_do_not_join_the_historical_mean(tmp_path):
+    """Anything without a known marker falls through to 'historical'. The
+    first Qwen3.6-35B-A3B runs on 5070+3060 did exactly that, and moved the
+    historical pi mean from 17.2 % to 12.9 % -- a different model on
+    different hardware, silently averaged into a set it has nothing to do
+    with."""
+    write_score(tmp_path, 'pi-qwen35q4ks-01', harness='pi')
+    write_score(tmp_path, 'dsh-qwen35q4ks-01', harness='dsh')
+    write_score(tmp_path, 'pi-01', harness='pi')
+    write_score(tmp_path, 'pi-gemma131k-01', harness='pi')
+
+    groups, _ = aggregate_groups(collect_rows(str(tmp_path)))
+    by_label = {r['label']: g['group_label']
+                for g in groups for r in g['rows']}
+
+    assert by_label['pi-qwen35q4ks-01'] == by_label['dsh-qwen35q4ks-01']
+    assert by_label['pi-qwen35q4ks-01'] != by_label['pi-01']
+    assert by_label['pi-qwen35q4ks-01'] != by_label['pi-gemma131k-01']

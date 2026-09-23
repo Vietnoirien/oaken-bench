@@ -23,6 +23,14 @@ GEMMA_GROUP = 'gemma 131k/192k (current pipeline)'
 HISTORICAL_GROUP = 'historical (pre-container pipeline)'
 CURRENT_PIPELINE_MARKERS = ('gemma131k', 'gemma192k')
 
+# Qwen3.6-35B-A3B UD-Q4_K_S across an RTX 5070 + RTX 3060 (MODELS.md 4.2).
+# Current pipeline, but ~6x the throughput of anything single-card, so under
+# README limitation 3 it is not comparable with the Gemma set either. Without
+# its own marker it fell through to HISTORICAL_GROUP, which is where any
+# unrecognised label still lands -- give a new set a marker before its runs.
+QWEN_DUAL_GROUP = 'qwen35 q4_k_s 5070+3060 (current pipeline)'
+QWEN_DUAL_MARKERS = ('qwen35q4ks',)
+
 VOID_REASON = 'VOID run (thinkbug) -- excluded from every aggregate'
 
 
@@ -107,6 +115,8 @@ def group_label(row):
     setting was in force. Read `harnessMetricsVersion` (2 = scored after that
     was discovered) alongside this grouping, not instead of it.
     """
+    if any(marker in row['label'] for marker in QWEN_DUAL_MARKERS):
+        return QWEN_DUAL_GROUP
     if any(marker in row['label'] for marker in CURRENT_PIPELINE_MARKERS):
         return GEMMA_GROUP
     return HISTORICAL_GROUP
