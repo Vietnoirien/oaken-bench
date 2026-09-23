@@ -1,7 +1,8 @@
 # Adding and tuning a model
 
 Everything here was measured on an **RTX 5070 12 GB** while running this
-benchmark. The numbers are hardware-specific; the failure modes are not.
+benchmark, except §4.2, which adds an **RTX 3060 12 GB** beside it. The numbers
+are hardware-specific; the failure modes are not.
 
 The short version, and the single most expensive lesson in this repo:
 
@@ -250,6 +251,80 @@ awk -v t="$TPS" 'BEGIN{exit !(t < 110)}' && { echo "REFUSING: ${TPS} t/s" >&2; e
 ```
 
 A worked example is in `examples/launch-gemma.sh`.
+
+### 4.2 Two cards: RTX 5070 + RTX 3060
+
+Measured 2026-09-23. The 5070 is `CUDA0` and carries the desktop (~0.8 GiB); the
+3060 is `CUDA1`, headless, on a **PCIe x4** link. Both are 12 GB. llama-bench,
+`-fa on`, q8_0 KV, pp512 / tg128, t/s:
+
+| model | 5070 alone | 3060 alone | layer split 50/50 | layer split 3:1 |
+|---|---|---|---|---|
+| Gemma 4 12B QAT Q4_K_XL (no MTP) | 3432 / **73.0** | 1355 / 40.9 | 1928 / 50.9 | 2513 / 58.4 |
+| Qwen3.8-27B UD-Q2_K_XL | 1230 / **46.0** | — | 735 / 28.8 | 949 / 36.0 |
+| gpt-oss-20b MXFP4 | does not fit | — | 3816 / 122.0 | 4155 / 126.0 (55/45) |
+
+**A second card adds memory, not speed, for a dense model that already fits on
+one.** A layer split is a pipeline: every token passes through the 3060's layers
+at the 3060's pace. Skewing the split toward the 5070 claws some back and never
+reaches the 5070 alone. `-sm row` is worse still over the x4 link (Q2_K_XL:
+185 / 22.2). Put a dense model that fits on `--device CUDA0` and stop there.
+
+**Where the second card pays is MoE**, and only if no expert lands on the CPU.
+Qwen3.6-35B-A3B has 256 experts with 8 active, full attention on
+only every 4th of its 40 blocks with 2 KV heads, so its KV is ~10.9 KB/token at
+q8_0 -- 1.33 GiB at 131072. The weights are the whole problem:
+
+| quant, placement | 16k decode | serves 131072? |
+|---|---|---|
+| UD-Q4_K_XL (21.3 GiB), default layer split | OOM at 16k, q8_0 KV | no |
+| UD-Q4_K_XL, same, q4_0 KV | 78.4 | no |
+| UD-Q4_K_XL, `-ot` experts to the 3060, `-ub 256` | 90.7 | no -- OOM at 64k |
+| UD-Q4_K_XL, `-ncmoe 4` (four blocks' experts on CPU) | 49.2 | -- |
+| **UD-Q4_K_S (19.45 GiB), `-ot` experts of blocks 15-39 to the 3060, `-ub 256`** | ~99 short prompt | **yes: 57.6 t/s decode, 953 t/s prompt at 115k filled** |
+
+Four experts' worth of layers on an i9-9900KF with DDR4 halves decode. The
+auto-fitter (`-fitt`) chose that kind of placement and landed at the same ~54 t/s,
+so do not trust it here either.
+
+**The layout that works** keeps attention, the KV cache and the dense tensors on
+the 5070 with `--tensor-split 1,0`, then moves experts by block to the 3060 with
+`-ot`. The split block is load-bearing: at 131072, splitting at block 15 leaves
+663 / 770 MiB free (5070 / 3060); at block 16 it leaves **226** / 1202, and a
+desktop app reopening costs ~700. Recompute it for any other quant -- the per-block
+expert size comes out of the GGUF tensor table, not the file size.
+
+```bash
+--device CUDA0,CUDA1 --tensor-split 1,0 --ubatch-size 256 \
+  -ot 'blk\.(1[5-9]|[23][0-9])\.ffn_.*_exps\.=CUDA1'
+```
+
+`examples/launch-qwen35moe.sh` wraps this, and refuses to hand over a server if the
+cards already hold more than they did when it was measured, if a `cudaMalloc`
+failed, if the §5 tool call does not come back well-formed, or if decode is under
+75 t/s.
+
+Three traps from getting there, all of which look like something else:
+
+- **KV quant mattered at the margin even though KV is small.** q8_0 OOMed at 16k
+  where q4_0 fit -- a ~100 MB difference. Do not take q4_0 to buy room on this
+  model, though: independent KL measurements
+  ([localbench](https://localbench.substack.com/p/kv-cache-quantization-benchmark))
+  put Qwen 3.6's q4_0 damage in long documents and tool calling, which is this
+  benchmark's workload. Change the quant instead.
+- **Mixed K/V types fall back to CPU silently.** `-ctk q4_0 -ctv q8_0` ran with
+  both GPUs at 0 % and the CPU at 730 % -- the flash-attention kernels for mixed
+  pairs are not built by default. No `cudaMalloc failed` line appears; watch
+  utilisation. llama-bench turns a repeated `-ctk` into a list and so walks into
+  this on its own.
+- **llama-bench cannot see the serving ceiling**, and `/v1/models` answers 503
+  "Loading model" while a 20 GiB split load is in progress. `scripts/ctxprobe.sh`
+  takes `OAKEN_DEVICE=CUDA0,CUDA1` and now waits on `/health`; before that fix it
+  reported the 503 as the result.
+
+Throughput here is ~6x the 15.3 t/s the README budgeted for this model on one
+card, and §7 applies: a run on this layout is not comparable with a single-card
+run of anything.
 
 ---
 

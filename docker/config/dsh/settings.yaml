@@ -36,6 +36,12 @@ llm-pi-ai:
           name: Qwen3.6-35B-A3B (local)
           contextWindow: 131072
           maxTokens: 32768
+        # Same model, smaller quant: Q4_K_XL cannot hold 64k across both cards, Q4_K_S
+        # serves 131072 at q8_0 KV. Launch with examples/launch-qwen35moe.sh.
+        - id: Qwen3.6-35B-A3B-UD-Q4_K_S.gguf
+          name: Qwen3.6-35B-A3B UD-Q4_K_S (local, 5070+3060)
+          contextWindow: 131072
+          maxTokens: 32768
         - id: Qwen3.8-27B-UD-Q2_K_XL.gguf
           name: Qwen3.8-27B UD-Q2_K_XL (local)
           contextWindow: 49152
