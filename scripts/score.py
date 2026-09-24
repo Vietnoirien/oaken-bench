@@ -29,6 +29,14 @@ NOTE: docker/scorer.sh and docker/score_detail.py are baked into the
 runner image at build time (see docker/Dockerfile's COPY lines) -- a
 change to either only takes effect after rebuilding the image
 (scripts/bootstrap.sh, or `docker build` directly).
+
+Everything above describes this module's own scorer, `score_run()`, which
+is T2's (the original long-horizon task's) entry in the tier registry --
+see scripts/tiers.py. The CLI (`main()`, below) does not call score_run()
+directly: it resolves `results/<label>`'s tier from the label itself and
+dispatches through the registry, so a t3-/t4-/... label reaches that
+tier's own scorer once one is registered, without this file knowing about
+it.
 """
 import json, os, re, shutil, signal, subprocess, sys, tarfile, tempfile, time
 
@@ -659,17 +667,18 @@ def score_in_container(result_dir, detail=False, timeout=1800):
 
 
 
-def main():
-    argv = sys.argv[1:]
-    # Default on -- see the module docstring for why that costs nothing.
-    # --detail is accepted as a no-op for parity with docker/entrypoint.sh's
-    # own flag of the same name.
-    detail = '--no-detail' not in argv
-    argv = [a for a in argv if a not in ('--detail', '--no-detail')]
-    if len(argv) < 1:
-        print(__doc__)
-        sys.exit(2)
-    result_dir = os.path.abspath(argv[0])
+def score_run(result_dir, detail=True):
+    """Score one run under `result_dir` and print the same summary the CLI
+    has always printed. Returns the report dict (also written to
+    score.json) for callers that want it without re-reading the file.
+
+    This is T2's tier scorer (scripts/tiers.py wires it in as such) and
+    also score.py's own direct entry point -- there is currently exactly
+    one tier, so those are the same code path. A later tier's scorer is
+    free to look nothing like this one: tiers.py's registry is what keeps
+    that from turning into an if/else in here.
+    """
+    result_dir = os.path.abspath(result_dir)
     label = os.path.basename(result_dir)
 
     def read(name, default=''):
@@ -814,6 +823,35 @@ def main():
         # (see events.py), but a reader scanning this table has to be told,
         # not left to notice the count is one higher than expected.
         print(f"  UNKNOWN TOOLS  : {hm['unknownTools']}")
+
+    return report
+
+
+def main():
+    argv = sys.argv[1:]
+    # Default on -- see the module docstring for why that costs nothing.
+    # --detail is accepted as a no-op for parity with docker/entrypoint.sh's
+    # own flag of the same name.
+    detail = '--no-detail' not in argv
+    argv = [a for a in argv if a not in ('--detail', '--no-detail')]
+    if len(argv) < 1:
+        print(__doc__)
+        sys.exit(2)
+    result_dir = os.path.abspath(argv[0])
+    label = os.path.basename(result_dir)
+
+    # Dispatch through the tier registry (scripts/tiers.py) rather than
+    # calling score_run() directly: un-prefixed labels (every run so far)
+    # resolve to T2, whose scorer IS score_run, but a t3-/t4-/... label
+    # must go to that tier's own scorer once one exists, without this file
+    # growing a branch per tier. Imported here, not at module scope, so
+    # `import score` alone (score_run() is also called that way, from
+    # tiers._t2_score) never has to resolve tiers.py's import of this
+    # module back -- see tiers.py's own lazy import for the other half of
+    # why that would be circular at module-load time.
+    import tiers
+    tier = tiers.resolve_tier(label)
+    tier.score(result_dir, detail=detail)
 
 
 if __name__ == '__main__':
