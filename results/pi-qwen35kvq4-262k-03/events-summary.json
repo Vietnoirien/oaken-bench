@@ -1,0 +1,372 @@
+{
+  "schemaVersion": 2,
+  "label": "pi-qwen35kvq4-262k-03",
+  "harness": "pi",
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S-kvq4-262k.gguf",
+  "toolCalls": 66,
+  "toolOutcomes": {
+    "ok": 62,
+    "error": 4,
+    "unknown": 0
+  },
+  "errorRate": 0.0606,
+  "errorsByTool": {
+    "bash": 4
+  },
+  "toolHistogram": {
+    "read": 30,
+    "bash": 14,
+    "write": 10,
+    "edit": 12
+  },
+  "unknownTools": [],
+  "mutatingCalls": 22,
+  "repeatedCalls": 7,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.8939,
+  "callSequence": [
+    [
+      "read",
+      "48edb4d1dddba11c",
+      1
+    ],
+    [
+      "bash",
+      "0ef56e7ee846fe9e",
+      1
+    ],
+    [
+      "read",
+      "903958ad993e6f3d",
+      1
+    ],
+    [
+      "read",
+      "f06555683da563bb",
+      1
+    ],
+    [
+      "read",
+      "8fecde5b10c116ec",
+      1
+    ],
+    [
+      "read",
+      "a1ef9affdd6f7914",
+      1
+    ],
+    [
+      "read",
+      "03888e96a775d21a",
+      1
+    ],
+    [
+      "read",
+      "82e1593a9ce84be2",
+      1
+    ],
+    [
+      "read",
+      "d83cf77eba6e8428",
+      1
+    ],
+    [
+      "read",
+      "fe3f6d1be9dea19d",
+      1
+    ],
+    [
+      "read",
+      "fd4f5a2d3c09f518",
+      1
+    ],
+    [
+      "read",
+      "1a3ffffc81ca76c3",
+      1
+    ],
+    [
+      "read",
+      "5a3a15d2c9f7fbde",
+      1
+    ],
+    [
+      "read",
+      "347a5f69cd1dc753",
+      1
+    ],
+    [
+      "read",
+      "62943952eaef6e6f",
+      1
+    ],
+    [
+      "bash",
+      "343d4afe07efe49e",
+      1
+    ],
+    [
+      "read",
+      "9ba0b443025c06c6",
+      1
+    ],
+    [
+      "read",
+      "754072870de9f867",
+      1
+    ],
+    [
+      "read",
+      "001dc99416422d4b",
+      1
+    ],
+    [
+      "read",
+      "9323b82f3fb148d4",
+      1
+    ],
+    [
+      "read",
+      "98d3e9f1408ef3e3",
+      1
+    ],
+    [
+      "read",
+      "c123e42d3ae9d14e",
+      1
+    ],
+    [
+      "read",
+      "90b2446175a18384",
+      1
+    ],
+    [
+      "read",
+      "11d6fda6eaab06c3",
+      1
+    ],
+    [
+      "bash",
+      "e458365c828741fb",
+      1
+    ],
+    [
+      "bash",
+      "b5467f9bba113fbc",
+      1
+    ],
+    [
+      "write",
+      "5299d1b4620ef4e0",
+      1
+    ],
+    [
+      "write",
+      "a79ff6ba39beace1",
+      1
+    ],
+    [
+      "write",
+      "87ef69d080a0fece",
+      1
+    ],
+    [
+      "write",
+      "6554ce13795c6e47",
+      1
+    ],
+    [
+      "write",
+      "4f3805d94eb4c790",
+      1
+    ],
+    [
+      "write",
+      "1fb6915a6091ec0d",
+      1
+    ],
+    [
+      "write",
+      "4b3316d3cab2fd90",
+      1
+    ],
+    [
+      "write",
+      "851481f0e34e7748",
+      1
+    ],
+    [
+      "bash",
+      "20ac300845246365",
+      1
+    ],
+    [
+      "edit",
+      "75f8c3f7329a0da5",
+      1
+    ],
+    [
+      "bash",
+      "20ac300845246365",
+      1
+    ],
+    [
+      "edit",
+      "297df559f11309fc",
+      1
+    ],
+    [
+      "bash",
+      "20ac300845246365",
+      1
+    ],
+    [
+      "bash",
+      "70249e1e1d56bae9",
+      1
+    ],
+    [
+      "edit",
+      "adf2b599cbf852f6",
+      1
+    ],
+    [
+      "read",
+      "d08ea1cb4e2077f2",
+      1
+    ],
+    [
+      "edit",
+      "62230bc685ad5bf4",
+      1
+    ],
+    [
+      "edit",
+      "32be2fc9c115b25f",
+      1
+    ],
+    [
+      "edit",
+      "79da98db80c24f0a",
+      1
+    ],
+    [
+      "read",
+      "f2c6eed9efa19f7f",
+      1
+    ],
+    [
+      "read",
+      "f8e2a76320729393",
+      1
+    ],
+    [
+      "edit",
+      "0582ee3200bd160c",
+      1
+    ],
+    [
+      "edit",
+      "89ed5c98a3cd8afd",
+      1
+    ],
+    [
+      "edit",
+      "41e6f2b484de6244",
+      1
+    ],
+    [
+      "read",
+      "ec3f7b2acbad695d",
+      1
+    ],
+    [
+      "edit",
+      "506ad6393c162d4d",
+      1
+    ],
+    [
+      "read",
+      "dfa0d300ac538fe0",
+      1
+    ],
+    [
+      "edit",
+      "fc6d1c7acb77ed51",
+      1
+    ],
+    [
+      "bash",
+      "70249e1e1d56bae9",
+      1
+    ],
+    [
+      "write",
+      "12ab9984a3f3937b",
+      1
+    ],
+    [
+      "read",
+      "dbbcf00587037fa5",
+      1
+    ],
+    [
+      "edit",
+      "19c76fea5cb5e4e6",
+      1
+    ],
+    [
+      "bash",
+      "70249e1e1d56bae9",
+      1
+    ],
+    [
+      "bash",
+      "20ac300845246365",
+      1
+    ],
+    [
+      "read",
+      "3f8ab29e308a9de8",
+      1
+    ],
+    [
+      "read",
+      "a85b4933f574b021",
+      1
+    ],
+    [
+      "write",
+      "2b8facb637ba905e",
+      1
+    ],
+    [
+      "bash",
+      "20ac300845246365",
+      1
+    ],
+    [
+      "bash",
+      "70249e1e1d56bae9",
+      1
+    ],
+    [
+      "bash",
+      "d70ef6c9538321a3",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.4348,
+    "max": 10
+  },
+  "parallelTurns": 4,
+  "timeToFirstToolCall": 0.05,
+  "toolCallIntervals": {
+    "n": 65,
+    "p50Seconds": 1.915,
+    "p95Seconds": 19.103
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}
