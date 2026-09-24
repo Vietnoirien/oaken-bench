@@ -4,6 +4,10 @@
 #
 # Requires llama-server listening on the docker bridge:
 #   scripts/ctxprobe.sh, then your own launcher -- see MODELS.md
+#
+# OAKEN_IMAGE picks the image tag (default oaken-bench:1.0), same variable
+# scripts/score.py already reads -- set it to a wip-<issue> tag when testing
+# an unmerged image change, per AGENTS.md.
 set -euo pipefail
 
 HARNESS="${1:?usage: run.sh <pi|dsh> <model-id> <label> [timeout]}"
@@ -22,6 +26,20 @@ if ! curl -s -m 5 http://172.17.0.1:8080/v1/models >/dev/null; then
   exit 1
 fi
 
+# run.meta (docker/entrypoint.sh) records harness/model/timeout only -- see
+# issue #14. Everything that decides whether two runs are actually
+# comparable (llama-server's served config, the image's actual installed
+# harness versions rather than the Dockerfile's pins, host GPUs) is only
+# observable from the host, before the container starts, which is why this
+# runs here rather than in the entrypoint. scripts/server_config.py is a
+# library so #28's direct-mode runner (issue #26) can call the same
+# function; a failed capture must not block the trial, hence `|| true` --
+# a run is worth more than its provenance sidecar.
+OAKEN_IMAGE="${OAKEN_IMAGE:-oaken-bench:1.0}"
+python3 "$B/scripts/server_config.py" http://172.17.0.1:8080 --image "$OAKEN_IMAGE" \
+  > "$OUT/run-context.json" 2>"$OUT/run-context.log" || \
+  echo "warning: run-context.json capture failed -- see run-context.log" >&2
+
 echo "=== $LABEL : $HARNESS / $MODEL / timeout ${TIMEOUT}s ==="
 START=$(date -u +%s)
 
@@ -37,7 +55,7 @@ docker run --rm \
   --dns 0.0.0.0 \
   -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
   -v "$OUT:/out" \
-  oaken-bench:1.0 "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" || RC=$?
+  "$OAKEN_IMAGE" "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" || RC=$?
 
 END=$(date -u +%s)
 echo "$((END - START))" > "$OUT/wallclock.seconds"
