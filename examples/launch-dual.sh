@@ -27,6 +27,16 @@ case "$PRESET" in
     ALIAS=gpt-oss-20b-MXFP4.gguf
     FLAGS=(--tensor-split 65,35)
     FLOOR=90 ;;      # clean path ~119; 50/50 served 113.7
+  glm47flash)
+    # GLM-4.7-Flash UD-Q4_K_XL, arch deepseek2 (MLA, 47 blocks, experts in 1-46).
+    # Attention, the ~3.5 GiB MLA cache and blocks 1-13's experts on the 5070,
+    # blocks 14-46's experts on the 3060. Measured at 131k: ~92 t/s short prompt,
+    # 1187 / 948 MiB free; with 98,735 tokens filled 402 t/s prompt, 26.6 t/s
+    # decode, peaks 10783 / 11041 MiB. Block 15 leaves 863 / 1272, block 16
+    # 539 / 1596. -ub 256 cost 12 % of prompt speed for ~110 MiB.
+    ALIAS=GLM-4.7-Flash-UD-Q4_K_XL.gguf
+    FLAGS=(--tensor-split 1,0 -ot 'blk\.(1[4-9]|[23][0-9]|4[0-6])\.ffn_.*_exps\.=CUDA1')
+    FLOOR=70 ;;      # clean path ~92
   *) echo "unknown preset '$PRESET'" >&2; exit 64 ;;
 esac
 

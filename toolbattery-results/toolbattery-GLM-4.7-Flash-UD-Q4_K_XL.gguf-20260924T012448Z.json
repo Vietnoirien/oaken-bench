@@ -1,0 +1,276 @@
+{
+  "schemaVersion": 1,
+  "label": "toolbattery-GLM-4.7-Flash-UD-Q4_K_XL.gguf-20260924T012448Z",
+  "model": "GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+  "baseUrl": "http://172.17.0.1:8080/v1",
+  "generatedAt": "2026-09-24T01:24:48.889383+00:00",
+  "dimensions": {
+    "schemaAdherence": {
+      "dimension": "schemaAdherence",
+      "passed": 3,
+      "total": 3,
+      "notAttempted": 0,
+      "cases": [
+        {
+          "case": "room-basic",
+          "description": "Book Falcon for 30 minutes starting at 2026-10-01T14:00:00 for alice@example.com and bob@example.com.",
+          "passed": true,
+          "reasons": [],
+          "toolCalled": "book_meeting_room",
+          "arguments": {
+            "room_name": "Falcon",
+            "start_time": "2026-10-01T14:00:00",
+            "duration_minutes": 30,
+            "attendees": [
+              "alice@example.com",
+              "bob@example.com"
+            ]
+          }
+        },
+        {
+          "case": "room-recurring",
+          "description": "Set up a recurring 60 minute meeting in room Heron at 2026-10-02T09:30:00 with just carol@example.com.",
+          "passed": true,
+          "reasons": [],
+          "toolCalled": "book_meeting_room",
+          "arguments": {
+            "room_name": "Heron",
+            "start_time": "2026-10-02T09:30:00",
+            "duration_minutes": 60,
+            "attendees": [
+              "carol@example.com"
+            ],
+            "recurring": true
+          }
+        },
+        {
+          "case": "weather-units",
+          "description": "What is the weather in Tokyo right now, in fahrenheit?",
+          "passed": true,
+          "reasons": [],
+          "toolCalled": "get_weather",
+          "arguments": {
+            "city": "Tokyo",
+            "units": "fahrenheit"
+          }
+        }
+      ],
+      "score": 1.0
+    },
+    "toolSelection": {
+      "dimension": "toolSelection",
+      "passed": 5,
+      "total": 5,
+      "notAttempted": 0,
+      "cases": [
+        {
+          "case": "pick-weather",
+          "description": "How hot is it in Lisbon today?",
+          "passed": true,
+          "reasons": [],
+          "expectedTool": "get_weather",
+          "toolCalled": "get_weather"
+        },
+        {
+          "case": "pick-alerts",
+          "description": "Are there any severe weather alerts active for the Gulf Coast region right now?",
+          "passed": true,
+          "reasons": [],
+          "expectedTool": "get_weather_alerts",
+          "toolCalled": "get_weather_alerts"
+        },
+        {
+          "case": "pick-order-status",
+          "description": "What's the status of the most recent order for the customer with id cus_77120?",
+          "passed": true,
+          "reasons": [],
+          "expectedTool": "get_order_status",
+          "toolCalled": "get_order_status"
+        },
+        {
+          "case": "pick-cancel",
+          "description": "Please cancel the subscription belonging to customer cus_31004.",
+          "passed": true,
+          "reasons": [],
+          "expectedTool": "cancel_subscription",
+          "toolCalled": "cancel_subscription"
+        },
+        {
+          "case": "pick-rooms-list",
+          "description": "What meeting rooms are free right now in the Riverside building?",
+          "passed": true,
+          "reasons": [],
+          "expectedTool": "list_available_rooms",
+          "toolCalled": "list_available_rooms"
+        }
+      ],
+      "score": 1.0
+    },
+    "multiStepDependency": {
+      "dimension": "multiStepDependency",
+      "passed": 2,
+      "total": 2,
+      "notAttempted": 0,
+      "cases": [
+        {
+          "case": "customer-then-order",
+          "description": "What is the order status for the customer whose email is dana@example.com?",
+          "passed": true,
+          "reasons": [],
+          "firstCall": {
+            "id": "IDOuF0qJ9GJDfjTitEoT75xEgdZO6rD7",
+            "name": "lookup_customer",
+            "args": {
+              "email": "dana@example.com"
+            },
+            "args_raw": "{\"email\":\"dana@example.com\"}",
+            "parse_error": null
+          },
+          "secondCall": {
+            "id": "HtqoBFRWpA2kkoCJA24xzAQyGnM8gkuv",
+            "name": "get_order_status",
+            "args": {
+              "customer_id": "cus_48291"
+            },
+            "args_raw": "{\"customer_id\":\"cus_48291\"}",
+            "parse_error": null
+          },
+          "simulatedFirstResult": {
+            "customer_id": "cus_48291"
+          }
+        },
+        {
+          "case": "rate-then-apply",
+          "description": "Convert 250 USD to EUR.",
+          "passed": true,
+          "reasons": [],
+          "firstCall": {
+            "id": "Lf63ytytKdtNahNemDlxfPamStx9U5VA",
+            "name": "get_exchange_rate",
+            "args": {
+              "from_currency": "USD",
+              "to_currency": "EUR"
+            },
+            "args_raw": "{\"from_currency\":\"USD\",\"to_currency\":\"EUR\"}",
+            "parse_error": null
+          },
+          "secondCall": {
+            "id": "MmZxLBomGIpcdazio2W3L18MrBgIOlNl",
+            "name": "apply_exchange_rate",
+            "args": {
+              "amount": 250,
+              "rate": 0.9137
+            },
+            "args_raw": "{\"amount\":250,\"rate\":0.9137}",
+            "parse_error": null
+          },
+          "simulatedFirstResult": {
+            "rate": 0.9137
+          }
+        }
+      ],
+      "score": 1.0
+    },
+    "errorRecovery": {
+      "dimension": "errorRecovery",
+      "passed": 0,
+      "total": 1,
+      "notAttempted": 1,
+      "cases": [
+        {
+          "case": "reminder-bad-format",
+          "description": "Remind me to call the vendor next Tuesday at 3pm.",
+          "passed": false,
+          "reasons": [
+            "no tool call made on the first turn; cannot probe recovery"
+          ],
+          "firstCall": null
+        },
+        {
+          "case": "room-conflict",
+          "description": "Book room Falcon for 30 minutes starting 2026-10-01T14:00:00 for alice@example.com.",
+          "passed": null,
+          "reasons": [
+            "model did not retry the failing call (stopped or answered in text) -- recovery was never exercised"
+          ],
+          "firstCall": {
+            "id": "o7doZ5gh4BeiyGO5dk8Age4xT9g2OYLd",
+            "name": "book_meeting_room",
+            "args": {
+              "room_name": "Falcon",
+              "start_time": "2026-10-01T14:00:00",
+              "duration_minutes": 30,
+              "attendees": [
+                "alice@example.com"
+              ]
+            },
+            "args_raw": "{\"room_name\":\"Falcon\",\"start_time\":\"2026-10-01T14:00:00\",\"duration_minutes\":30,\"attendees\":[\"alice@example.com\"]}",
+            "parse_error": null
+          },
+          "simulatedError": {
+            "error": "room Falcon is already booked for that time slot"
+          },
+          "secondCall": null,
+          "secondCallText": "I'm sorry, but the Falcon room is already booked for October 1, 2026 from 2:00 PM to 2:30 PM. \n\nWould you like me to:\n- Check other available rooms?\n- Look for a different time slot?\n- Try booking a different room?"
+        }
+      ],
+      "score": 0.0
+    },
+    "refusal": {
+      "dimension": "refusal",
+      "passed": 4,
+      "total": 4,
+      "notAttempted": 0,
+      "cases": [
+        {
+          "case": "trivia",
+          "description": "What is the capital of France?",
+          "passed": true,
+          "reasons": [
+            "no tool called, as expected"
+          ],
+          "toolsCalled": [],
+          "answerText": "The capital of France is Paris."
+        },
+        {
+          "case": "arithmetic",
+          "description": "What's 17 times 23?",
+          "passed": true,
+          "reasons": [
+            "no tool called, as expected"
+          ],
+          "toolsCalled": [],
+          "answerText": "17 times 23 equals **391**.\n\nI can calculate this by multiplying 17 by 20 (which is 340) and then adding 17 times 3 (which is 51), so 340 + 51 = 391."
+        },
+        {
+          "case": "opinion",
+          "description": "What is a good name for a pet cat?",
+          "passed": true,
+          "reasons": [
+            "no tool called, as expected"
+          ],
+          "toolsCalled": [],
+          "answerText": "Here are some great cat name ideas to consider:\n\n**Classic & Elegant:**\n- Luna\n- Oliver\n- Bella\n- Charlie\n- Daisy\n\n**Playful & Cute:**\n- Mochi\n- Cookie\n- Puddles\n- Ziggy\n- Gizmo\n\n**Nature-Inspired:**\n- Willow\n- Stormy\n- Willow\n- River\n- Autumn\n\n**Food & Drink:**\n- Olive\n- Noodle\n- Mocha\n- Coffee\n- Sashimi\n\n**Unique & Creative:**\n- Nimbus\n- Pixel\n- Jasper\n- Clementine\n- Barnaby\n\n**Gender-Specific O..."
+        },
+        {
+          "case": "unit-conversion-trap",
+          "description": "Convert 10 miles to kilometers.",
+          "passed": true,
+          "reasons": [
+            "no tool called, as expected"
+          ],
+          "toolsCalled": [],
+          "answerText": "I don't have access to a specific tool for converting miles to kilometers - that function appears to be for currency conversion only. However, I can help you with that conversion manually.\n\n**10 miles = 16.09 kilometers** (since 1 mile = 1.60934 kilometers)\n\nSo 10 miles is approximately 16.1 kilometers."
+        }
+      ],
+      "score": 1.0
+    }
+  },
+  "overall": {
+    "passed": 14,
+    "total": 15,
+    "notAttempted": 1,
+    "score": 0.9333
+  },
+  "transportErrors": []
+}

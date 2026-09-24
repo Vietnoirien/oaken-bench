@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 2,
+  "label": "pi-glm47flash-01",
+  "harness": "pi",
+  "model": "GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+  "toolCalls": 54,
+  "toolOutcomes": {
+    "ok": 52,
+    "error": 1,
+    "unknown": 1
+  },
+  "errorRate": 0.0189,
+  "errorsByTool": {
+    "edit": 1
+  },
+  "toolHistogram": {
+    "read": 22,
+    "bash": 7,
+    "write": 9,
+    "edit": 16
+  },
+  "unknownTools": [],
+  "mutatingCalls": 25,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "read",
+      "3f1c558a9f3285e2",
+      1
+    ],
+    [
+      "bash",
+      "953fce1641ad22fe",
+      1
+    ],
+    [
+      "read",
+      "4c7c4c74f69cdad6",
+      1
+    ],
+    [
+      "read",
+      "3c0bc570fe2947bd",
+      1
+    ],
+    [
+      "read",
+      "89d084763d2e16a5",
+      1
+    ],
+    [
+      "read",
+      "3c55221755fb46e8",
+      1
+    ],
+    [
+      "read",
+      "609e687275aad843",
+      1
+    ],
+    [
+      "read",
+      "fca5181ad4457a9a",
+      1
+    ],
+    [
+      "read",
+      "d7118d3379eabbce",
+      1
+    ],
+    [
+      "read",
+      "503b50a1c418bcfa",
+      1
+    ],
+    [
+      "read",
+      "583c5a9b4d33ec66",
+      1
+    ],
+    [
+      "read",
+      "29f1913b6a7dcf84",
+      1
+    ],
+    [
+      "bash",
+      "30d567c578e01da3",
+      1
+    ],
+    [
+      "read",
+      "b7076367a4e5a7ea",
+      1
+    ],
+    [
+      "read",
+      "4b7e7b5110817e09",
+      1
+    ],
+    [
+      "read",
+      "db412846beb72edf",
+      1
+    ],
+    [
+      "read",
+      "3825571bc38fe4b5",
+      1
+    ],
+    [
+      "read",
+      "8656bcac47657718",
+      1
+    ],
+    [
+      "read",
+      "ef105b92745f08e2",
+      1
+    ],
+    [
+      "read",
+      "c9bc567318f65208",
+      1
+    ],
+    [
+      "read",
+      "80360136865934ea",
+      1
+    ],
+    [
+      "read",
+      "02a1adce668b0822",
+      1
+    ],
+    [
+      "bash",
+      "03d9be711bed19c8",
+      1
+    ],
+    [
+      "write",
+      "0d610ba12d5e4fd8",
+      1
+    ],
+    [
+      "write",
+      "8278111f4e9c1a1f",
+      1
+    ],
+    [
+      "write",
+      "931e63f30a395ffc",
+      1
+    ],
+    [
+      "write",
+      "28d7a423a862c818",
+      1
+    ],
+    [
+      "write",
+      "347443cee35deaa5",
+      1
+    ],
+    [
+      "write",
+      "814ee5e240459f8a",
+      1
+    ],
+    [
+      "write",
+      "5426ffd4d6df3b9f",
+      1
+    ],
+    [
+      "write",
+      "143e6889e45f1ab6",
+      1
+    ],
+    [
+      "edit",
+      "c81a9e2f84d5e9b1",
+      1
+    ],
+    [
+      "edit",
+      "32775dc32746b031",
+      1
+    ],
+    [
+      "edit",
+      "4982d98821c77faa",
+      1
+    ],
+    [
+      "edit",
+      "73904cc4bcb37662",
+      1
+    ],
+    [
+      "edit",
+      "86fe4f3d38e5cff6",
+      1
+    ],
+    [
+      "read",
+      "082dae3e8c4bb259",
+      1
+    ],
+    [
+      "bash",
+      "24fbc4361b9c6e7d",
+      1
+    ],
+    [
+      "read",
+      "d955df7d49ce4c94",
+      1
+    ],
+    [
+      "edit",
+      "4140f2ec78b533d0",
+      1
+    ],
+    [
+      "bash",
+      "31dee6c36e771453",
+      1
+    ],
+    [
+      "edit",
+      "6755eefc4698f7e4",
+      1
+    ],
+    [
+      "bash",
+      "f94a36360bd76b05",
+      1
+    ],
+    [
+      "write",
+      "7116095eaae6e54d",
+      1
+    ],
+    [
+      "edit",
+      "6144c60fa1b6753f",
+      1
+    ],
+    [
+      "edit",
+      "ccd47af473437cfa",
+      1
+    ],
+    [
+      "edit",
+      "47b6379e3eb69ad4",
+      1
+    ],
+    [
+      "edit",
+      "1bf0b6f5c1cb48da",
+      1
+    ],
+    [
+      "edit",
+      "14dff4ec605be6da",
+      1
+    ],
+    [
+      "edit",
+      "d9ab53983d14924f",
+      1
+    ],
+    [
+      "edit",
+      "b68a08025eba9fa1",
+      1
+    ],
+    [
+      "edit",
+      "5776bd7eea5b2c91",
+      1
+    ],
+    [
+      "edit",
+      "51c21b12c7656e6d",
+      1
+    ],
+    [
+      "bash",
+      "28936aa8ac9f5bad",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.35,
+    "max": 10
+  },
+  "parallelTurns": 4,
+  "timeToFirstToolCall": 0.05,
+  "toolCallIntervals": {
+    "n": 52,
+    "p50Seconds": 3.763,
+    "p95Seconds": 133.057
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

@@ -1,0 +1,361 @@
+{
+  "label": "pi-oss20b-03",
+  "harness": "pi",
+  "model": "gpt-oss-20b-MXFP4.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 141,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": false,
+  "suiteHung": false,
+  "visible": {
+    "passed": 28,
+    "failed": 24,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.5385
+  },
+  "hidden": {
+    "passed": 14,
+    "failed": 118,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.1061
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 55,
+      "message_start": 111,
+      "message_end": 111,
+      "message_update": 9384,
+      "tool_execution_start": 54,
+      "tool_execution_update": 9,
+      "tool_execution_end": 54,
+      "turn_end": 55,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 55,
+    "toolCalls": 54,
+    "usage": {
+      "input": 27940,
+      "output": 10409,
+      "cacheRead": 1302935,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 54,
+      "error": 0,
+      "unknown": 0
+    },
+    "errorRate": 0.0,
+    "errorsByTool": {},
+    "toolHistogram": {
+      "bash": 4,
+      "read": 19,
+      "edit": 31
+    },
+    "unknownTools": [],
+    "mutatingCalls": 31,
+    "repeatedCalls": 0,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 1.0,
+    "callSequence": [
+      [
+        "bash",
+        "ce62484d4b930325",
+        1
+      ],
+      [
+        "read",
+        "98f8b01ce80d3368",
+        1
+      ],
+      [
+        "read",
+        "a2eaa330e871c69d",
+        1
+      ],
+      [
+        "read",
+        "8f1d4c0609f64ec9",
+        1
+      ],
+      [
+        "read",
+        "5a43f2c10669975e",
+        1
+      ],
+      [
+        "read",
+        "bc6309a8a9b2eed8",
+        1
+      ],
+      [
+        "read",
+        "b5327c5044796525",
+        1
+      ],
+      [
+        "read",
+        "9f69e52446bf6212",
+        1
+      ],
+      [
+        "read",
+        "4d600073f8b50b2e",
+        1
+      ],
+      [
+        "read",
+        "92ae47dfc9cd1ae6",
+        1
+      ],
+      [
+        "read",
+        "dbd000802a0bf248",
+        1
+      ],
+      [
+        "read",
+        "c7da5fa2fb9c88a5",
+        1
+      ],
+      [
+        "read",
+        "e3f87c116c0f349e",
+        1
+      ],
+      [
+        "read",
+        "e38b60d07777386d",
+        1
+      ],
+      [
+        "read",
+        "b21b9b292da8211f",
+        1
+      ],
+      [
+        "read",
+        "1730f0c65149f98e",
+        1
+      ],
+      [
+        "read",
+        "dd8e9ba40df9b637",
+        1
+      ],
+      [
+        "read",
+        "3b8ae5a0c237539a",
+        1
+      ],
+      [
+        "read",
+        "a8ec875bf4732532",
+        1
+      ],
+      [
+        "read",
+        "caa88c0cad33c0ab",
+        1
+      ],
+      [
+        "bash",
+        "90100ccfbce2458b",
+        1
+      ],
+      [
+        "bash",
+        "bd7c2a12305a4210",
+        1
+      ],
+      [
+        "bash",
+        "f025858a59d9a9e7",
+        1
+      ],
+      [
+        "edit",
+        "6c8422687c217d69",
+        1
+      ],
+      [
+        "edit",
+        "5642e4752934b0f9",
+        1
+      ],
+      [
+        "edit",
+        "5a0d842b0307ccef",
+        1
+      ],
+      [
+        "edit",
+        "c19afb946970318f",
+        1
+      ],
+      [
+        "edit",
+        "883e2d48503996ce",
+        1
+      ],
+      [
+        "edit",
+        "ba7f8e70872d1a5b",
+        1
+      ],
+      [
+        "edit",
+        "48a050f8913d8cf4",
+        1
+      ],
+      [
+        "edit",
+        "3580c63e516c3bc4",
+        1
+      ],
+      [
+        "edit",
+        "85b88de4d83cb5cd",
+        1
+      ],
+      [
+        "edit",
+        "40fcd1b8d9ada7b4",
+        1
+      ],
+      [
+        "edit",
+        "48394adf48cee2d2",
+        1
+      ],
+      [
+        "edit",
+        "6bf838a1936adcdf",
+        1
+      ],
+      [
+        "edit",
+        "2792148bdb3ac9b1",
+        1
+      ],
+      [
+        "edit",
+        "55a32d3e45ed3630",
+        1
+      ],
+      [
+        "edit",
+        "07675489d2800fb0",
+        1
+      ],
+      [
+        "edit",
+        "c0f8a71fd98e18ac",
+        1
+      ],
+      [
+        "edit",
+        "c4861184fb9b6f4d",
+        1
+      ],
+      [
+        "edit",
+        "fd92400971310ba2",
+        1
+      ],
+      [
+        "edit",
+        "71a6aed45f98384c",
+        1
+      ],
+      [
+        "edit",
+        "f8d55532c2029992",
+        1
+      ],
+      [
+        "edit",
+        "263bf30cd682fa01",
+        1
+      ],
+      [
+        "edit",
+        "73ca0b324a547587",
+        1
+      ],
+      [
+        "edit",
+        "fb3b4506f030e3eb",
+        1
+      ],
+      [
+        "edit",
+        "48c68b1bc2ed6693",
+        1
+      ],
+      [
+        "edit",
+        "2c195a91468e2ed3",
+        1
+      ],
+      [
+        "edit",
+        "fb0ffde1d04541d4",
+        1
+      ],
+      [
+        "edit",
+        "34d87bc62c0955b5",
+        1
+      ],
+      [
+        "edit",
+        "0d30bcb892ac743d",
+        1
+      ],
+      [
+        "edit",
+        "11293c7d43e3d179",
+        1
+      ],
+      [
+        "edit",
+        "32ba9b038431b65c",
+        1
+      ],
+      [
+        "edit",
+        "87bad3925b6f7b9b",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 0.052,
+    "toolCallIntervals": {
+      "n": 53,
+      "p50Seconds": 1.477,
+      "p95Seconds": 4.536
+    },
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "declared_done_tests_red",
+  "overfitGap": 0.4324
+}

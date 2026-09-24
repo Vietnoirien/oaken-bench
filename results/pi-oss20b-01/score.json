@@ -1,0 +1,193 @@
+{
+  "label": "pi-oss20b-01",
+  "harness": "pi",
+  "model": "gpt-oss-20b-MXFP4.gguf",
+  "exitCode": 124,
+  "wallclockSeconds": 1802,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": true,
+  "suiteHung": false,
+  "visible": {
+    "passed": 3,
+    "failed": 49,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.0577
+  },
+  "hidden": {
+    "passed": 0,
+    "failed": 132,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 21,
+      "message_start": 43,
+      "message_end": 43,
+      "message_update": 1696,
+      "tool_execution_start": 21,
+      "tool_execution_end": 20,
+      "turn_end": 20,
+      "tool_execution_update": 23
+    },
+    "turns": 21,
+    "toolCalls": 21,
+    "usage": {
+      "input": 21065,
+      "output": 1874,
+      "cacheRead": 286975,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 20,
+      "error": 0,
+      "unknown": 1
+    },
+    "errorRate": 0.0,
+    "errorsByTool": {},
+    "toolHistogram": {
+      "read": 11,
+      "bash": 10
+    },
+    "unknownTools": [],
+    "mutatingCalls": 0,
+    "repeatedCalls": 0,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 1.0,
+    "callSequence": [
+      [
+        "read",
+        "98f8b01ce80d3368",
+        1
+      ],
+      [
+        "bash",
+        "1975e6e19ed7b089",
+        1
+      ],
+      [
+        "read",
+        "bc6309a8a9b2eed8",
+        1
+      ],
+      [
+        "read",
+        "20541c2b47bab6fa",
+        1
+      ],
+      [
+        "read",
+        "5a43f2c10669975e",
+        1
+      ],
+      [
+        "read",
+        "b5327c5044796525",
+        1
+      ],
+      [
+        "read",
+        "432db02889a045a7",
+        1
+      ],
+      [
+        "read",
+        "9f69e52446bf6212",
+        1
+      ],
+      [
+        "read",
+        "4d600073f8b50b2e",
+        1
+      ],
+      [
+        "read",
+        "dbd000802a0bf248",
+        1
+      ],
+      [
+        "read",
+        "3e3dc9ab0cebf4be",
+        1
+      ],
+      [
+        "read",
+        "a2eaa330e871c69d",
+        1
+      ],
+      [
+        "bash",
+        "233c801859d6f4f0",
+        1
+      ],
+      [
+        "bash",
+        "119e96cbbdd52bac",
+        1
+      ],
+      [
+        "bash",
+        "8340a86f321a5119",
+        1
+      ],
+      [
+        "bash",
+        "b30db52ea8a2a972",
+        1
+      ],
+      [
+        "bash",
+        "aabdf69aa2da5818",
+        1
+      ],
+      [
+        "bash",
+        "9ed04008c93b2c22",
+        1
+      ],
+      [
+        "bash",
+        "0ce4e1a61c655ed7",
+        1
+      ],
+      [
+        "bash",
+        "aa5bb0a1c4d4b6db",
+        1
+      ],
+      [
+        "bash",
+        "05b4fa2f1d0d65cf",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 0.054,
+    "toolCallIntervals": {
+      "n": 19,
+      "p50Seconds": 0.743,
+      "p95Seconds": 1.173
+    },
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "timeout",
+  "overfitGap": 0.0577
+}

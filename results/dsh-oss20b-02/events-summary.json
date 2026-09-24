@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "label": "dsh-oss20b-02",
+  "harness": "dsh",
+  "model": "gpt-oss-20b-MXFP4.gguf",
+  "toolCalls": 8,
+  "toolOutcomes": {
+    "ok": 8,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "bash": 1,
+    "read": 7
+  },
+  "unknownTools": [],
+  "mutatingCalls": 0,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "bash",
+      "8968f68676adf53e",
+      1
+    ],
+    [
+      "read",
+      "3d6b3b75a551377b",
+      1
+    ],
+    [
+      "read",
+      "4d15d014d150b1f9",
+      1
+    ],
+    [
+      "read",
+      "ee659464075b9913",
+      1
+    ],
+    [
+      "read",
+      "5fe5a80f59b82d45",
+      1
+    ],
+    [
+      "read",
+      "3e78febae26fd8d6",
+      1
+    ],
+    [
+      "read",
+      "d66078b7dc0fb3aa",
+      1
+    ],
+    [
+      "read",
+      "4da4a063e8dd0ddb",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 2.179,
+  "toolCallIntervals": {
+    "n": 7,
+    "p50Seconds": 0.799,
+    "p95Seconds": 1.53
+  },
+  "generationSeconds": 6.775,
+  "toolExecutionSeconds": 0.131
+}

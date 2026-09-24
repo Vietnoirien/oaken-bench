@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 2,
+  "label": "dsh-oss20b-01",
+  "harness": "dsh",
+  "model": "gpt-oss-20b-MXFP4.gguf",
+  "toolCalls": 18,
+  "toolOutcomes": {
+    "ok": 18,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "read": 16,
+    "glob": 2
+  },
+  "unknownTools": [],
+  "mutatingCalls": 0,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "read",
+      "afbb128b1ff093a3",
+      1
+    ],
+    [
+      "glob",
+      "719276759295be74",
+      1
+    ],
+    [
+      "read",
+      "c90d8de34c438f6e",
+      1
+    ],
+    [
+      "read",
+      "c985b3cf2aa95d38",
+      1
+    ],
+    [
+      "read",
+      "509ac46265ad01f7",
+      1
+    ],
+    [
+      "read",
+      "8d20405eadf6acc0",
+      1
+    ],
+    [
+      "read",
+      "a773b3d2e7f8aad2",
+      1
+    ],
+    [
+      "read",
+      "9629e8e05aecc1f0",
+      1
+    ],
+    [
+      "read",
+      "c34b54e40d2cf87f",
+      1
+    ],
+    [
+      "read",
+      "5d550b236f420135",
+      1
+    ],
+    [
+      "read",
+      "1c4f1542185e2f13",
+      1
+    ],
+    [
+      "read",
+      "3f1a6f9ee36b7694",
+      1
+    ],
+    [
+      "glob",
+      "9a1faafc50555f22",
+      1
+    ],
+    [
+      "read",
+      "cd05be5a0bdea478",
+      1
+    ],
+    [
+      "read",
+      "ad4344dc5af23fba",
+      1
+    ],
+    [
+      "read",
+      "ef83cc87a7b382d4",
+      1
+    ],
+    [
+      "read",
+      "618ca622dbc3adbc",
+      1
+    ],
+    [
+      "read",
+      "ede5cf9ca24e2313",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 2.369,
+  "toolCallIntervals": {
+    "n": 17,
+    "p50Seconds": 0.72,
+    "p95Seconds": 1.072
+  },
+  "generationSeconds": 12.9,
+  "toolExecutionSeconds": 0.253
+}
