@@ -40,6 +40,12 @@ grow a second scoring path (see issue #8's Dependency note).
 Stdlib only at runtime: `urllib.request`, not `requests` (README: no
 runtime deps).
 
+The HTTP client (`chat()`, `server_reachable()`, `ServerError`) lives in
+`direct.py`, not here (issue #27) -- it is the seam later direct-mode
+batteries (T0.5, issues #31/#32) import instead of copying. This module
+owns everything specific to tool-call screening: the five dimensions,
+their scoring, and the CLI.
+
 On issue #8's Dependency note, which names #1, #2 *and* #4: #1/#2's metrics
 are reused (`call_metrics`, `_canonical_digest`). #4's are deliberately not,
 and the reason is structural rather than an oversight. `parseErrors` and the
@@ -68,11 +74,10 @@ import json
 import os
 import re
 import sys
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from direct import ServerError, api_key_from_env, chat, server_reachable  # noqa: E402
 from events import Call, _canonical_digest, _safe_tool_name, call_metrics  # noqa: E402
 
 SCHEMA_VERSION = 1
@@ -104,47 +109,6 @@ def strip_reasoning(content):
     reasoning = m.group(1).strip()
     final = (content[:m.start()] + content[m.end():]).strip()
     return reasoning, final
-
-
-# ---------------------------------------------------------------------------
-# HTTP (stdlib only)
-# ---------------------------------------------------------------------------
-
-class ServerError(RuntimeError):
-    pass
-
-
-def server_reachable(base_url, timeout=5):
-    try:
-        req = urllib.request.Request(base_url.rstrip('/') + '/models', method='GET')
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status == 200
-    except Exception:
-        return False
-
-
-def chat(base_url, model, messages, tools=None, max_tokens=512, timeout=60):
-    """One /v1/chat/completions call. Returns the parsed JSON response.
-    Raises ServerError on any transport/HTTP failure -- callers decide
-    whether that fails one case or the whole run."""
-    payload = {'model': model, 'messages': messages, 'max_tokens': max_tokens}
-    if tools:
-        payload['tools'] = tools
-    data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(
-        base_url.rstrip('/') + '/chat/completions', data=data,
-        headers={'Content-Type': 'application/json'}, method='POST')
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            body = resp.read()
-    except urllib.error.HTTPError as e:
-        raise ServerError(f'HTTP {e.code} from {base_url}: {e.read()[:500]!r}') from e
-    except urllib.error.URLError as e:
-        raise ServerError(f'request to {base_url} failed: {e}') from e
-    try:
-        return json.loads(body)
-    except (ValueError, TypeError) as e:
-        raise ServerError(f'non-JSON response from {base_url}: {body[:500]!r}') from e
 
 
 def parse_message(message):
@@ -394,8 +358,9 @@ def _msg(role, content):
     return {'role': role, 'content': content}
 
 
-def _run_case(base_url, model, max_tokens, timeout, messages, tools):
-    resp = chat(base_url, model, messages, tools=tools, max_tokens=max_tokens, timeout=timeout)
+def _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=None):
+    resp = chat(base_url, model, messages, tools=tools, max_tokens=max_tokens, timeout=timeout,
+                api_key=api_key)
     choice = (resp.get('choices') or [{}])[0]
     message = choice.get('message') or {}
     parsed = parse_message(message)
@@ -431,12 +396,12 @@ SCHEMA_CASES = [
 ]
 
 
-def run_schema_adherence(base_url, model, max_tokens, timeout, errors):
+def run_schema_adherence(base_url, model, max_tokens, timeout, errors, api_key=None):
     cases = []
     for case_id, prompt, tool in SCHEMA_CASES:
         messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
         try:
-            parsed = _run_case(base_url, model, max_tokens, timeout, messages, [tool])
+            parsed = _run_case(base_url, model, max_tokens, timeout, messages, [tool], api_key=api_key)
         except ServerError as e:
             errors.append(f'schemaAdherence/{case_id}: {e}')
             cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
@@ -473,12 +438,12 @@ SELECTION_CASES = [
 ]
 
 
-def run_tool_selection(base_url, model, max_tokens, timeout, errors):
+def run_tool_selection(base_url, model, max_tokens, timeout, errors, api_key=None):
     cases = []
     for case_id, prompt, tools, expected in SELECTION_CASES:
         messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
         try:
-            parsed = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+            parsed = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
         except ServerError as e:
             errors.append(f'toolSelection/{case_id}: {e}')
             cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
@@ -495,7 +460,7 @@ def run_tool_selection(base_url, model, max_tokens, timeout, errors):
 # Dimension C: multi-step dependency
 # ---------------------------------------------------------------------------
 
-def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors):
+def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_key=None):
     cases = []
 
     # Scenario 1: lookup_customer -> get_order_status(customer_id=<looked-up id>)
@@ -505,7 +470,7 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors):
     fake_customer_id = 'cus_48291'
     messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
     try:
-        p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+        p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
         c1 = _first_call(p1)
         if c1 is None or c1['name'] != 'lookup_customer':
             cases.append(_case_record(case_id, prompt, False,
@@ -517,7 +482,7 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors):
                                               'function': {'name': c1['name'], 'arguments': json.dumps(c1['args'])}}]})
             messages.append({'role': 'tool', 'tool_call_id': c1['id'],
                               'content': json.dumps({'customer_id': fake_customer_id})})
-            p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+            p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
             c2 = _first_call(p2)
             passed, reasons = score_dependency(c2, 'customer_id', fake_customer_id)
             cases.append(_case_record(case_id, prompt, passed, reasons, {
@@ -534,7 +499,7 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors):
     fake_rate = 0.9137
     messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
     try:
-        p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+        p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
         c1 = _first_call(p1)
         if c1 is None or c1['name'] != 'get_exchange_rate':
             cases.append(_case_record(case_id, prompt, False,
@@ -546,7 +511,7 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors):
                                               'function': {'name': c1['name'], 'arguments': json.dumps(c1['args'])}}]})
             messages.append({'role': 'tool', 'tool_call_id': c1['id'],
                               'content': json.dumps({'rate': fake_rate})})
-            p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+            p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
             c2 = _first_call(p2)
             passed, reasons = score_dependency(c2, 'rate', fake_rate)
             cases.append(_case_record(case_id, prompt, passed, reasons, {
@@ -563,7 +528,7 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors):
 # Dimension D: error recovery
 # ---------------------------------------------------------------------------
 
-def run_error_recovery(base_url, model, max_tokens, timeout, errors):
+def run_error_recovery(base_url, model, max_tokens, timeout, errors, api_key=None):
     cases = []
     scenarios = [
         ('reminder-bad-format',
@@ -588,7 +553,7 @@ def run_error_recovery(base_url, model, max_tokens, timeout, errors):
     for case_id, prompt, tools, expected_tool, error_result in scenarios:
         messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
         try:
-            p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+            p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
             c1 = _first_call(p1)
             if c1 is None:
                 cases.append(_case_record(case_id, prompt, False,
@@ -599,7 +564,7 @@ def run_error_recovery(base_url, model, max_tokens, timeout, errors):
                               'tool_calls': [{'id': c1['id'], 'type': 'function',
                                               'function': {'name': c1['name'], 'arguments': json.dumps(c1['args'])}}]})
             messages.append({'role': 'tool', 'tool_call_id': c1['id'], 'content': json.dumps(error_result)})
-            p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools)
+            p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
             c2 = _first_call(p2)
             passed, reasons = score_error_recovery(c1, c2)
             cases.append(_case_record(case_id, prompt, passed, reasons, {
@@ -627,12 +592,12 @@ REFUSAL_CASES = [
 ]
 
 
-def run_refusal(base_url, model, max_tokens, timeout, errors):
+def run_refusal(base_url, model, max_tokens, timeout, errors, api_key=None):
     cases = []
     for case_id, prompt in REFUSAL_CASES:
         messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
         try:
-            parsed = _run_case(base_url, model, max_tokens, timeout, messages, REFUSAL_TOOLS)
+            parsed = _run_case(base_url, model, max_tokens, timeout, messages, REFUSAL_TOOLS, api_key=api_key)
         except ServerError as e:
             errors.append(f'refusal/{case_id}: {e}')
             cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
@@ -664,14 +629,14 @@ def _summarize(name, cases):
             'score': round(passed / total, 4) if total else None}
 
 
-def run_battery(base_url, model, max_tokens=512, timeout=60):
+def run_battery(base_url, model, max_tokens=512, timeout=60, api_key=None):
     errors = []
     dimensions = {
-        'schemaAdherence': run_schema_adherence(base_url, model, max_tokens, timeout, errors),
-        'toolSelection': run_tool_selection(base_url, model, max_tokens, timeout, errors),
-        'multiStepDependency': run_multi_step_dependency(base_url, model, max_tokens, timeout, errors),
-        'errorRecovery': run_error_recovery(base_url, model, max_tokens, timeout, errors),
-        'refusal': run_refusal(base_url, model, max_tokens, timeout, errors),
+        'schemaAdherence': run_schema_adherence(base_url, model, max_tokens, timeout, errors, api_key=api_key),
+        'toolSelection': run_tool_selection(base_url, model, max_tokens, timeout, errors, api_key=api_key),
+        'multiStepDependency': run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_key=api_key),
+        'errorRecovery': run_error_recovery(base_url, model, max_tokens, timeout, errors, api_key=api_key),
+        'refusal': run_refusal(base_url, model, max_tokens, timeout, errors, api_key=api_key),
     }
     # Denominators already exclude not-attempted cases (see _summarize), so
     # the overall figure can never be inflated by a dimension that got no
@@ -730,11 +695,17 @@ def main(argv=None):
                     help='output path for the JSON artefact (default: toolbattery-results/<label>.json)')
     args = p.parse_args(argv)
 
-    if not server_reachable(args.base_url):
+    # Bearer key, if this base URL wants one: env var only, per direct.py's
+    # module docstring -- never a --api-key flag, which `ps` and shell
+    # history would both expose.
+    api_key = api_key_from_env()
+
+    if not server_reachable(args.base_url, api_key=api_key):
         print(f'ERROR: no server reachable at {args.base_url} -- refusing to run', file=sys.stderr)
         return 2
 
-    report = run_battery(args.base_url, args.model, max_tokens=args.max_tokens, timeout=args.timeout)
+    report = run_battery(args.base_url, args.model, max_tokens=args.max_tokens, timeout=args.timeout,
+                          api_key=api_key)
     print_report(report)
 
     out_path = args.out
