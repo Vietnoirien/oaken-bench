@@ -10,6 +10,8 @@ strategies help or hurt.
 |---|---|---|
 | Claude ceiling probe | 129/132 (97.7 %) | not harness-mediated |
 | **Qwen3.6-35B-A3B UD-Q4_K_S, RTX 5070 + 3060** | **pi 94.7-97.0 %, dsh 93.9-99.2 %** (n=3 each) | **six of six clear the 80 % bar** |
+| gpt-oss-20b MXFP4, RTX 5070 + 3060 | pi 0-81.8 %, dsh 0 % (n=3 each) | one of six clears the bar |
+| GLM-4.7-Flash UD-Q4_K_XL, RTX 5070 + 3060 | pi 0-54.5 %, dsh 0.8-65.1 % (n=3 each) | none of six |
 | Gemma 4 12B, RTX 5070 | 0-83.3 % across 14 runs, not n=3 per harness | one run clears the bar |
 
 The task is solvable by a local model on consumer hardware, and reliably so:
@@ -17,10 +19,17 @@ Qwen3.6-35B-A3B split across two 12 GB cards, on a llama.cpp build after b9754.
 On the older b9716 the same configuration scored 0 % on pi twice, from a
 llama.cpp parser bug, not the model. See [FINAL-REPORT.md](FINAL-REPORT.md) §3.6.
 
-**Which harness is better is still unanswered.** On Qwen the two are
-indistinguishable at n=3; on Gemma the spread swamped the difference. The one
-consistent gap is speed: pi finished the Qwen task in a median 529 s against
-dsh's 1228 s.
+The Qwen result is the model's, not the setup's: gpt-oss-20b and GLM-4.7-Flash
+ran the same protocol on the same cards, build and configs, and managed one pass
+in twelve runs between them. GLM is slow at depth (26.6 t/s decode at 99k) and
+ran into the cap five times in six; see FINAL-REPORT §3.7-3.8.
+
+**Which harness is better is still unanswered.** On Qwen and GLM the two are
+indistinguishable at n=3; on Gemma the spread swamped the difference. On
+gpt-oss the harness decided everything: dsh died in under 20 s on all three
+runs, on a malformed tool-call header llama-server could not parse, and pi never
+hit it (FINAL-REPORT §4.5). pi also finished the Qwen task faster, a median 529 s
+against dsh's 1228 s.
 
 ## Under test
 
@@ -30,10 +39,12 @@ dsh's 1228 s.
   RTX 5070 + RTX 3060. Planned as a one-run confirmatory at 15.3 t/s on the winning
   harness; with no winner and ~6x the budgeted speed, it ran n=3 on both. Not
   comparable with any single-card run (limitation 3 below).
-- **Not yet run:** gpt-oss-20b. It was excluded for a "32k context cap", which is
-  wrong: its GGUF declares 131072 (YaRN from 4096). What was true is that its
-  12 GiB of weights leave no room for context on one 12 GB card. Split across
-  two, llama-bench measured 122-126 t/s. It is a candidate, not a finding.
+- **Two-card comparisons:** gpt-oss-20b MXFP4 (119 t/s, 131k ctx) and
+  GLM-4.7-Flash UD-Q4_K_XL (~92 t/s short, 26.6 t/s at 99k filled), n=3 per
+  harness each, on llama.cpp b10751 through `examples/launch-dual.sh`. gpt-oss was
+  originally excluded for a "32k context cap", which was wrong: its GGUF declares
+  131072 (YaRN from 4096). What was true is that its 12 GiB of weights leave no
+  room for context on one 12 GB card.
 
 ## Run matrix (9 runs, as originally planned)
 
@@ -215,7 +226,7 @@ hidden.tar.gz.enc  held-out suite, encrypted. `scripts/hidden.sh unlock` -> hidd
 hidden/            the oracle, once unlocked. Gitignored. Do not read when authoring a task.
 docker/            image, harness configs, entrypoint, PROMPT.txt
   scorer.sh        runs both suites INSIDE the image (see MODELS.md §8)
-examples/          guarded llama-server launchers: Gemma on one card, Qwen3.6-35B-A3B on two
+examples/          guarded llama-server launchers: Gemma on one card; launch-dual.sh presets for the two-card models
 scripts/
   bootstrap.sh     one-time setup
   hidden.sh        lock / unlock / verify the held-out suite
@@ -370,11 +381,11 @@ Five limitations, stated up front rather than buried.
    `examples/launch-qwen35moe.sh` writes the binary and version into the server
    log that each run's archive keeps; no earlier run recorded its build, and
    `score.json` still does not.
-5. **Variance dominates on Gemma.** Four of its six context-arm runs exited
-   before 700 s, and score tracked how long a run survived far more closely than
-   any parameter under test. The Qwen runs on b10751 are the exception: a
-   5.3-point spread, no early exits. Whether that is the model or luck at n=3 is
-   not known; until it is, expect to throw away runs.
+5. **Variance dominates, except on Qwen3.6.** Four of Gemma's six context-arm
+   runs exited before 700 s, and score tracked how long a run survived far more
+   closely than any parameter under test. gpt-oss spans 0-81.8 % on one harness
+   and GLM 0-65.1 %. The Qwen runs on b10751 are the exception: a 5.3-point
+   spread, no early exits. Expect to throw away runs.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than 12 GB consumer cards.

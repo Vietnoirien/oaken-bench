@@ -18,7 +18,8 @@ sub-agent, never read by the implementing agent). **Bar: 80 % hidden.**
 | **Best single-card model** | Gemma 4 12B, **110/132 (83.3 %)** — clears the bar once in 14 runs |
 | **Qwen3.8-27B @ Q2_K_XL** | **0/132 across 5 configurations** — never wrote a line |
 | **Qwen3.8-27B @ IQ2_XXS** | **0/132** at full 131 k ctx — same behaviour, no quant cliff |
-| **Runs clearing 80 %** | **9** — the Claude ceiling probe, one Gemma run, seven Qwen3.6 runs |
+| **Same cards, same build, two other MoEs** | gpt-oss-20b 1/6 clear the bar (pi 30.8 %, dsh 0 %); GLM-4.7-Flash 0/6 (pi 29.5 %, dsh 29.8 %) |
+| **Runs clearing 80 %** | **10** — the Claude ceiling probe, one Gemma run, seven Qwen3.6 runs, one gpt-oss run |
 
 The benchmark and its oracle are sound: a 97.7 % result in under six minutes proves the task is
 well-specified and the hidden suite is fair.
@@ -28,6 +29,13 @@ a 3060 scored between 124 and 131 of 132 in all six graded runs on llama.cpp b10
 harness, with overfit gaps of +0.8 to +6.1 — the Claude probe's is +2.3. One dsh run scored
 131/132, above the probe. See §3.6. It is not comparable with anything single-card: it decodes
 at ~99 t/s, and the cap binds less at that speed (README limitation 3).
+
+**That result belongs to the model, not the setup.** Two other MoEs ran the same protocol on the
+same cards, llama.cpp build, context window, KV precision and harness configs, n=3 per harness
+(§3.7, §3.8). gpt-oss-20b cleared the bar once in six; GLM-4.7-Flash never did, despite
+vendor-reported agentic scores well above gpt-oss's. Neither difference is clean — GLM decodes at
+less than half Qwen3.6's rate at depth and ran into the cap five times in six, and dsh could not
+run gpt-oss at all — but no reading of these twelve runs puts either model near Qwen3.6.
 
 **On one card, the bar was cleared once.** `dsh-gemma192k-03` scored 110/132 (83.3 %) with a
 clean typecheck, 52/52 visible and an overfit gap of +16.7 — the tightest of any Gemma run. It is
@@ -71,6 +79,18 @@ is reachable by a 12 GB-class model, **not** that Gemma reaches it reliably. See
 | dsh-qwen35q4ks-01 | dsh | Qwen3.6 35B-A3B, b9716 | crash | 5/132 3.8 % | 14/52 | 577 s | 31 | 0 | ✗ |
 | pi-qwen35q4ks-01 | pi | Qwen3.6 35B-A3B, b9716 | no engagement | 0/132 | 3/52 | 5 s | 0 | 0 | ok |
 | pi-qwen35q4ks-02 | pi | Qwen3.6 35B-A3B, b9716 | no engagement | 0/132 | 3/52 | 5 s | 0 | 0 | ok |
+| pi-oss20b-02 | pi | gpt-oss-20b | timeout | **108/132 81.8 %** | 52/52 | 1801 s | 64 | 1 | ✗ |
+| pi-oss20b-03 | pi | gpt-oss-20b | declared done | 14/132 10.6 % | 28/52 | 141 s | 54 | 0 | ✗ |
+| pi-oss20b-01 | pi | gpt-oss-20b | timeout | 0/132 | 3/52 | 1802 s | 21 | 0 | ok |
+| dsh-oss20b-01 | dsh | gpt-oss-20b | malformed tool calls | 0/132 | 3/52 | 19 s | 18 | 0 | ok |
+| dsh-oss20b-02 | dsh | gpt-oss-20b | malformed tool calls | 0/132 | 3/52 | 12 s | 8 | 0 | ok |
+| dsh-oss20b-03 | dsh | gpt-oss-20b | malformed tool calls | 0/132 | 3/52 | 10 s | 6 | 0 | ok |
+| dsh-glm47flash-01 | dsh | GLM-4.7-Flash | timeout | 86/132 65.1 % | 49/52 | 1801 s | 198 | 0 | ✗ |
+| pi-glm47flash-02 | pi | GLM-4.7-Flash | timeout | 72/132 54.5 % | 51/52 | 1900 s | 174 | 1 | ✗ |
+| pi-glm47flash-03 | pi | GLM-4.7-Flash | timeout | 45/132 34.1 % | 38/52 | 1801 s | 115 | 1 | ✗ |
+| dsh-glm47flash-02 | dsh | GLM-4.7-Flash | declared done | 31/132 23.5 % | 36/52 | 933 s | 96 | 0 | ✗ |
+| dsh-glm47flash-03 | dsh | GLM-4.7-Flash | timeout | 1/132 0.8 % | 14/52 | 1802 s | 72 | 0 | ✗ |
+| pi-glm47flash-01 | pi | GLM-4.7-Flash | hang | 0/132 | 0/52 | 1801 s | 54 | 0 | ✗ |
 
 `3/52 visible` is the **stub baseline** — three tests assert pre-declared constants and pass
 against unimplemented code. Every Qwen typecheck is "clean" only because **the seed was never
@@ -79,7 +99,8 @@ modified**.
 Not in the table: **17 pi runs that aborted in 3–16 s** on a llama-server parse error (§4.3).
 The two 5 s Qwen3.6 pi runs are in it, because their cause is now known (§3.6).
 
-Every Qwen3.6 run is on the 5070 + 3060; every other local run is on the 5070 alone.
+Every Qwen3.6, gpt-oss and GLM run is on the 5070 + 3060; every other local run is on the 5070
+alone. gpt-oss and GLM ran on llama.cpp b10751 only.
 
 ---
 
@@ -350,6 +371,67 @@ conclusive**. dsh survived every one of these responses.
 
 ---
 
+### 3.7 gpt-oss-20b MXFP4 on two cards — one pass, and dsh cannot run it
+
+Native MXFP4, 11.28 GiB, 131072 context declared (YaRN from 4096 — the "32k cap" this study
+excluded it for was wrong). Layer split 65/35 toward the 5070: 119 t/s on a short prompt; with
+98,931 tokens filled, 4315 t/s prompt but 42.6 t/s decode — a steeper fall with depth than
+Qwen3.6's 99 → 60.7. Tool battery straight at the endpoint: 15/15.
+
+| run | outcome | hidden | wall | what happened |
+|---|---|---|---|---|
+| pi-oss20b-02 | timeout | **108/132 81.8 %** | 1801 s | clears the bar, still working at the cap; gap +18.2 |
+| pi-oss20b-03 | declared done | 14/132 | 141 s | declared done after 54 calls with 28/52 visible |
+| pi-oss20b-01 | timeout | 0/132 | 1802 s | 21 calls, 0 writes — see below |
+| dsh-oss20b-01..03 | malformed tool calls | 0/132 | 10-19 s | see below |
+
+**dsh cannot run this model.** All three dsh runs ended inside 20 seconds, after 6-18 tool calls, on
+the same error: the model emitted a garbled Harmony header —
+`<|channel|>functions.read<|channel|>commentary to=assistant json` instead of
+`<|channel|>commentary to=functions.read` — llama-server logged `unparsed peg-native output` and
+errored the turn, and dsh exited 1. That is llama.cpp
+[#27720](https://github.com/ggml-org/llama.cpp/issues/27720), which its maintainer closed as model
+output no parser can recover, pointing at round-tripping the reasoning as the fix (a reporter
+measured ~4 % of turns without it). **That fix does not explain dsh here**: dsh's stored history
+carries the reasoning with the `reasoning_content` replay signature on 16 of 18 assistant messages,
+and the bundled pi-ai library replays it. pi hit the error zero times in three runs. Why dsh hits
+it every time is open.
+
+**pi-oss20b-01 never ran out of ideas; it ran out of a shell.** Its 21st call,
+`grep -R ... ..` from `/work`, walks the container's filesystem from `/` down, `/proc` included,
+and never returned. The call carried `"timeout": 10000`; if pi reads that as seconds, it replaced
+the 600 s cap this study set for fairness. Unconfirmed — pi's unit was not checked.
+
+### 3.8 GLM-4.7-Flash UD-Q4_K_XL on two cards — works, writes, too slow
+
+31.2B total, ~3B active, arch `deepseek2` in llama.cpp (MLA, 47 blocks). Its MLA cache is
+~3.5 GiB at 131k — every block caches, where Qwen3.6 caches one in four — so the layout moves
+fewer experts to the 5070: blocks 14-46's experts on the 3060, 1187 / 948 MiB free. ~92 t/s on a
+short prompt; **with 98,735 tokens filled, 402 t/s prompt and 26.6 t/s decode**. Tool battery
+14/15.
+
+| | runs | hidden | mean | outcomes |
+|---|---|---|---|---|
+| pi | 3 | 0, 72, 45 | 29.5 % | hang, timeout, timeout |
+| dsh | 3 | 86, 31, 1 | 29.8 % | timeout, declared done, timeout |
+
+The format was never the problem: zero parse errors in six runs, 921-1954 lines inserted per run
+across 9-11 files. **Five of six ran into the 30-minute cap still working**, and
+the one that stopped early declared done at 31/132. The best, dsh-01 at 86/132, made 198 calls.
+Every typecheck is dirty and the overfit gaps run +26 to +46 — Gemma's territory (§3.2), not
+Qwen3.6's.
+
+Z.ai reports SWE-bench Verified 59.2 and τ²-Bench 79.5 for this model, against gpt-oss-20b's 34.0
+and 47.7. Here GLM's means (pi 29.5 %, dsh 29.8 %) sit level with gpt-oss's pi mean (30.8 %), and
+gpt-oss has the only pass of the two. **At this speed on this hardware, the vendor ranking did not survive contact with a
+30-minute long-horizon task** — which says as much about the cap as about the model, since at
+~26 t/s at depth GLM gets under half the tokens Qwen3.6 does in the same half hour (README
+limitation 3).
+
+pi-glm47flash-01 wrote 1954 lines that never terminate under the test runner (`hang`); the scorer
+took 14 minutes to give up on it. pi-glm47flash-02's 1900 s is container overhead around an
+1800 s in-container run.
+
 ### 4.4 On Qwen3.6-35B-A3B — indistinguishable on score, pi faster
 
 At n=3 each on b10751, pi's hidden range is 94.7-97.0 % and dsh's 93.9-99.2 %. They overlap; the
@@ -360,6 +442,20 @@ compaction or its longer steps is not separated by these runs.
 
 pi's abort-on-parse-error (§4.3) is still pi's behaviour. What changed is that on b10751 nothing
 triggered it.
+
+### 4.5 Across the three two-card models — the harness mattered once, completely
+
+| model | pi hidden | dsh hidden | where they differ |
+|---|---|---|---|
+| Qwen3.6-35B-A3B | 94.7-97.0 % | 93.9-99.2 % | pi faster (median 529 s vs 1228 s) |
+| GLM-4.7-Flash | 0-54.5 % | 0.8-65.1 % | nowhere measurable |
+| gpt-oss-20b | 0-81.8 % | 0 %, 0 %, 0 % | dsh fails on the model's Harmony output in <20 s |
+
+On two models of three the harness makes no difference this study can see. On the third it makes
+all of it, and not through context strategy — through how a harness survives one malformed turn.
+pi relays llama-server's parse error as fatal (§4.3), and yet on gpt-oss it is dsh that never gets
+past the first minute. **The failure mode that decides a harness comparison on a local model is
+tool-format robustness, not compaction**, and it is model-specific.
 
 ## 5. Hardware and quantization
 
@@ -489,9 +585,14 @@ Both were stated with more confidence than the evidence supported. The corrected
 5. **Find out why four Gemma runs in six exit early.** This is the largest source of variance in
    the Gemma data. `exit=1` before 700 s, with the agent mid-task, is not yet explained. §3.6 is
    one data point against: none of six Qwen runs on b10751 exited early under the same harnesses.
-6. **Run a second model on the two-card setup.** gpt-oss-20b (128k native, 122-126 t/s split in
-   llama-bench) and GLM-4.7-Flash are the candidates. Without one, §3.6 cannot separate "Qwen3.6
-   does this task" from "this hardware and build do".
+6. ~~**Run a second model on the two-card setup.**~~ **Done — §3.7, §3.8.** gpt-oss-20b 1/6,
+   GLM-4.7-Flash 0/6 on identical hardware, build and configs. The Qwen3.6 result is the model's.
+7. **Why dsh fails on gpt-oss every time and pi never does.** Not the reasoning round-trip #27720
+   points at (§3.7). Capturing the request bodies dsh sends on its failing turn, against pi's on
+   the same turn, would separate prompt shape from sampling.
+8. **Give GLM-4.7-Flash a clock it can use.** Five of six runs hit the cap at ~26 t/s. A 60-minute
+   rerun, labelled apart, would say whether it is slow or incapable; MTP speculative decoding (its
+   GGUF carries the head) might close part of the gap first.
 
 Until (2) exists, the honest statement is: **Qwen3.8-27B does not perform this task on one card at
 either quantization tested, and the IQ2_XXS control makes quantization the *less* likely
@@ -499,4 +600,7 @@ explanation — but it cannot be ruled out, because both tested quants are 2-bit
 parser bug of the §3.6 kind cannot be ruled out either, because nothing recorded the build.**
 
 **Qwen3.6-35B-A3B does perform it**, six times out of six, on two cards and a current llama.cpp.
-That is the strongest positive result in this report and it rests on n=3 per harness.
+That is the strongest positive result in this report and it rests on n=3 per harness. Two other
+MoEs on the same setup managed one pass in twelve runs between them, so the result is the model's —
+with the caveat that "the model" includes its speed, and that one of the two comparisons was
+decided by a harness that could not run the other model at all.

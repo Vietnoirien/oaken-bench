@@ -307,6 +307,26 @@ the identical call. That is llama.cpp
 On b10751 all six graded runs completed or timed out with 93.9-99.2 % hidden and
 zero parse errors. Check `llama-server --version` before blaming the model.
 
+**Two more models, same cards and build**, as presets of `examples/launch-dual.sh`:
+
+| preset | layout | short prompt | at ~99k filled | free at 131k |
+|---|---|---|---|---|
+| `oss20b` — gpt-oss-20b MXFP4, 11.28 GiB | `--tensor-split 65,35` | 119 t/s | 4315 prompt / 42.6 decode | 1396 / 6831 MiB |
+| `glm47flash` — GLM-4.7-Flash UD-Q4_K_XL, 16.32 GiB | `-ot` experts of blocks 14-46 to the 3060 | ~92 t/s | 402 prompt / 26.6 decode | 1187 / 948 MiB |
+
+gpt-oss is small enough for a plain split; weighting it to the faster card is
+worth 5 t/s over 50/50, and 72/28 buys 1.5 more for 830 MiB of margin. GLM is
+arch `deepseek2` to llama.cpp, and its MLA cache (~3.5 GiB at 131k, every block
+caches) lives on the 5070, so fewer of its experts fit there than Qwen3.6's.
+Both decode far slower at depth than Qwen3.6 (60.7 t/s at 106k) — on a
+30-minute task that is most of the difference between them (FINAL-REPORT §3.8).
+
+**gpt-oss under dsh fails in seconds.** Every dsh run hit a garbled Harmony
+header llama-server could not parse (llama.cpp #27720) within 20 s; pi never
+did. The maintainer's fix — round-trip the reasoning — does not explain it, as
+dsh already does. Until that is understood, gpt-oss results on dsh measure this
+failure, not the model.
+
 `examples/launch-qwen35moe.sh` wraps this, and refuses to hand over a server if the
 cards already hold more than they did when it was measured, if a `cudaMalloc`
 failed, if the §5 tool call does not come back well-formed, or if decode is under
