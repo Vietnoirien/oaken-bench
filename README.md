@@ -263,6 +263,63 @@ not just digests: unlike `edit`/`write` arguments in a real harness trace, these
 values answering fixed public prompts, not agent-written solution code against a held-out spec, so
 there is no CANARY.md-style asset at risk in keeping them legible.
 
+## Recall at context depth, and abstention
+
+`ctxprobe.sh` finds the context size that actually *loads*. It says nothing about
+whether the model can find anything inside it once loaded, or whether it knows the
+difference between "found" and "not there". `scripts/recall.py` (issue #31's recall pass,
+issue #32's abstention pass, together T0.5 of the ladder in #26) is the direct-mode
+battery for both: `scripts/haystack.py` builds a seeded, fictional "operations ledger"
+document at each of a few context depths and plants a handful of facts in it at
+controlled positions; `scripts/abstain.py` builds a handful of guaranteed-absent
+`(entity, attribute)` pairs against that SAME haystack (an entity that never appears; an
+entity that appears with a DIFFERENT attribute; an attribute that appears on a DIFFERENT
+entity). One tool call per depth asks about both kinds of pair together, sharing the
+haystack and the cold-prefill cost between the two probes.
+
+```bash
+./scripts/recall.py --model your-model.gguf \
+  --base-url http://172.17.0.1:8080/v1     # your llama-server, same as the main task
+# writes recall-results/recall-<model>-<timestamp>.json
+```
+
+- **Fictional facts only.** Entities, attribute names and values are all invented, seeded
+  from `--seed` (default fixed, override for a fresh set) -- a model cannot answer from
+  training-time exposure to `SPEC.md` or anything else in this repo, only from what is
+  actually in its context window.
+- **Depths stop at the served context.** `--depths` defaults to `4096,16384,32768,65536,131072`
+  (accepts a `k` suffix: `4k,16k,...`); any depth that would not fit inside the server's own
+  `/props`-reported `n_ctx` (minus headroom for the question and the response) is skipped, not
+  attempted, and the skip and its reason are in the artefact.
+- **Token sizing** uses the server's `/tokenize` endpoint when available (llama.cpp has it) to
+  size each haystack to its target depth; falls back to a documented ~4 chars/token estimate
+  otherwise. Which one was used is recorded per depth (`haystack.tokenCountSource`).
+- **Prefill/decode tok/s per depth**, each labelled with its source. llama.cpp's own `timings`
+  object is used when the response carries one; wall-clock is the fallback, per metric. Getting
+  an honest wall-clock split at all means deliberately exploiting llama.cpp's prompt cache within
+  a depth (`measure_depth()`'s two-call pair) while deliberately avoiding it across depths (every
+  depth gets its own, differently-seeded haystack) -- see `recall.py`'s module docstring, "the
+  cache trap", before touching that code.
+- **Abstention, five-way classified.** For every planted fact, an answer is `correct_answer`,
+  `wrong_answer`, or `false_abstention` (the model claimed the fact was absent when it wasn't --
+  over-abstaining, made visible so a model that always says "not in context" cannot score a
+  clean recall failure indistinguishable from genuinely not finding anything). For every
+  guaranteed-absent pair, an answer is `correct_abstention` or `invented_answer`. The model is
+  told in the system prompt to answer exactly `"not in context"` when a pair is absent, but
+  scoring accepts a documented, unit-tested list of paraphrases leniently -- see `abstain.py`'s
+  module docstring for the accepted phrasings and why each is (or is deliberately not) on the
+  list. Counts are reported per depth (`depths[i].presentQuestionCounts` /
+  `depths[i].abstention.counts`, the latter also broken down `byKind`) and rolled up once more
+  into `overall.presentQuestionCounts` / `overall.abstentionCounts`.
+
+Same plaintext-probe caveat as `toolbattery.py`, with one difference worth knowing: unlike
+`toolbattery.py`'s fixed prompts and answers, `recall.py`'s planted facts (and abstain.py's
+absent pairs) are regenerated fresh every seed, so a leaked run's answers do not transfer to a
+different seed's. The probe SHAPE (question template, tool schema, `haystack.py`'s fixed
+vocabulary) is still constant across runs, the same lower-but-nonzero contamination risk
+`toolbattery.py` carries. See
+[CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
+
 ## Layout
 
 ```
@@ -282,7 +339,13 @@ scripts/
   toolbattery.py   short tool-calling screening battery, talks to the model directly (issue #8)
   server_config.py llama-server /props + process/image/GPU provenance capture (issue #14);
                    run.sh writes its output to <label>/run-context.json before every run
+  direct.py        shared OpenAI-compatible HTTP client for direct-mode batteries (issue #27)
+  direct_env.py    direct-mode run-environment capture: GPU, backend, peak VRAM (issue #28)
+  haystack.py      seeded fictional-fact haystack generator for recall/abstention batteries (issue #31)
+  abstain.py       guaranteed-absent (entity, attribute) questions + abstention-phrase scoring (issue #32)
+  recall.py        recall-at-context-depth AND abstention battery, talks to the model directly (issues #31, #32)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
+recall-results/       JSON artefacts from scripts/recall.py, one per run; same conventions as toolbattery-results/
 results/           one directory per run; score.json and events-summary.json are
                    committed (issue #7 -- the derived metrics outlive the trace). The rest
                    (pi-events.jsonl, session tarballs, stderr.log, run-context.json, ...) is
