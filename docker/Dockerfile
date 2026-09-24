@@ -23,7 +23,8 @@ ENV npm_config_offline=true \
     npm_config_fund=false \
     CI=true
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-COPY scorer.sh     /usr/local/bin/scorer.sh
+COPY entrypoint.sh   /usr/local/bin/entrypoint.sh
+COPY scorer.sh       /usr/local/bin/scorer.sh
+COPY score_detail.py /usr/local/bin/score_detail.py
 WORKDIR /work
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

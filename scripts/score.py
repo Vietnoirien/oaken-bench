@@ -5,16 +5,30 @@
 
 Reconstructs the agent's workspace, runs the visible and held-out suites,
 checks the frozen artefacts were not tampered with, and extracts harness
-metrics. Held-out results are reported as COUNTS ONLY; per-test detail is
-written to <label>/hidden-detail.json and is deliberately not printed.
+metrics. Held-out results are reported as COUNTS ONLY in score.json; the
+full per-test breakdown is written to <label>/hidden-detail.json instead
+and is deliberately never printed or merged into a published file.
 
-hidden-detail.json holds the held-out test FILE names and pass/fail status,
-which is itself benchmark data (see docker/scorer.sh) -- it is written
-straight to the gitignored result directory, never merged into score.json
-or events-summary.json, both of which are published. Written by default
-since it costs nothing and cannot leak past .gitignore; pass --no-detail to
-skip it (e.g. to save the container round trip when only the counts in
-score.json are wanted).
+hidden-detail.json holds, per suite, one entry per test FILE (basename,
+pass/fail counts) plus one entry per individual TEST -- a plaintext name
+for the visible suite (already public), a content-addressed digest for
+the held-out suite (docker/score_detail.py; the held-out test NAMES are
+themselves benchmark data, so only a hash of each one is ever written to
+a host mount). Digests are stable across runs, so two runs' held-out pass
+sets can be compared exactly. score.py itself never reads this file back
+in or forwards it anywhere -- it only receives it from the container and
+writes it out. hidden-detail.json is matched by .gitignore's /results/*/*
+rule (only score.json and events-summary.json are excepted from that
+rule, see AGENTS.md), so it is written by default; there is no cost to
+this beyond the JSON encoding, since the container already ran both
+suites either way. --no-detail skips writing the file anyway, for callers
+who want score.json's counts without the per-test breakdown sitting next
+to it.
+
+NOTE: docker/scorer.sh and docker/score_detail.py are baked into the
+runner image at build time (see docker/Dockerfile's COPY lines) -- a
+change to either only takes effect after rebuilding the image
+(scripts/bootstrap.sh, or `docker build` directly).
 """
 import json, os, re, shutil, signal, subprocess, sys, tarfile, tempfile, time
 
@@ -647,12 +661,9 @@ def score_in_container(result_dir, detail=False, timeout=1800):
 
 def main():
     argv = sys.argv[1:]
-    # Default on: hidden-detail.json never reaches a published field (see
-    # the module docstring), so there is no cost to writing it, only to
-    # NOT writing it -- issue #16 was exactly a run where the flag existed
-    # but nothing ever set it, and the pair it would have distinguished
-    # is now unrecoverable. --detail is accepted as a no-op for parity
-    # with docker/entrypoint.sh's own flag of the same name.
+    # Default on -- see the module docstring for why that costs nothing.
+    # --detail is accepted as a no-op for parity with docker/entrypoint.sh's
+    # own flag of the same name.
     detail = '--no-detail' not in argv
     argv = [a for a in argv if a not in ('--detail', '--no-detail')]
     if len(argv) < 1:
@@ -691,20 +702,26 @@ def main():
         'exitCode': exit_code, 'wallclockSeconds': wall, 'restored': restored,
     }
 
+    # None until (if) this scoring pass actually produces a hidden-detail
+    # payload below. Whatever it ends up as, it is written or the file is
+    # removed at the very end -- see the comment down there for why a
+    # leftover from a PRIOR run of this same label must not survive a
+    # scoring pass that didn't reproduce it (--no-detail, a decrypt
+    # __error, a __hung suite, or restored=False all leave it None).
+    hidden_detail = None
+    hidden_detail_path = os.path.join(result_dir, 'hidden-detail.json')
+
     if restored:
         TOT = canonical_totals()
         vis, hid, tc, tampered = score_in_container(result_dir, detail=detail)
         vis = vis or {}
         hid = hid or {}
-        # Pop, don't leave in place: 'detail' carries held-out test FILE
-        # names (docker/scorer.sh), and report['hidden'] below is built by
+        # Pop, don't leave in place: 'detail' carries per-test entries
+        # (docker/score_detail.py), and report['hidden'] below is built by
         # pulling specific keys off `hid` rather than by copying it, but a
         # future edit to that pattern must not find this key still sitting
         # here to copy by accident.
         hidden_detail = hid.pop('detail', None)
-        if hidden_detail is not None:
-            with open(os.path.join(result_dir, 'hidden-detail.json'), 'w') as f:
-                json.dump(hidden_detail, f, indent=2)
         report['tamperedFrozenFiles'] = tampered or []
         report['typecheckClean'] = bool((tc or {}).get('clean'))
         report['suiteHung'] = bool(vis.get('__hung')) or bool(hid.get('__hung'))
@@ -726,6 +743,18 @@ def main():
         report['hidden'] = {'passed': 0, 'failed': 0, 'total': 0, 'rate': 0.0}
         report['typecheckClean'] = False
         report['tamperedFrozenFiles'] = []
+
+    if hidden_detail is not None:
+        with open(hidden_detail_path, 'w') as f:
+            json.dump(hidden_detail, f, indent=2)
+    elif os.path.exists(hidden_detail_path):
+        # A rescoring pass that did NOT produce detail this time (rerun
+        # with --no-detail, a decrypt __error, a __hung suite, or the
+        # workspace no longer restoring at all) must not leave a stale
+        # hidden-detail.json from a PREVIOUS pass sitting next to the
+        # score.json this pass just wrote -- that pairing would silently
+        # claim the old per-test detail still describes the new score.
+        os.remove(hidden_detail_path)
 
     harness = meta.get('harness')
     hm = pi_metrics(result_dir) or dsh_metrics(result_dir)
