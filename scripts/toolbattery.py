@@ -78,6 +78,7 @@ from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from direct import ServerError, api_key_from_env, chat, server_reachable  # noqa: E402
+from direct_env import VramSampler, build_environment  # noqa: E402
 from events import Call, _canonical_digest, _safe_tool_name, call_metrics  # noqa: E402
 
 SCHEMA_VERSION = 1
@@ -704,8 +705,13 @@ def main(argv=None):
         print(f'ERROR: no server reachable at {args.base_url} -- refusing to run', file=sys.stderr)
         return 2
 
-    report = run_battery(args.base_url, args.model, max_tokens=args.max_tokens, timeout=args.timeout,
-                          api_key=api_key)
+    # Sampled around the whole battery, not just around individual calls --
+    # peak VRAM is a property of the run, and #28 wants it caught wherever
+    # in the run it lands, not just at the edges.
+    with VramSampler() as sampler:
+        report = run_battery(args.base_url, args.model, max_tokens=args.max_tokens, timeout=args.timeout,
+                              api_key=api_key)
+    report['environment'] = build_environment(args.base_url, vram_peak=sampler.peak_mib())
     print_report(report)
 
     out_path = args.out
