@@ -45,6 +45,11 @@ OSS_DUAL_MARKERS = ('oss20b',)
 GLM_DUAL_GROUP = 'glm-4.7-flash q4_k_xl 5070+3060, llama.cpp b10751'
 GLM_DUAL_MARKERS = ('glm47flash',)
 
+# Qwen3.6 again at its full native 262144 with q4_0 KV (launch-dual.sh preset
+# qwen35moe-kvq4-262k). Window and KV precision both differ from the b10751 set.
+QWEN_KVQ4_262K_GROUP = 'qwen35 q4_k_s 5070+3060, b10751, 262k q4_0 kv'
+QWEN_KVQ4_262K_MARKERS = ('qwen35kvq4-262k',)
+
 VOID_REASON = 'VOID run (thinkbug) -- excluded from every aggregate'
 
 
@@ -129,6 +134,8 @@ def group_label(row):
     setting was in force. Read `harnessMetricsVersion` (2 = scored after that
     was discovered) alongside this grouping, not instead of it.
     """
+    if any(marker in row['label'] for marker in QWEN_KVQ4_262K_MARKERS):
+        return QWEN_KVQ4_262K_GROUP
     if any(marker in row['label'] for marker in OSS_DUAL_MARKERS):
         return OSS_DUAL_GROUP
     if any(marker in row['label'] for marker in GLM_DUAL_MARKERS):

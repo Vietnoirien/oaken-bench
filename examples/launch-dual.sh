@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # One guarded launcher for every model on the RTX 5070 (CUDA0) + RTX 3060 (CUDA1).
-#   GGUF=/path/model.gguf ./launch-dual.sh <qwen35moe|oss20b|glm47flash>
+#   GGUF=/path/model.gguf ./launch-dual.sh <qwen35moe|qwen35moe-kvq4-262k|oss20b|glm47flash>
 #
 # Each preset is a layout that was probed with scripts/ctxprobe.sh AND a filled
 # ~100k-token context on llama.cpp b10751 (MODELS.md 4.2), and the guards are that
 # measurement. A preset is not a suggestion: change a flag and the numbers below
 # stop describing the server you get.
 set -u
-PRESET=${1:?usage: GGUF=/path/model.gguf $0 <qwen35moe|oss20b|glm47flash>}
+PRESET=${1:?usage: GGUF=/path/model.gguf $0 <qwen35moe|qwen35moe-kvq4-262k|oss20b|glm47flash>}
 M=${GGUF:?set GGUF to the model path}
-CTX=131072
+CTX=131072 KV=q8_0   # every preset but one; it says so
 
 case "$PRESET" in
   qwen35moe)
@@ -20,6 +20,17 @@ case "$PRESET" in
     ALIAS=Qwen3.6-35B-A3B-UD-Q4_K_S.gguf
     FLAGS=(--tensor-split 1,0 -ot 'blk\.(1[5-9]|[23][0-9])\.ffn_.*_exps\.=CUDA1' --ubatch-size 256)
     FLOOR=75 ;;      # clean path ~99; experts on CPU measured ~50
+  qwen35moe-kvq4-262k)
+    # Same weights at the model's full native 262144, q4_0 KV. One more block's
+    # experts (14) go to the 3060, which has no desktop to grow into its margin.
+    # Measured: 99.6 t/s short prompt, 588 / 328 MiB free; with 258,115 tokens
+    # filled, 817 t/s prompt, 35.6 t/s decode, peaks 11408 / 11639 MiB. At block 15
+    # the 5070 keeps 156 MiB. q4_0 KV costs Qwen 3.6 measurable KL in long documents
+    # and tool calling (localbench) -- this preset trades that for context.
+    ALIAS=Qwen3.6-35B-A3B-UD-Q4_K_S-kvq4-262k.gguf
+    CTX=262144 KV=q4_0
+    FLAGS=(--tensor-split 1,0 -ot 'blk\.(1[4-9]|[23][0-9])\.ffn_.*_exps\.=CUDA1' --ubatch-size 256)
+    FLOOR=75 ;;
   oss20b)
     # gpt-oss-20b MXFP4 (native quant). Plain layer split, weighted to the faster
     # card. Measured: 119 t/s short prompt, 42.6 t/s decode and 4315 t/s prompt at
@@ -46,7 +57,7 @@ LOG=/tmp/dual-$PRESET-$CTX.log
 # The build is part of the result: conda-forge b9716 carries llama.cpp #24807,
 # under which Qwen3.6's malformed tool calls abort pi's stream; b9754+ does not.
 # Nothing else records which binary a run was served by, so the log does.
-echo "preset: $PRESET" | tee -a "$LOG"
+echo "preset: $PRESET ctx=$CTX kv=$KV" | tee -a "$LOG"
 echo "llama-server: $(command -v llama-server)" | tee -a "$LOG"
 llama-server --version 2>&1 | grep -E 'version|built' | tee -a "$LOG"
 
@@ -65,7 +76,7 @@ fi
 
 nohup llama-server --model "$M" --alias "$ALIAS" \
   --jinja --gpu-layers 99 \
-  --ctx-size "$CTX" --cache-type-k q8_0 --cache-type-v q8_0 \
+  --ctx-size "$CTX" --cache-type-k "$KV" --cache-type-v "$KV" \
   --parallel 1 --device CUDA0,CUDA1 "${FLAGS[@]}" \
   --batch-size 512 --cont-batching --no-context-shift \
   --host 172.17.0.1 --port 8080 >> "$LOG" 2>&1 &

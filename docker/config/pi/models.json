@@ -58,6 +58,22 @@
           "maxTokens": 32768
         },
         {
+          "id": "Qwen3.6-35B-A3B-UD-Q4_K_S-kvq4-262k.gguf",
+          "name": "Qwen3.6-35B-A3B UD-Q4_K_S, q4_0 KV, 262k (local, 5070+3060)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "contextWindow": 262144,
+          "maxTokens": 32768
+        },
+        {
           "id": "gpt-oss-20b-MXFP4.gguf",
           "name": "gpt-oss-20b MXFP4 (local, 5070+3060)",
           "reasoning": true,

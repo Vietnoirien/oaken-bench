@@ -316,3 +316,19 @@ def test_each_two_card_model_gets_its_own_group(tmp_path):
     assert by_label['pi-glm47flash-01'] == by_label['dsh-glm47flash-01']
     assert len({by_label['pi-oss20b-01'], by_label['pi-glm47flash-01'],
                 by_label['pi-qwen35q4ks-b10751-01'], by_label['pi-01']}) == 4
+
+
+def test_the_262k_q4_kv_qwen_runs_do_not_pool_with_the_131k_q8_ones(tmp_path):
+    """Same weights, same cards, same build -- but a doubled window and a
+    halved KV precision. Two variables apart is not one set."""
+    write_score(tmp_path, 'pi-qwen35kvq4-262k-01', harness='pi')
+    write_score(tmp_path, 'pi-qwen35q4ks-b10751-01', harness='pi')
+    write_score(tmp_path, 'pi-01', harness='pi')
+
+    groups, _ = aggregate_groups(collect_rows(str(tmp_path)))
+    by_label = {r['label']: g['group_label']
+                for g in groups for r in g['rows']}
+
+    assert by_label['pi-qwen35kvq4-262k-01'] != by_label['pi-qwen35q4ks-b10751-01']
+    # and not the fall-through either, which is where an unknown label lands
+    assert by_label['pi-qwen35kvq4-262k-01'] != by_label['pi-01']
