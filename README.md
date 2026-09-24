@@ -212,6 +212,34 @@ are, however, a new contaminable asset in their own right, committed in plaintex
 held-out suite's protections; see [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
 for why, and for the recommendation on how much confidence to put in a score from it.
 
+**Per-call classification and pseudo-tool-calls (issue #29, `schemaVersion` 2).** A pass/fail bit
+per case cannot say WHERE a call went wrong -- a model that emits `<tool_call>` XML instead of a
+structured call, one that calls the right tool with a truncated argument string, and one that
+calls the wrong tool outright all used to land on the same `passed: false`. Every call each case
+produces is now additionally classified into four CUMULATIVE levels (a call can only reach level N
+having cleared every level below it): **well-formed** (`arguments` decoded as JSON) ->
+**schema-valid** (satisfies its own tool's schema) -> **right tool** (matches the tool the case
+expected) -> **right args** (dimension-specific: for `multiStepDependency`, the value the simulated
+first result returned; for `errorRecovery`'s retry, adapted rather than repeated verbatim; for
+`schemaAdherence`/`toolSelection`, no further check beyond the schema itself). See
+`classify_call()`'s docstring in `scripts/toolbattery.py` for the exact per-dimension definitions.
+`report['callClassification']` folds every call from every dimension into one table, `byTool`
+included -- generalising #15's `schemaAdherence.byTool` past a single dimension, so one
+catastrophic tool used in several places is visible even if no single dimension's own numbers show
+it. `detect_pseudo_tool_calls()` separately scans each case's free-text answer for a tool call
+written as TEXT instead of landing in the structured `tool_calls` array -- JSON objects naming a
+known tool, `<tool_call>...</tool_call>`, a `<|tool_call|>` sentinel or `<function=...>` XML,
+Mistral's `[TOOL_CALLS]` marker, gpt-oss's Harmony `to=functions.x` leak, and fenced code blocks --
+reported per case and rolled up in `report['pseudoToolCalls']`.
+
+**v1 vs v2.** The four artefacts already committed under `toolbattery-results/` predate this change
+(`schemaVersion` 1) and were **not rescored** -- they carry per-dimension pass/fail and (for the
+GLM/gpt-oss/Qwen3.6 runs, after #15) `schemaAdherence.byTool`, but no per-call classification and no
+pseudo-tool-call detection. Per AGENTS.md's rule on published fields, that is documented here rather
+than silently redefined: read a `schemaVersion: 1` artefact as "passed the v1 battery", a
+`schemaVersion: 2` one as "passed the v1 battery AND has per-call classification and
+pseudo-tool-call counts".
+
 The artefact is a JSON file with a `schemaVersion`, one block per dimension, and a `cases` list per
 block -- shaped after `events-summary.json`'s conventions, not embedded in `results/*/score.json`
 (this script never touches `results/`). It stores the actual tool-call arguments the model produced,
