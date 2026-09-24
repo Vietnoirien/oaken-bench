@@ -212,6 +212,18 @@ class VramSampler:
         return dict(self._peak)
 
 
+def server_root_url(base_url):
+    """The server root for a battery's OpenAI-style base URL.
+
+    Batteries are pointed at `.../v1` because that is where
+    `/chat/completions` lives, but llama-server serves `/props` and
+    `/tokenize` at the ROOT, not under `/v1`. Passing the `/v1` URL straight
+    to `server_config.capture()` asks for `/v1/props`, gets a 404, and the
+    artefact silently records "no server config" for every local run."""
+    u = base_url.rstrip('/')
+    return u[:-3] if u.endswith('/v1') else u
+
+
 def build_environment(base_url, *, image_ref=None, port=None, remote=None, vram_peak=None):
     """Assemble the `environment` block for a direct-mode battery artefact.
 
@@ -228,7 +240,7 @@ def build_environment(base_url, *, image_ref=None, port=None, remote=None, vram_
     never a guess.
     """
     local = is_local_base_url(base_url) if remote is None else not remote
-    server_cfg = server_config.capture(base_url, image_ref=image_ref, port=port,
+    server_cfg = server_config.capture(server_root_url(base_url), image_ref=image_ref, port=port,
                                         include_host_info=local)
     env = {'baseUrl': base_url, 'local': local, 'serverConfig': server_cfg}
 

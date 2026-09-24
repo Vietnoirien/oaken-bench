@@ -228,3 +228,21 @@ def test_build_environment_explicit_remote_false_forces_local_path():
         assert capture.call_args.kwargs['include_host_info'] is True
     assert env['local'] is True
     assert env['backend']['name'] == 'cuda'
+
+
+def test_server_root_url_strips_v1_suffix():
+    assert direct_env.server_root_url('http://172.17.0.1:8080/v1') == 'http://172.17.0.1:8080'
+    assert direct_env.server_root_url('http://172.17.0.1:8080/v1/') == 'http://172.17.0.1:8080'
+    assert direct_env.server_root_url('http://127.0.0.1:8099') == 'http://127.0.0.1:8099'
+
+
+def test_build_environment_asks_capture_for_the_root_not_v1(monkeypatch):
+    seen = {}
+
+    def fake_capture(url, **kw):
+        seen['url'] = url
+        return {}
+
+    monkeypatch.setattr(direct_env.server_config, 'capture', fake_capture)
+    direct_env.build_environment('https://api.example.com/v1', remote=True)
+    assert seen['url'] == 'https://api.example.com'
