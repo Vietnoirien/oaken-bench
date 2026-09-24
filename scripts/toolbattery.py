@@ -57,6 +57,23 @@ unparseable `arguments` string is recorded per call as `parse_error` by
 parse_message() and scored under schemaAdherence, which is a strictly better
 place for it than a log grep.
 
+schemaAdherence's probes (#15): SCHEMA_CASES mixes flat argument objects
+(`{"city": ...}`) with two compound-schema probes built on TOOL_EDIT_FILE --
+a required top-level scalar (`path`) alongside a required nested
+array-of-objects (`edits[]`), lifted from pi's real `edit` tool schema
+rather than hand-written. This is the shape that let a Gemma run score
+schemaAdherence 3/3 while failing 17/17 real `edit` calls, all by omitting
+`path` while filling in the nested structure correctly -- a failure mode no
+one-level-deep probe can express. `dimensions.schemaAdherence.byTool` reports
+pass/fail per probed tool for the same reason `errorsByTool` exists in
+events-summary.json: an aggregate score can hide one catastrophic tool.
+**The four `toolbattery-results/*.json` artefacts committed before this
+change were scored without these probes and without `byTool`** -- they
+answer "passed the flat-schema battery", not "passes schema adherence" (the
+Gemma one is the exact 3/3 the issue is about). Per-tool granularity beyond
+schemaAdherence, and any SCHEMA_VERSION bump to mark this formally, is
+issue #29's scope, not this change's.
+
 On raw model output in the artefact: unlike `edit`/`write` arguments in the
 real harness traces (agent-written solution code against a held-out spec --
 see events.py's module docstring and CANARY.md), what these probes elicit
@@ -347,6 +364,35 @@ TOOL_LIST_ROOMS = _tool(  # decoy: adjacent operation
     'list_available_rooms', 'List meeting rooms free in a given building.',
     {'building': {'type': 'string'}}, ['building'])
 
+# Lifted, not hand-written (issue #15): the flat probes above ({"city": ...},
+# {"room": ..., "start": ...}) are all one level deep, and every one of them
+# missed the live failure that opened #15 -- Gemma 4 12B QAT omitted pi's
+# required top-level `path` on 17/17 `edit` calls while filling in the nested
+# `edits[]` array correctly. A flat probe cannot express "drops a sibling
+# scalar while concentrating on a nested structure" because it has no
+# sibling to drop. This schema is pi's real `edit` tool, field-for-field, as
+# captured live in a `session`/`toolsAdded` event under
+# `~/.cache/oaken-bench/schema-capture-pi/` (`message.toolsAdded[]` on the
+# system message, EVENTS.md section 1) -- not reinvented, so the probe
+# reproduces the actual shape that broke rather than a guess at one. Renamed
+# `edit_file` here only to keep this module's tool names to its own fictional
+# ops-assistant domain (CANARY.md); `path` + `edits[]` and both `required`
+# lists are unchanged from the capture.
+TOOL_EDIT_FILE = _tool(
+    'edit_file',
+    'Edit an existing text file by replacing literal text. Every edits[].oldText '
+    'must match a unique, non-overlapping region of the original file.',
+    {'path': {'type': 'string', 'description': 'Path to the file to edit (relative or absolute)'},
+     'edits': {'type': 'array', 'description': 'One or more targeted replacements.',
+               'items': {'type': 'object', 'required': ['oldText', 'newText'],
+                         'properties': {
+                             'oldText': {'type': 'string',
+                                         'description': 'Exact text for one targeted replacement. Must be '
+                                                         'unique in the original file.'},
+                             'newText': {'type': 'string', 'description': 'Replacement text for this edit.'},
+                         }}}},
+    ['path', 'edits'])
+
 SYSTEM_PROMPT = (
     'You are an operations assistant with access to a fixed set of tools. '
     'Call a tool only when it is needed to fulfil the request; otherwise answer directly in text. '
@@ -393,6 +439,20 @@ SCHEMA_CASES = [
     ('weather-units',
      'What is the weather in Tokyo right now, in fahrenheit?',
      TOOL_GET_WEATHER),
+    # Compound-schema probes (#15): a required top-level scalar (`path`)
+    # alongside a required nested array-of-objects (`edits[]`), shaped like
+    # pi's real `edit` tool -- see TOOL_EDIT_FILE above. Two cases, not one:
+    # the failure this exists to catch (model fills in `edits[]` correctly
+    # and drops the sibling `path`) is a tendency, not a certainty, and a
+    # single prompt risks passing by chance on a model that would still fail
+    # it most of the time -- the same reason room-basic/room-recurring
+    # already probe TOOL_BOOK_ROOM twice.
+    ('edit-single',
+     'In config/ops.yaml, replace the line "retries: 3" with "retries: 5".',
+     TOOL_EDIT_FILE),
+    ('edit-multi',
+     'In runbook.md, replace "Owner: TBD" with "Owner: SRE" and replace "Status: draft" with "Status: active".',
+     TOOL_EDIT_FILE),
 ]
 
 
@@ -404,15 +464,44 @@ def run_schema_adherence(base_url, model, max_tokens, timeout, errors, api_key=N
             parsed = _run_case(base_url, model, max_tokens, timeout, messages, [tool], api_key=api_key)
         except ServerError as e:
             errors.append(f'schemaAdherence/{case_id}: {e}')
-            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                       {'expectedTool': tool['function']['name']}))
             continue
         call = _first_call(parsed)
         passed, reasons = score_schema_adherence(tool, call)
         cases.append(_case_record(case_id, prompt, passed, reasons, {
+            'expectedTool': tool['function']['name'],
             'toolCalled': call['name'] if call else None,
             'arguments': call['args'] if call else None,
         }))
-    return _summarize('schemaAdherence', cases)
+    summary = _summarize('schemaAdherence', cases)
+    # Per-tool breakdown (#15): "schemaAdherence 3/3" hid that all three
+    # flat probes happened to be tools the model handles fine, while the one
+    # tool that matters most in a real harness trace (a compound-schema
+    # mutating call) was never asked. `byTool` makes a single catastrophic
+    # tool visible in the dimension total, the way `errorsByTool` does in
+    # events-summary.json -- granularity the full per-tool report (#29) will
+    # build on, not duplicate.
+    summary['byTool'] = _schema_adherence_by_tool(cases)
+    return summary
+
+
+def _schema_adherence_by_tool(cases):
+    by_tool = {}
+    for c in cases:
+        tool_name = c.get('expectedTool')
+        if tool_name is None:
+            continue
+        bucket = by_tool.setdefault(tool_name, {'passed': 0, 'total': 0, 'notAttempted': 0})
+        if c['passed'] is None:
+            bucket['notAttempted'] += 1
+        else:
+            bucket['total'] += 1
+            if c['passed']:
+                bucket['passed'] += 1
+    for bucket in by_tool.values():
+        bucket['score'] = round(bucket['passed'] / bucket['total'], 4) if bucket['total'] else None
+    return by_tool
 
 
 # ---------------------------------------------------------------------------
@@ -669,6 +758,10 @@ def print_report(report):
         na = f"  [{d['notAttempted']} not attempted]" if d.get('notAttempted') else ''
         pct = '  --' if d['score'] is None else f"  ({d['score'] * 100:.0f}%)"
         print(f"  {name:22s} {d['passed']}/{d['total']}{pct}{na}")
+        if d.get('byTool'):
+            for tool_name, b in d['byTool'].items():
+                tpct = '  --' if b['score'] is None else f"  ({b['score'] * 100:.0f}%)"
+                print(f"    by tool: {tool_name:18s} {b['passed']}/{b['total']}{tpct}")
         for c in d['cases']:
             mark = {True: 'PASS', False: 'FAIL', None: 'N/A '}[c['passed']]
             print(f"    [{mark}] {c['case']}: {'; '.join(c['reasons']) if c['reasons'] else 'ok'}")
