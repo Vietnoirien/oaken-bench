@@ -42,6 +42,16 @@ llm-pi-ai:
           name: Qwen3.6-35B-A3B UD-Q4_K_S (local, 5070+3060)
           contextWindow: 131072
           maxTokens: 32768
+        # The second and third models on the two-card layout, same window and
+        # budget as Qwen3.6 so the three differ in the model, not the harness config.
+        - id: gpt-oss-20b-MXFP4.gguf
+          name: gpt-oss-20b MXFP4 (local, 5070+3060)
+          contextWindow: 131072
+          maxTokens: 32768
+        - id: GLM-4.7-Flash-UD-Q4_K_XL.gguf
+          name: GLM-4.7-Flash UD-Q4_K_XL (local, 5070+3060)
+          contextWindow: 131072
+          maxTokens: 32768
         - id: Qwen3.8-27B-UD-Q2_K_XL.gguf
           name: Qwen3.8-27B UD-Q2_K_XL (local)
           contextWindow: 49152

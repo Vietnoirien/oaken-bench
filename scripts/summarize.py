@@ -38,6 +38,13 @@ QWEN_DUAL_MARKERS = ('qwen35q4ks',)
 QWEN_DUAL_B10751_GROUP = 'qwen35 q4_k_s 5070+3060, llama.cpp b10751'
 QWEN_DUAL_B10751_MARKERS = ('qwen35q4ks-b10751',)
 
+# The other models run on the same two cards and build (MODELS.md 4.2).
+# One group each: a mean across models is not something this measures.
+OSS_DUAL_GROUP = 'gpt-oss-20b mxfp4 5070+3060, llama.cpp b10751'
+OSS_DUAL_MARKERS = ('oss20b',)
+GLM_DUAL_GROUP = 'glm-4.7-flash q4_k_xl 5070+3060, llama.cpp b10751'
+GLM_DUAL_MARKERS = ('glm47flash',)
+
 VOID_REASON = 'VOID run (thinkbug) -- excluded from every aggregate'
 
 
@@ -122,6 +129,10 @@ def group_label(row):
     setting was in force. Read `harnessMetricsVersion` (2 = scored after that
     was discovered) alongside this grouping, not instead of it.
     """
+    if any(marker in row['label'] for marker in OSS_DUAL_MARKERS):
+        return OSS_DUAL_GROUP
+    if any(marker in row['label'] for marker in GLM_DUAL_MARKERS):
+        return GLM_DUAL_GROUP
     if any(marker in row['label'] for marker in QWEN_DUAL_B10751_MARKERS):
         return QWEN_DUAL_B10751_GROUP
     if any(marker in row['label'] for marker in QWEN_DUAL_MARKERS):

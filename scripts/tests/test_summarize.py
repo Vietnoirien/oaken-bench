@@ -297,3 +297,22 @@ def test_runs_on_a_newer_llama_cpp_build_do_not_pool_with_the_old_one(tmp_path):
                 for g in groups for r in g['rows']}
 
     assert by_label['pi-qwen35q4ks-b10751-01'] != by_label['pi-qwen35q4ks-01']
+
+
+def test_each_two_card_model_gets_its_own_group(tmp_path):
+    """Three models share the two-card layout and llama.cpp b10751. A mean
+    across them would average models, which is not a thing this benchmark
+    measures; each label marker keeps its own group."""
+    for label, h in [('pi-oss20b-01', 'pi'), ('dsh-oss20b-01', 'dsh'),
+                     ('pi-glm47flash-01', 'pi'), ('dsh-glm47flash-01', 'dsh'),
+                     ('pi-qwen35q4ks-b10751-01', 'pi'), ('pi-01', 'pi')]:
+        write_score(tmp_path, label, harness=h)
+
+    groups, _ = aggregate_groups(collect_rows(str(tmp_path)))
+    by_label = {r['label']: g['group_label']
+                for g in groups for r in g['rows']}
+
+    assert by_label['pi-oss20b-01'] == by_label['dsh-oss20b-01']
+    assert by_label['pi-glm47flash-01'] == by_label['dsh-glm47flash-01']
+    assert len({by_label['pi-oss20b-01'], by_label['pi-glm47flash-01'],
+                by_label['pi-qwen35q4ks-b10751-01'], by_label['pi-01']}) == 4
