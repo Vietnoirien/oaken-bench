@@ -4,6 +4,7 @@
 # name in scripts/hidden.sh's BUNDLE_DEFAULT_PASS.
 # scripts/tests/test_hidden_bundles.py fails the build if this drifts.
 /hidden/
+/refengine/
 
 # Vendored offline dependencies. Restore with scripts/bootstrap.sh.
 node_modules/
