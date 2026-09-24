@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Seeded synthetic-fact haystack generator, for the T0.5 recall battery
-(issue #31) and the abstention battery it is a prerequisite for (issue #32).
+(issue #31) and the abstention battery built on top of it (issue #32,
+`scripts/abstain.py` + `scripts/recall.py`'s abstention pass).
 
 `ctxprobe.sh` checks whether a context of a given size *loads*. Nothing in
 this repo checks whether the model can find anything inside it once loaded.
@@ -148,6 +149,12 @@ DEFAULT_CHARS_PER_TOKEN = 4.0
 TOKEN_SOURCE_SERVER = 'server_tokenize'
 TOKEN_SOURCE_ESTIMATE = 'chars_per_token_estimate'
 
+# Public re-export -- abstain.py (issue #32) needs the attribute vocabulary
+# to pick a plausible-but-absent attribute for a near-miss question, without
+# reaching into a name prefixed `_` (this module's own convention for
+# "generation internals, not part of the interface").
+ATTRIBUTES = tuple(_ATTRIBUTES)
+
 
 @dataclasses.dataclass(frozen=True)
 class PlantedFact:
@@ -183,6 +190,19 @@ def _entity_name(rng, prefixes, suffixes):
     # haystack are possible but harmless (see _build_filler's dedupe) since
     # this is drawing from ONE rng stream per haystack, not across seeds.
     return f'{rng.choice(prefixes)}-{rng.choice(suffixes)}-{rng.randrange(1000, 9999)}'
+
+
+def entity_name(rng, pool='target'):
+    """Public wrapper around `_entity_name`, for abstain.py (issue #32):
+    it needs FRESH entity names in the same dashed-prefix-suffix-digits
+    shape the haystack text uses, drawn from a caller-supplied `rng` --
+    never from a haystack's own generation stream. Sharing that stream
+    would make the haystack TEXT depend on how many abstention questions
+    were later requested, breaking `generate_haystack`'s "same seed ->
+    byte-identical text" guarantee (see the module docstring)."""
+    prefixes, suffixes = ((_TARGET_PREFIXES, _TARGET_SUFFIXES) if pool == 'target'
+                           else (_FILLER_PREFIXES, _FILLER_SUFFIXES))
+    return _entity_name(rng, prefixes, suffixes)
 
 
 def _value(rng):
