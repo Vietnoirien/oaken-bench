@@ -307,6 +307,12 @@ the identical call. That is llama.cpp
 On b10751 all six graded runs completed or timed out with 93.9-99.2 % hidden and
 zero parse errors. Check `llama-server --version` before blaming the model.
 
+**The full 262144 window serves with q4_0 KV** (preset `qwen35moe-kvq4-262k`: block
+14's experts also on the 3060, 588 / 328 MiB free; 258k-token prompt at 817 t/s,
+35.6 t/s decode). It is not worth it on this task: the runs never used the
+room, and q4_0 KV cost ~9 points on pi and took the set from 6/6 to 4/6 above
+the bar (FINAL-REPORT §3.6.1). Keep q8_0 at 131072 unless a task needs the window.
+
 **Two more models, same cards and build**, as presets of `examples/launch-dual.sh`:
 
 | preset | layout | short prompt | at ~99k filled | free at 131k |

@@ -10,6 +10,7 @@ strategies help or hurt.
 |---|---|---|
 | Claude ceiling probe | 129/132 (97.7 %) | not harness-mediated |
 | **Qwen3.6-35B-A3B UD-Q4_K_S, RTX 5070 + 3060** | **pi 94.7-97.0 %, dsh 93.9-99.2 %** (n=3 each) | **six of six clear the 80 % bar** |
+| Qwen3.6-35B-A3B, same, at 262k with q4_0 KV | pi 79.5-93.9 %, dsh 0-93.2 % (n=3 each) | four of six; the window went unused, the KV precision cost ~9 points |
 | gpt-oss-20b MXFP4, RTX 5070 + 3060 | pi 0-81.8 %, dsh 0 % (n=3 each) | one of six clears the bar |
 | GLM-4.7-Flash UD-Q4_K_XL, RTX 5070 + 3060 | pi 0-54.5 %, dsh 0.8-65.1 % (n=3 each) | none of six |
 | Gemma 4 12B, RTX 5070 | 0-83.3 % across 14 runs, not n=3 per harness | one run clears the bar |

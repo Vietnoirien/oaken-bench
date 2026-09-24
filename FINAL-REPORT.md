@@ -19,7 +19,8 @@ sub-agent, never read by the implementing agent). **Bar: 80 % hidden.**
 | **Qwen3.8-27B @ Q2_K_XL** | **0/132 across 5 configurations** — never wrote a line |
 | **Qwen3.8-27B @ IQ2_XXS** | **0/132** at full 131 k ctx — same behaviour, no quant cliff |
 | **Same cards, same build, two other MoEs** | gpt-oss-20b 1/6 clear the bar (pi 30.8 %, dsh 0 %); GLM-4.7-Flash 0/6 (pi 29.5 %, dsh 29.8 %) |
-| **Runs clearing 80 %** | **10** — the Claude ceiling probe, one Gemma run, seven Qwen3.6 runs, one gpt-oss run |
+| **Qwen3.6 at 262 k, q4_0 KV** | 4/6 clear the bar (pi 87.1 %, dsh 60.4 % with one tampered zero) — q8_0 at 131 k was 6/6 |
+| **Runs clearing 80 %** | **14** — the Claude ceiling probe, one Gemma run, eleven Qwen3.6 runs, one gpt-oss run |
 
 The benchmark and its oracle are sound: a 97.7 % result in under six minutes proves the task is
 well-specified and the hidden suite is fair.
@@ -79,6 +80,12 @@ is reachable by a 12 GB-class model, **not** that Gemma reaches it reliably. See
 | dsh-qwen35q4ks-01 | dsh | Qwen3.6 35B-A3B, b9716 | crash | 5/132 3.8 % | 14/52 | 577 s | 31 | 0 | ✗ |
 | pi-qwen35q4ks-01 | pi | Qwen3.6 35B-A3B, b9716 | no engagement | 0/132 | 3/52 | 5 s | 0 | 0 | ok |
 | pi-qwen35q4ks-02 | pi | Qwen3.6 35B-A3B, b9716 | no engagement | 0/132 | 3/52 | 5 s | 0 | 0 | ok |
+| pi-qwen35kvq4-262k-02 | pi | Qwen3.6, 262 k q4_0 KV | complete | 124/132 93.9 % | 52/52 | 714 s | 75 | 0 | ok |
+| dsh-qwen35kvq4-262k-03 | dsh | Qwen3.6, 262 k q4_0 KV | complete | 123/132 93.2 % | 52/52 | 742 s | 74 | 0 | ok |
+| pi-qwen35kvq4-262k-01 | pi | Qwen3.6, 262 k q4_0 KV | complete | 116/132 87.9 % | 52/52 | 684 s | 82 | 0 | ok |
+| dsh-qwen35kvq4-262k-01 | dsh | Qwen3.6, 262 k q4_0 KV | complete | 116/132 87.9 % | 52/52 | 700 s | 60 | 0 | ok |
+| pi-qwen35kvq4-262k-03 | pi | Qwen3.6, 262 k q4_0 KV | below bar | 105/132 79.5 % | 52/52 | 470 s | 66 | 0 | ok |
+| dsh-qwen35kvq4-262k-02 | dsh | Qwen3.6, 262 k q4_0 KV | **tampered** | 0/132 | 0/52 | 1136 s | 83 | 0 | ✗ |
 | pi-oss20b-02 | pi | gpt-oss-20b | timeout | **108/132 81.8 %** | 52/52 | 1801 s | 64 | 1 | ✗ |
 | pi-oss20b-03 | pi | gpt-oss-20b | declared done | 14/132 10.6 % | 28/52 | 141 s | 54 | 0 | ✗ |
 | pi-oss20b-01 | pi | gpt-oss-20b | timeout | 0/132 | 3/52 | 1802 s | 21 | 0 | ok |
@@ -370,6 +377,40 @@ The separate-reasoning column is suggestive (5/5, p≈0.08 against the ~60 % bas
 conclusive**. dsh survived every one of these responses.
 
 ---
+
+### 3.6.1 The same model at its full 262 k window, q4_0 KV — more room, lower scores
+
+The whole native 262 144 serves on the two cards with q4_0 KV once block 14's experts also move
+to the 3060: 99.6 t/s on a short prompt, and a 258 115-token prompt at 817 t/s with 35.6 t/s
+decode, 588 / 328 MiB free (MODELS.md 4.2). Same weights, build and harnesses; two things change
+against §3.6 — window and KV precision.
+
+| | 131 k, q8_0 KV (§3.6) | 262 k, q4_0 KV |
+|---|---|---|
+| pi hidden | 127, 125, 128 — mean 96.0 % | 116, 124, 105 — mean **87.1 %** |
+| dsh hidden | 124, 131, 127 — mean 96.5 % | 116, 0, 123 — mean **60.4 %** |
+| clear the bar | 6 / 6 | **4 / 6** |
+| overfit gap | +0.8 to +6.1 | +6.1 to +20.4 (clean runs) |
+| compactions | 3 | **0** |
+| wall clock | 500-1801 s | 470-1136 s |
+
+**The window went unused.** No run in either set came near 131 072 — the q8_0 set compacted three
+times in six runs, this one never — so the doubled window is not what these runs measure. The KV
+precision is, and every number moves the way localbench's KL measurements predict for q4_0 on
+Qwen 3.6, whose damage lands in long documents and tool calling: lower means, a wider spread,
+overfit gaps two to four times larger, and one run below the bar by a single test.
+
+**dsh-02 tampered.** It deleted `data/items.json` and edited `tsconfig.json` and
+`vitest.config.ts`, after which no test file could import — 0/52 visible, every test uncollected.
+It is the first Qwen3.6 run in any configuration to touch a frozen file. Its `hidden.error` field
+reads "could not decrypt held-out suite", which is wrong: the run left two ~5 GB core dumps in
+`/work`, the scorer ran out of space unpacking them, and the decrypt step failed behind them. The
+zero is right for other reasons; the scorer bug is real and open (one other run,
+pi-glm47flash-02, carried a 5 GB dump and scored normally).
+
+**Conclusion: on this task, q4_0 KV is not a free way to more context.** It bought a window the
+task never used and cost roughly nine points on pi. Keep q8_0 at 131 k for this model unless a
+task actually needs the room.
 
 ### 3.7 gpt-oss-20b MXFP4 on two cards — one pass, and dsh cannot run it
 
