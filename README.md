@@ -243,7 +243,12 @@ results/           one directory per run; score.json and events-summary.json are
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
                    ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
-                   isn't lost to a git clean
+                   isn't lost to a git clean. score.py also writes
+                   hidden-detail.json (held-out per-test names/status,
+                   gitignored, never published) next to score.json -- any
+                   run whose workspace.tgz still exists, archived or not,
+                   can be re-scored to get it (issue #16); one whose
+                   artefacts are gone cannot (issue #7)
 FROZEN.sha256      hashes of every frozen input
 MODELS.md          how to add and tune a model  <- start here
 CANARY.md          contamination control

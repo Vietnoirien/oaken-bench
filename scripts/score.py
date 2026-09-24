@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """Score one benchmark run.
 
-  ./scripts/score.py results/<label>
+  ./scripts/score.py results/<label> [--no-detail]
 
 Reconstructs the agent's workspace, runs the visible and held-out suites,
 checks the frozen artefacts were not tampered with, and extracts harness
 metrics. Held-out results are reported as COUNTS ONLY; per-test detail is
 written to <label>/hidden-detail.json and is deliberately not printed.
+
+hidden-detail.json holds the held-out test FILE names and pass/fail status,
+which is itself benchmark data (see docker/scorer.sh) -- it is written
+straight to the gitignored result directory, never merged into score.json
+or events-summary.json, both of which are published. Written by default
+since it costs nothing and cannot leak past .gitignore; pass --no-detail to
+skip it (e.g. to save the container round trip when only the counts in
+score.json are wanted).
 """
 import json, os, re, shutil, signal, subprocess, sys, tarfile, tempfile, time
 
@@ -638,10 +646,19 @@ def score_in_container(result_dir, detail=False, timeout=1800):
 
 
 def main():
-    if len(sys.argv) < 2:
+    argv = sys.argv[1:]
+    # Default on: hidden-detail.json never reaches a published field (see
+    # the module docstring), so there is no cost to writing it, only to
+    # NOT writing it -- issue #16 was exactly a run where the flag existed
+    # but nothing ever set it, and the pair it would have distinguished
+    # is now unrecoverable. --detail is accepted as a no-op for parity
+    # with docker/entrypoint.sh's own flag of the same name.
+    detail = '--no-detail' not in argv
+    argv = [a for a in argv if a not in ('--detail', '--no-detail')]
+    if len(argv) < 1:
         print(__doc__)
         sys.exit(2)
-    result_dir = os.path.abspath(sys.argv[1])
+    result_dir = os.path.abspath(argv[0])
     label = os.path.basename(result_dir)
 
     def read(name, default=''):
@@ -676,9 +693,18 @@ def main():
 
     if restored:
         TOT = canonical_totals()
-        vis, hid, tc, tampered = score_in_container(result_dir)
+        vis, hid, tc, tampered = score_in_container(result_dir, detail=detail)
         vis = vis or {}
         hid = hid or {}
+        # Pop, don't leave in place: 'detail' carries held-out test FILE
+        # names (docker/scorer.sh), and report['hidden'] below is built by
+        # pulling specific keys off `hid` rather than by copying it, but a
+        # future edit to that pattern must not find this key still sitting
+        # here to copy by accident.
+        hidden_detail = hid.pop('detail', None)
+        if hidden_detail is not None:
+            with open(os.path.join(result_dir, 'hidden-detail.json'), 'w') as f:
+                json.dump(hidden_detail, f, indent=2)
         report['tamperedFrozenFiles'] = tampered or []
         report['typecheckClean'] = bool((tc or {}).get('clean'))
         report['suiteHung'] = bool(vis.get('__hung')) or bool(hid.get('__hung'))
