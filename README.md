@@ -149,6 +149,9 @@ llama-server --model /path/to/model.gguf --alias your-model.gguf \
 
 # 4. Score it
 ./scripts/score.py results/<label>
+
+# 3+4 in one step, so scoring isn't a step you can forget:
+./bench.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 ```
 
 **Read [MODELS.md](MODELS.md) before your first run.** It covers registering a
@@ -236,10 +239,12 @@ scripts/
   summarize.py     aggregate across runs
   gen_items.py     item-data provenance
   toolbattery.py   short tool-calling screening battery, talks to the model directly (issue #8)
+  server_config.py llama-server /props + process/image/GPU provenance capture (issue #14);
+                   run.sh writes its output to <label>/run-context.json before every run
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
 results/           one directory per run; score.json and events-summary.json are
                    committed (issue #7 -- the derived metrics outlive the trace). The rest
-                   (pi-events.jsonl, session tarballs, stderr.log, ...) is
+                   (pi-events.jsonl, session tarballs, stderr.log, run-context.json, ...) is
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
                    ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
