@@ -1,8 +1,34 @@
-# Harness benchmark: Pi vs DeepSeek Harness on a local model
+# Local-model benchmark: tiered probes, with pi vs dsh at T2
 
-Measures which agent harness drives a local model further through a
-**long-horizon** implementation task, and whether their differing context
-strategies help or hurt.
+This repo measures local models at separate tasks and probes. Each tier answers
+a different question and keeps its own results. The original pi vs DeepSeek
+Harness comparison is T2.
+
+## Tiers
+
+T0 and T0.5 are direct model probes. T1 and T3-T5 are planned task tiers whose
+implementations are in progress or deferred. Only T0, T0.5, and T2 have shipped
+commands. No T1 or T3-T5 measurements exist. The 53 committed `results/*`
+score files are T2 runs; their meaning and values are unchanged.
+
+| Tier | What it isolates | Status and command |
+|---|---|---|
+| T0 | Tool-call reliability over short chains, including schema use, tool choice, refusals, and recovery. Direct model call, no harness. | Shipped. `./scripts/toolbattery.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
+| T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
+| T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred until more archived Gemma plateau runs can be examined. No command. |
+| T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
+| T3 | Find and fix planted bugs against the reference engine. | Implementation in progress. No command or measurements yet. |
+| T4 | Extend the existing engine and count regressions against the earlier suite. | Implementation in progress. No command or measurements yet. |
+| T5 | Write a bot that plays the game, scored over held-out seeds. | Implementation in progress. No command or measurements yet. |
+
+The short screening command combines T0 and T0.5. Its six thresholds and
+under-15-minute runtime target are still uncalibrated; see [Short T0 + T0.5
+screen](#short-t0--t05-screen). The harness-effect comparison for T0.5 is
+implemented, but no live model or harness comparison has been run; see
+[Comparing the T0.5 harness effect](#comparing-the-t05-harness-effect).
+
+The tiers are reported separately. A score from one tier does not combine with
+or stand in for a score from another.
 
 ## Where it stands
 
@@ -146,9 +172,17 @@ llama-server --model /path/to/model.gguf --alias your-model.gguf \
 ./run.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 # Raw traces are archived to ~/.cache/oaken-bench/<label>/ after the run.
 # Override the location with OAKEN_ARCHIVE.
+# Progress is printed every 30s. Pi turn/call counts are read from its live
+# JSONL trace; dsh only exposes stdout until its session archive is finalized,
+# so its live turn/call counts are marked n/a.
+# The startup decode probe is recorded in run-context.json. Keep the default
+# port 8080, or set OAKEN_SERVER_PORT=8081 / OAKEN_SERVER_URL=http://172.17.0.1:8081/v1.
 
 # 4. Score it
 ./scripts/score.py results/<label>
+
+# 3+4 in one step, so scoring isn't a step you can forget:
+./bench.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 ```
 
 **Read [MODELS.md](MODELS.md) before your first run.** It covers registering a
@@ -174,7 +208,7 @@ mean the model cannot call tools, cannot hold the spec in context, cannot
 write TypeScript, or just ran out of clock, and the harness's own
 retry/compaction logic sits between the model and the failure. `scripts/toolbattery.py`
 is a minutes-per-model battery that talks to the model's OpenAI-compatible
-endpoint DIRECTLY (no pi, no dsh) and scores five tool-calling dimensions
+endpoint DIRECTLY (no pi, no dsh) and scores six tool-calling dimensions
 independently, so a bad result says *what* broke instead of just *that*
 something did:
 
@@ -197,6 +231,19 @@ something did:
   bound by the token budget rather than by tool-calling capability -- the exact failure mode this
   battery exists to distinguish, one more time.
 - **refusal** -- no supplied tool applies; does the model call one anyway (the false-positive direction)
+- **shortChains** (issue #30) -- four fictional workflows of 3-5 dependent calls each (ship-and-track,
+  open-a-ticket, register-a-device, submit-an-expense); call N+1 needs a value only call N's simulated
+  result carries. Every threaded value is a 12-hex-digit id/token built by `_seeded_id()` from a fixed
+  seed -- deterministic run to run, but not a small guessable example like multiStepDependency's
+  `cus_48291`, so a correct downstream call is evidence the model actually carried the result forward.
+  Scored as **depth reached**, not only pass/fail: each case records `depthReached`/`chainLength` and,
+  when it broke, `brokenAtStep` plus the `classify_call()` level (below) the breaking call actually
+  reached -- `schemaValid` for a decoy taken, `notWellFormed` for truncated JSON, and so on. A model
+  that skips straight to a later step's tool, guessing at a value it was never handed, is judged
+  against the step it's ACTUALLY on and caps at `schemaValid` at best, so it earns zero depth rather
+  than credit for a lucky-looking guess; a turn with more than one tool call only counts its first call
+  toward the chain; any others are recorded but never advance or break it. See
+  `run_short_chains()`'s and `CHAIN_SCENARIOS`'s docstrings for the full reasoning.
 
 A case that never exercised its dimension is reported as **not attempted** and left out of that
 dimension's denominator -- it is not scored as a pass. This matters more than it sounds: a model
@@ -212,12 +259,156 @@ are, however, a new contaminable asset in their own right, committed in plaintex
 held-out suite's protections; see [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
 for why, and for the recommendation on how much confidence to put in a score from it.
 
+**Per-call classification and pseudo-tool-calls (issue #29, `schemaVersion` 2).** A pass/fail bit
+per case cannot say WHERE a call went wrong -- a model that emits `<tool_call>` XML instead of a
+structured call, one that calls the right tool with a truncated argument string, and one that
+calls the wrong tool outright all used to land on the same `passed: false`. Every call each case
+produces is now additionally classified into four CUMULATIVE levels (a call can only reach level N
+having cleared every level below it): **well-formed** (`arguments` decoded as JSON) ->
+**schema-valid** (satisfies its own tool's schema) -> **right tool** (matches the tool the case
+expected) -> **right args** (dimension-specific: for `multiStepDependency`, the value the simulated
+first result returned; for `errorRecovery`'s retry, adapted rather than repeated verbatim; for
+`schemaAdherence`/`toolSelection`, no further check beyond the schema itself). See
+`classify_call()`'s docstring in `scripts/toolbattery.py` for the exact per-dimension definitions.
+`report['callClassification']` folds every call from every dimension into one table, `byTool`
+included -- generalising #15's `schemaAdherence.byTool` past a single dimension, so one
+catastrophic tool used in several places is visible even if no single dimension's own numbers show
+it. `detect_pseudo_tool_calls()` separately scans each case's free-text answer for a tool call
+written as TEXT instead of landing in the structured `tool_calls` array -- JSON objects naming a
+known tool, `<tool_call>...</tool_call>`, a `<|tool_call|>` sentinel or `<function=...>` XML,
+Mistral's `[TOOL_CALLS]` marker, gpt-oss's Harmony `to=functions.x` leak, and fenced code blocks --
+reported per case and rolled up in `report['pseudoToolCalls']`.
+
+**v1 vs v2.** The four artefacts already committed under `toolbattery-results/` predate this change
+(`schemaVersion` 1) and were **not rescored** -- they carry per-dimension pass/fail and (for the
+GLM/gpt-oss/Qwen3.6 runs, after #15) `schemaAdherence.byTool`, but no per-call classification and no
+pseudo-tool-call detection. Per AGENTS.md's rule on published fields, that is documented here rather
+than silently redefined: read a `schemaVersion: 1` artefact as "passed the v1 battery", a
+`schemaVersion: 2` one as "passed the v1 battery AND has per-call classification and
+pseudo-tool-call counts".
+
 The artefact is a JSON file with a `schemaVersion`, one block per dimension, and a `cases` list per
 block -- shaped after `events-summary.json`'s conventions, not embedded in `results/*/score.json`
 (this script never touches `results/`). It stores the actual tool-call arguments the model produced,
 not just digests: unlike `edit`/`write` arguments in a real harness trace, these are short generic
 values answering fixed public prompts, not agent-written solution code against a held-out spec, so
 there is no CANARY.md-style asset at risk in keeping them legible.
+
+## Recall at context depth, and abstention
+
+`ctxprobe.sh` finds the context size that actually *loads*. It says nothing about
+whether the model can find anything inside it once loaded, or whether it knows the
+difference between "found" and "not there". `scripts/recall.py` (issue #31's recall pass,
+issue #32's abstention pass, together T0.5 of the ladder in #26) is the direct-mode
+battery for both: `scripts/haystack.py` builds a seeded, fictional "operations ledger"
+document at each of a few context depths and plants a handful of facts in it at
+controlled positions; `scripts/abstain.py` builds a handful of guaranteed-absent
+`(entity, attribute)` pairs against that SAME haystack (an entity that never appears; an
+entity that appears with a DIFFERENT attribute; an attribute that appears on a DIFFERENT
+entity). One tool call per depth asks about both kinds of pair together, sharing the
+haystack and the cold-prefill cost between the two probes.
+
+```bash
+./scripts/recall.py --model your-model.gguf \
+  --base-url http://172.17.0.1:8080/v1     # your llama-server, same as the main task
+# writes recall-results/recall-<model>-<timestamp>.json
+```
+
+- **Fictional facts only.** Entities, attribute names and values are all invented, seeded
+  from `--seed` (default fixed, override for a fresh set) -- a model cannot answer from
+  training-time exposure to `SPEC.md` or anything else in this repo, only from what is
+  actually in its context window.
+- **Depths stop at the served context.** `--depths` defaults to `4096,16384,32768,65536,131072`
+  (accepts a `k` suffix: `4k,16k,...`); any depth that would not fit inside the server's own
+  `/props`-reported `n_ctx` (minus headroom for the question and the response) is skipped, not
+  attempted, and the skip and its reason are in the artefact.
+- **Token sizing** uses the server's `/tokenize` endpoint when available (llama.cpp has it) to
+  size each haystack to its target depth; falls back to a documented ~4 chars/token estimate
+  otherwise. Which one was used is recorded per depth (`haystack.tokenCountSource`).
+- **Prefill/decode tok/s per depth**, each labelled with its source. llama.cpp's own `timings`
+  object is used when the response carries one; wall-clock is the fallback, per metric. Getting
+  an honest wall-clock split at all means deliberately exploiting llama.cpp's prompt cache within
+  a depth (`measure_depth()`'s two-call pair) while deliberately avoiding it across depths (every
+  depth gets its own, differently-seeded haystack) -- see `recall.py`'s module docstring, "the
+  cache trap", before touching that code.
+- **Abstention, five-way classified.** For every planted fact, an answer is `correct_answer`,
+  `wrong_answer`, or `false_abstention` (the model claimed the fact was absent when it wasn't --
+  over-abstaining, made visible so a model that always says "not in context" cannot score a
+  clean recall failure indistinguishable from genuinely not finding anything). For every
+  guaranteed-absent pair, an answer is `correct_abstention` or `invented_answer`. The model is
+  told in the system prompt to answer exactly `"not in context"` when a pair is absent, but
+  scoring accepts a documented, unit-tested list of paraphrases leniently -- see `abstain.py`'s
+  module docstring for the accepted phrasings and why each is (or is deliberately not) on the
+  list. Counts are reported per depth (`depths[i].presentQuestionCounts` /
+  `depths[i].abstention.counts`, the latter also broken down `byKind`) and rolled up once more
+  into `overall.presentQuestionCounts` / `overall.abstentionCounts`.
+
+Same plaintext-probe caveat as `toolbattery.py`, with one difference worth knowing: unlike
+`toolbattery.py`'s fixed prompts and answers, `recall.py`'s planted facts (and abstain.py's
+absent pairs) are regenerated fresh every seed, so a leaked run's answers do not transfer to a
+different seed's. The probe SHAPE (question template, tool schema, `haystack.py`'s fixed
+vocabulary) is still constant across runs, the same lower-but-nonzero contamination risk
+`toolbattery.py` carries. See
+[CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
+
+### Comparing the T0.5 harness effect
+
+`scripts/harness_effect.py` runs the same seeded ledger and present/absent questions through
+direct mode, pi, and dsh, then reports per-mode recall and abstention counts plus the
+difference from direct mode. Direct mode receives the ledger inline. pi and dsh run inside
+the existing `oaken-bench` container, with the ledger mounted as `/work/ledger.txt`; their
+prompt tells them to read that file. Each item has a stable SHA-256 ID made from its pair and
+depth. The artefact records each mode's status and classification per ID, plus per-depth
+present-recall and absent-abstention deltas. A delta is the harness score minus direct mode,
+in percentage points, over IDs both modes scored. It is null if either mode failed or returned
+unparseable output. Aggregate deltas also use only shared scored IDs. The artefact contains
+counts, statuses, elapsed time, and digests, never the pairs, expected values, or model answers.
+
+Every run requires an explicit `--base-url`; port 8080 is rejected. The pi and dsh adapters
+create temporary configs that point to this URL rather than using the checked-in endpoint.
+For example, with a separate model server reachable from the container:
+
+```bash
+./scripts/harness_effect.py --model your-model --base-url http://172.17.0.1:18081/v1 \
+  --depths 4k,16k --out harness-effect-results/run.json
+```
+
+`--pi-command` and `--dsh-command` replace the container invocation with host commands or
+fakes. The shared cases control the question set; each harness still applies its own
+prompting, context handling, and retries. Fake tests cover file visibility and config
+rewriting. Docker execution has not been exercised here, and no live model or harness run
+was made.
+
+## Short T0 + T0.5 screen
+
+`scripts/screen.py` runs one command against a direct-mode server:
+
+```bash
+python3 scripts/screen.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1
+```
+
+T0 uses the existing five schema probes, five tool-selection probes, one
+three-call chain, and four refusal probes. T0.5 uses one 16k-token haystack
+with three planted facts and three absent pairs. Each run writes
+`screen-results/screen-<model>-<timestamp>.json`, including the raw battery
+records, six extracted scores, elapsed seconds, and the threshold revision.
+The default port is 8082 because port 8080 belongs to another project on
+this machine. The command never starts a server.
+
+The threshold file is [screen-thresholds.json](screen-thresholds.json).
+Its current revision is `pending-2026-09-25`: the six minimums are `null`,
+and the verdict is `unverified`. The four required models have not been
+rerun on this exact short protocol, and the GPU needed for that calibration
+was unavailable. Older `toolbattery-results/` files predate the short screen
+and contain no T0.5 scores. They cannot establish these thresholds. See
+[screen-calibration.md](screen-calibration.md) for the fixed run plan and the
+evidence required before changing the revision to `calibrated`.
+
+The under-15-minute wall-clock criterion is also unverified until a live
+12 GB-class run records `elapsedSeconds`. Per-request timeouts bound normal
+T0 and T0.5 requests, but they do not prove the full command meets that
+criterion. A skipped depth, transport error, or missing score cannot produce
+`go`. The plaintext-probe caveats in CANARY.md sections 3 and 3b apply.
 
 ## Layout
 
@@ -241,10 +432,20 @@ scripts/
   summarize.py     aggregate across runs
   gen_items.py     item-data provenance
   toolbattery.py   short tool-calling screening battery, talks to the model directly (issue #8)
+  server_config.py llama-server /props + process/image/GPU provenance capture (issue #14);
+                   run.sh writes its output to <label>/run-context.json before every run
+  direct.py        shared OpenAI-compatible HTTP client for direct-mode batteries (issue #27)
+  direct_env.py    direct-mode run-environment capture: GPU, backend, peak VRAM (issue #28)
+  haystack.py      seeded fictional-fact haystack generator for recall/abstention batteries (issue #31)
+  abstain.py       guaranteed-absent (entity, attribute) questions + abstention-phrase scoring (issue #32)
+  recall.py        recall-at-context-depth AND abstention battery, talks to the model directly (issues #31, #32)
+  screen.py        short direct-mode T0 + T0.5 screen (issue #33)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
+recall-results/       JSON artefacts from scripts/recall.py, one per run; same conventions as toolbattery-results/
+screen-results/       JSON artefacts from scripts/screen.py; currently no calibrated verdicts
 results/           one directory per run; score.json and events-summary.json are
                    committed (issue #7 -- the derived metrics outlive the trace). The rest
-                   (pi-events.jsonl, session tarballs, stderr.log, ...) is
+                   (pi-events.jsonl, session tarballs, stderr.log, run-context.json, ...) is
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
                    ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
@@ -366,9 +567,10 @@ mean the probe and the graded runs no longer share a task.
 
 ## Before you trust a number from this
 
-Five limitations, stated up front rather than buried.
+These limitations apply to different tiers. Read the tier name with every
+result; a probe result is not a T2 task score.
 
-1. **One task.** A single spec in a single domain. Three runs of one
+1. **T2 is one task.** It uses a single spec in a single domain. Three runs of one
    configuration in the original study spanned **0 % to 75.8 %** hidden. One run
    is not a result; report at least three and show the spread.
 2. **The oracle is model-written.** The 132 held-out tests were authored blind
@@ -410,6 +612,25 @@ Five limitations, stated up front rather than buried.
    closely than any parameter under test. gpt-oss spans 0-81.8 % on one harness
    and GLM 0-65.1 %. The Qwen runs on b10751 are the exception: a 5.3-point
    spread, no early exits. Expect to throw away runs.
+
+6. **T0 and T0.5 are plaintext probes.** Their prompts, schemas, and fixed
+   vocabulary are committed in the repository and can enter training data.
+   T0.5 regenerates its facts and absent pairs by seed, but the probe shape
+   stays fixed. These scores measure performance on these probes, not resistance
+   to contamination. See [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
+   and [§3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
+7. **The T0 + T0.5 screen has no calibrated verdict.** Its six thresholds
+   remain pending, and its under-15-minute runtime target has not been verified
+   on a live 12 GB-class run. Do not treat `go` as a calibrated model-selection
+   decision until [screen-calibration.md](screen-calibration.md) records the
+   required evidence.
+8. **The T0.5 harness effect is not measured yet.** `harness_effect.py` can
+   compare direct mode with pi and dsh, but no live comparison has run. Its
+   result format and implementation do not establish whether either harness
+   changes recall or abstention scores.
+9. **T1 and T3-T5 have no measurements.** T1 is deferred pending review of
+   more archived Gemma plateau runs. T3, T4, and T5 implementations are in
+   progress. Do not infer their performance from T2 or from the probe tiers.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than 12 GB consumer cards.
