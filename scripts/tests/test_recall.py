@@ -20,6 +20,8 @@ import threading
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import abstain  # noqa: E402
+import direct_env  # noqa: E402
 import haystack as haystack_mod  # noqa: E402
 import recall  # noqa: E402
 
@@ -28,13 +30,16 @@ import recall  # noqa: E402
 # Pure logic: no network
 # ---------------------------------------------------------------------------
 
-def test_root_url_strips_trailing_v1():
-    assert recall._root_url('http://172.17.0.1:8080/v1') == 'http://172.17.0.1:8080'
-    assert recall._root_url('http://172.17.0.1:8080/v1/') == 'http://172.17.0.1:8080'
-
-
-def test_root_url_leaves_non_v1_base_alone():
-    assert recall._root_url('http://172.17.0.1:8080') == 'http://172.17.0.1:8080'
+def test_recall_uses_the_shared_server_root_url_helper():
+    # recall.py used to carry its own private _root_url() -- issue #32
+    # merged in #28's fix (direct_env.server_root_url()) and replaced it
+    # with that shared helper, so there is exactly one implementation of
+    # "strip a trailing /v1" in the codebase. test_direct_env.py owns the
+    # behavior's own test coverage; this just pins that recall.py is
+    # actually calling it (via run_battery, below) rather than having grown
+    # a second private copy back.
+    assert recall.server_root_url is direct_env.server_root_url
+    assert recall.server_root_url('http://172.17.0.1:8080/v1') == 'http://172.17.0.1:8080'
 
 
 def test_parse_depth_plain_int():
@@ -155,6 +160,107 @@ def test_score_recall_wrong_attribute_does_not_match():
 
 
 # ---------------------------------------------------------------------------
+# _score_recall / _score_abstention: issue #32's three/five-way classification
+# ---------------------------------------------------------------------------
+
+def test_score_recall_classifies_correct_answer():
+    facts = [_fact('E1', 'custodian', 'Val-100')]
+    results = recall._score_recall(facts, {'answers': [{'entity': 'E1', 'attribute': 'custodian',
+                                                          'value': 'Val-100'}]})
+    assert results[0]['classification'] == recall.CORRECT_ANSWER
+
+
+def test_score_recall_classifies_wrong_answer():
+    # A present fact answered with a DIFFERENT, non-abstention value is a
+    # wrong answer, not a false abstention -- the model attempted to
+    # recall and got it wrong, which is a different failure than claiming
+    # the fact was never there.
+    facts = [_fact('E1', 'custodian', 'Val-100')]
+    results = recall._score_recall(facts, {'answers': [{'entity': 'E1', 'attribute': 'custodian',
+                                                          'value': 'Val-999'}]})
+    assert results[0]['classification'] == recall.WRONG_ANSWER
+
+
+def test_score_recall_classifies_explicit_abstention_on_a_present_fact_as_false_abstention():
+    # Over-abstaining must be visible: a model that says "not in context"
+    # for something that WAS in the context is wrong in the opposite
+    # direction from an invented answer, and #32 asks for it to be its
+    # own bucket, not silently folded into "wrong answer".
+    facts = [_fact('E1', 'custodian', 'Val-100')]
+    results = recall._score_recall(facts, {'answers': [{'entity': 'E1', 'attribute': 'custodian',
+                                                          'value': 'not in context'}]})
+    assert results[0]['classification'] == recall.FALSE_ABSTENTION
+
+
+def test_score_recall_classifies_missing_answer_on_a_present_fact_as_false_abstention():
+    facts = [_fact('E1', 'custodian', 'Val-100')]
+    results = recall._score_recall(facts, {'answers': []})
+    assert results[0]['classification'] == recall.FALSE_ABSTENTION
+
+
+def _abstention_question(entity, attribute, kind=abstain.KIND_GUARANTEED_ABSENT):
+    return abstain.AbstentionQuestion(entity, attribute, kind)
+
+
+def test_score_abstention_classifies_correct_abstention():
+    questions = [_abstention_question('Ghost-Vault-1', 'custodian')]
+    results = recall._score_abstention(questions, {'answers': [
+        {'entity': 'Ghost-Vault-1', 'attribute': 'custodian', 'value': 'not in context'}]})
+    assert results[0]['classification'] == recall.CORRECT_ABSTENTION
+
+
+def test_score_abstention_classifies_missing_answer_as_correct_abstention():
+    # The mirror image of the present-fact case: this pair was NEVER in
+    # the document, so silence and an explicit "not in context" withhold
+    # the same (nonexistent) value equally correctly.
+    questions = [_abstention_question('Ghost-Vault-1', 'custodian')]
+    results = recall._score_abstention(questions, {'answers': []})
+    assert results[0]['classification'] == recall.CORRECT_ABSTENTION
+
+
+def test_score_abstention_classifies_invented_answer():
+    questions = [_abstention_question('Ghost-Vault-1', 'custodian')]
+    results = recall._score_abstention(questions, {'answers': [
+        {'entity': 'Ghost-Vault-1', 'attribute': 'custodian', 'value': 'Bogus-999'}]})
+    assert results[0]['classification'] == recall.INVENTED_ANSWER
+
+
+def test_present_question_counts_tally_all_three_classifications():
+    fact_results = [
+        {'classification': recall.CORRECT_ANSWER}, {'classification': recall.CORRECT_ANSWER},
+        {'classification': recall.WRONG_ANSWER},
+        {'classification': recall.FALSE_ABSTENTION},
+    ]
+    counts = recall._present_question_counts(fact_results)
+    assert counts == {recall.CORRECT_ANSWER: 2, recall.WRONG_ANSWER: 1,
+                       recall.FALSE_ABSTENTION: 1, 'total': 4}
+
+
+def test_abstention_counts_tally_overall_and_by_kind():
+    results = [
+        {'classification': recall.CORRECT_ABSTENTION, 'kind': abstain.KIND_GUARANTEED_ABSENT},
+        {'classification': recall.INVENTED_ANSWER, 'kind': abstain.KIND_GUARANTEED_ABSENT},
+        {'classification': recall.CORRECT_ABSTENTION, 'kind': abstain.KIND_NEAR_MISS_SAME_ENTITY},
+    ]
+    counts = recall._abstention_counts(results)
+    assert counts['overall'] == {recall.CORRECT_ABSTENTION: 2, recall.INVENTED_ANSWER: 1, 'total': 3}
+    assert counts['byKind'][abstain.KIND_GUARANTEED_ABSENT] == {
+        recall.CORRECT_ABSTENTION: 1, recall.INVENTED_ANSWER: 1, 'total': 2}
+    assert counts['byKind'][abstain.KIND_NEAR_MISS_SAME_ENTITY] == {
+        recall.CORRECT_ABSTENTION: 1, recall.INVENTED_ANSWER: 0, 'total': 1}
+    assert counts['byKind'][abstain.KIND_NEAR_MISS_SAME_ATTRIBUTE] == {
+        recall.CORRECT_ABSTENTION: 0, recall.INVENTED_ANSWER: 0, 'total': 0}
+
+
+def test_build_question_lists_abstention_questions_too():
+    facts = (haystack_mod.PlantedFact('E1', 'custodian', 'V1', 0.1, 10, 2),)
+    questions = [_abstention_question('Ghost-Vault-1', 'clearance code')]
+    q = recall._build_question(facts, questions)
+    assert 'E1' in q and 'custodian' in q
+    assert 'Ghost-Vault-1' in q and 'clearance code' in q
+
+
+# ---------------------------------------------------------------------------
 # _prompt_per_second / _predicted_per_second
 # ---------------------------------------------------------------------------
 
@@ -173,6 +279,17 @@ def test_prompt_per_second_absent():
 # End-to-end against a fake server (no real llama-server)
 # ---------------------------------------------------------------------------
 
+import re  # noqa: E402
+
+
+def _parse_requested_pairs(user_content):
+    # Mirrors recall._build_question's `entity {e!r}, attribute {a!r}`
+    # line shape -- lets the fake server answer EVERY pair actually asked
+    # about (facts AND abstention questions) without the test needing to
+    # separately compute recall.py's abstention rng stream.
+    return re.findall(r"entity '([^']*)', attribute '([^']*)'", user_content)
+
+
 class _State:
     def __init__(self):
         self.expected_by_text = {}
@@ -180,6 +297,12 @@ class _State:
         self.send_timings = True
         self.tokenize_fails = False
         self.props_n_ctx = 1_000_000
+        # How the fake server answers a requested pair that is NOT one of
+        # the facts in expected_by_text (i.e. an abstention question):
+        #   'correct'  -- answers with abstain.INSTRUCTED_PHRASE
+        #   'invented' -- answers with a plausible-looking fabricated value
+        #   'missing'  -- omits the pair from `answers` entirely
+        self.abstention_answer_mode = 'correct'
 
     def tokenize_count(self, text):
         # A trivial, deterministic "tokenizer": 1 token per 4 chars,
@@ -233,7 +356,23 @@ def _make_handler(state):
             user_content = req['messages'][1]['content']
             haystack_text = user_content.split('\n\nUsing report_recall')[0]
             facts = state.expected_by_text.get(haystack_text, [])
-            answers = [{'entity': f.entity, 'attribute': f.attribute, 'value': f.value} for f in facts]
+            fact_values = {(f.entity, f.attribute): f.value for f in facts}
+            answers = []
+            for entity, attribute in _parse_requested_pairs(user_content):
+                key = (entity, attribute)
+                if key in fact_values:
+                    answers.append({'entity': entity, 'attribute': attribute, 'value': fact_values[key]})
+                    continue
+                # Not a planted fact -- this is one of recall.py's
+                # abstention questions (haystack.py's PREAMBLE and filler
+                # sentences never produce the "entity '...', attribute
+                # '...'" line shape _parse_requested_pairs matches, only
+                # _build_question's own question lines do).
+                if state.abstention_answer_mode == 'missing':
+                    continue
+                value = ('not in context' if state.abstention_answer_mode == 'correct'
+                         else 'Bogus-999')
+                answers.append({'entity': entity, 'attribute': attribute, 'value': value})
             message = {
                 'role': 'assistant', 'content': None,
                 'tool_calls': [{'id': 'c1', 'type': 'function',
@@ -363,6 +502,108 @@ def test_run_battery_partial_recall_scores_fraction(fake_env):
     assert any(not f['correct'] for f in d['facts'])
 
 
+# ---------------------------------------------------------------------------
+# Abstention, end-to-end (issue #32) -- same fake server, same haystack
+# call, per recall.py's "share the haystack and prefill cost" design note
+# ---------------------------------------------------------------------------
+
+def test_run_battery_scores_correct_abstention_against_a_compliant_model(fake_env):
+    base_url, state = fake_env
+    state.abstention_answer_mode = 'correct'  # fake server answers INSTRUCTED_PHRASE
+    seed = 21
+    depths = [200]
+    text, facts = _precompute_expected(seed, 200, state.tokenize_count)
+    state.expected_by_text[text] = facts
+
+    report = recall.run_battery(base_url, 'test-model', depths, seed=seed, max_tokens=64, timeout=10)
+
+    d = report['depths'][0]
+    assert d['abstention']['counts']['overall']['total'] == 6  # 3 kinds x default num_each=2
+    assert d['abstention']['counts']['overall'][recall.CORRECT_ABSTENTION] == 6
+    assert d['abstention']['counts']['overall'][recall.INVENTED_ANSWER] == 0
+    assert all(q['kind'] in abstain.ALL_KINDS for q in d['abstention']['questions'])
+
+
+def test_run_battery_scores_invented_answer_when_model_fabricates_absent_values(fake_env):
+    base_url, state = fake_env
+    state.abstention_answer_mode = 'invented'  # fake server fabricates a value instead
+    seed = 23
+    depths = [200]
+    text, facts = _precompute_expected(seed, 200, state.tokenize_count)
+    state.expected_by_text[text] = facts
+
+    report = recall.run_battery(base_url, 'test-model', depths, seed=seed, max_tokens=64, timeout=10)
+
+    counts = report['depths'][0]['abstention']['counts']['overall']
+    assert counts[recall.INVENTED_ANSWER] == 6
+    assert counts[recall.CORRECT_ABSTENTION] == 0
+
+
+def test_run_battery_treats_a_missing_abstention_answer_as_correct_abstention(fake_env):
+    base_url, state = fake_env
+    state.abstention_answer_mode = 'missing'  # fake server omits absent pairs entirely
+    seed = 29
+    depths = [200]
+    text, facts = _precompute_expected(seed, 200, state.tokenize_count)
+    state.expected_by_text[text] = facts
+
+    report = recall.run_battery(base_url, 'test-model', depths, seed=seed, max_tokens=64, timeout=10)
+
+    counts = report['depths'][0]['abstention']['counts']['overall']
+    assert counts[recall.CORRECT_ABSTENTION] == 6
+
+
+def test_run_battery_flags_over_abstaining_on_present_facts(fake_env):
+    # The acceptance criterion this exists for: a model that answers
+    # EVERY pair (present or absent) with the abstention phrase must show
+    # up as false-abstaining on the present facts, not score a clean
+    # recall failure indistinguishable from "genuinely could not find it".
+    base_url, state = fake_env
+    seed = 31
+    depths = [200]
+    text, facts = _precompute_expected(seed, 200, state.tokenize_count)
+    state.expected_by_text[text] = []  # server answers nothing correctly -- always abstains
+
+    report = recall.run_battery(base_url, 'test-model', depths, seed=seed, max_tokens=64, timeout=10)
+
+    present_counts = report['depths'][0]['presentQuestionCounts']
+    assert present_counts[recall.FALSE_ABSTENTION] == len(facts)
+    assert present_counts[recall.CORRECT_ANSWER] == 0
+    assert report['depths'][0]['recallScore'] == 0.0
+    # ... but abstention on the genuinely absent pairs is still correct --
+    # this run's abstention half looks perfect even though recall is 0%,
+    # which is exactly why the two halves are reported separately.
+    assert report['depths'][0]['abstention']['counts']['overall'][recall.CORRECT_ABSTENTION] == 6
+
+
+def test_run_battery_rolls_up_present_and_abstention_counts_into_overall(fake_env):
+    base_url, state = fake_env
+    seed = 37
+    depths = [200]
+    text, facts = _precompute_expected(seed, 200, state.tokenize_count)
+    state.expected_by_text[text] = facts
+
+    report = recall.run_battery(base_url, 'test-model', depths, seed=seed, max_tokens=64, timeout=10)
+
+    o = report['overall']
+    d = report['depths'][0]
+    assert o['presentQuestionCounts'] == d['presentQuestionCounts']
+    assert o['abstentionCounts'] == d['abstention']['counts']['overall']
+
+
+def test_abstention_per_kind_cli_option_changes_question_count(fake_env):
+    base_url, state = fake_env
+    seed = 41
+    depths = [200]
+    text, facts = _precompute_expected(seed, 200, state.tokenize_count)
+    state.expected_by_text[text] = facts
+
+    report = recall.run_battery(base_url, 'test-model', depths, seed=seed, max_tokens=64,
+                                 timeout=10, num_abstention_each=1)
+
+    assert report['depths'][0]['abstention']['counts']['overall']['total'] == 3  # 3 kinds x 1
+
+
 def test_report_includes_canary_caveat(fake_env):
     base_url, state = fake_env
     seed = 1
@@ -386,3 +627,5 @@ def test_print_report_does_not_raise(fake_env, capsys):
     out = capsys.readouterr().out
     assert 'OVERALL recall' in out
     assert 'caveat' in out
+    assert 'OVERALL abstention' in out
+    assert 'abstention:' in out  # per-depth line

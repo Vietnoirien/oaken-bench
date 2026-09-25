@@ -255,14 +255,19 @@ not just digests: unlike `edit`/`write` arguments in a real harness trace, these
 values answering fixed public prompts, not agent-written solution code against a held-out spec, so
 there is no CANARY.md-style asset at risk in keeping them legible.
 
-## Recall at context depth
+## Recall at context depth, and abstention
 
 `ctxprobe.sh` finds the context size that actually *loads*. It says nothing about
-whether the model can find anything inside it once loaded. `scripts/recall.py` (issue
-#31, T0.5 of the ladder in #26) is the direct-mode battery for that: `scripts/haystack.py`
-builds a seeded, fictional "operations ledger" document at each of a few context depths,
-plants a handful of facts in it at controlled positions, and asks the model to recall
-them in one tool call.
+whether the model can find anything inside it once loaded, or whether it knows the
+difference between "found" and "not there". `scripts/recall.py` (issue #31's recall pass,
+issue #32's abstention pass, together T0.5 of the ladder in #26) is the direct-mode
+battery for both: `scripts/haystack.py` builds a seeded, fictional "operations ledger"
+document at each of a few context depths and plants a handful of facts in it at
+controlled positions; `scripts/abstain.py` builds a handful of guaranteed-absent
+`(entity, attribute)` pairs against that SAME haystack (an entity that never appears; an
+entity that appears with a DIFFERENT attribute; an attribute that appears on a DIFFERENT
+entity). One tool call per depth asks about both kinds of pair together, sharing the
+haystack and the cold-prefill cost between the two probes.
 
 ```bash
 ./scripts/recall.py --model your-model.gguf \
@@ -287,13 +292,25 @@ them in one tool call.
   a depth (`measure_depth()`'s two-call pair) while deliberately avoiding it across depths (every
   depth gets its own, differently-seeded haystack) -- see `recall.py`'s module docstring, "the
   cache trap", before touching that code.
+- **Abstention, five-way classified.** For every planted fact, an answer is `correct_answer`,
+  `wrong_answer`, or `false_abstention` (the model claimed the fact was absent when it wasn't --
+  over-abstaining, made visible so a model that always says "not in context" cannot score a
+  clean recall failure indistinguishable from genuinely not finding anything). For every
+  guaranteed-absent pair, an answer is `correct_abstention` or `invented_answer`. The model is
+  told in the system prompt to answer exactly `"not in context"` when a pair is absent, but
+  scoring accepts a documented, unit-tested list of paraphrases leniently -- see `abstain.py`'s
+  module docstring for the accepted phrasings and why each is (or is deliberately not) on the
+  list. Counts are reported per depth (`depths[i].presentQuestionCounts` /
+  `depths[i].abstention.counts`, the latter also broken down `byKind`) and rolled up once more
+  into `overall.presentQuestionCounts` / `overall.abstentionCounts`.
 
 Same plaintext-probe caveat as `toolbattery.py`, with one difference worth knowing: unlike
-`toolbattery.py`'s fixed prompts and answers, `recall.py`'s planted facts are regenerated fresh
-every seed, so a leaked run's answers do not transfer to a different seed's. The probe SHAPE
-(question template, tool schema, `haystack.py`'s fixed vocabulary) is still constant across runs,
-the same lower-but-nonzero contamination risk `toolbattery.py` carries. See
-[CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-and-scriptshaystackpy-the-same-asset-one-difference).
+`toolbattery.py`'s fixed prompts and answers, `recall.py`'s planted facts (and abstain.py's
+absent pairs) are regenerated fresh every seed, so a leaked run's answers do not transfer to a
+different seed's. The probe SHAPE (question template, tool schema, `haystack.py`'s fixed
+vocabulary) is still constant across runs, the same lower-but-nonzero contamination risk
+`toolbattery.py` carries. See
+[CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
 
 ## Layout
 
@@ -317,7 +334,8 @@ scripts/
   direct.py        shared OpenAI-compatible HTTP client for direct-mode batteries (issue #27)
   direct_env.py    direct-mode run-environment capture: GPU, backend, peak VRAM (issue #28)
   haystack.py      seeded fictional-fact haystack generator for recall/abstention batteries (issue #31)
-  recall.py        recall-at-context-depth battery, talks to the model directly (issue #31)
+  abstain.py       guaranteed-absent (entity, attribute) questions + abstention-phrase scoring (issue #32)
+  recall.py        recall-at-context-depth AND abstention battery, talks to the model directly (issues #31, #32)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
 recall-results/       JSON artefacts from scripts/recall.py, one per run; same conventions as toolbattery-results/
 results/           one directory per run; score.json and events-summary.json are
