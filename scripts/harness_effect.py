@@ -173,13 +173,29 @@ def _compare_item_rows(item_rows, left_mode, right_mode, left_status, right_stat
 
 def _run_command(command, prompt, timeout, cwd, env):
     argv = [part.replace('{prompt}', prompt) for part in command]
-    if not any('{prompt}' in part for part in command):
+    # The built-in Docker command already ends with the prompt. Custom
+    # commands may use {prompt}, or may rely on this append.
+    if not any('{prompt}' in part for part in command) and (not argv or argv[-1] != prompt):
         argv.append(prompt)
     start = time.monotonic()
     completed = subprocess.run(argv, cwd=cwd, stdin=subprocess.DEVNULL,
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                text=True, timeout=timeout, check=False, env=env)
     return completed, time.monotonic() - start
+
+
+def _make_container_files_removable(workspace, config_dir):
+    """Docker writes as a remapped UID; open its nested dirs for host cleanup."""
+    image = os.environ.get('OAKEN_IMAGE', 'oaken-bench:1.0')
+    try:
+        subprocess.run([
+            'docker', 'run', '--rm', '-v', f'{workspace}:/work',
+            '-v', f'{config_dir}:/config', '--entrypoint', 'chmod',
+            image, '-R', 'a+rwx', '/work', '/config',
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        pass  # Cleanup must not replace the harness result or its real error.
 
 
 def _docker_command(mode, command, prompt, model, workspace, config_dir):
@@ -223,13 +239,14 @@ def _container_base_url(base_url):
 
 
 def run_harness(mode, prompt, *, model, base_url, timeout, command=None,
-                ledger_text=None):
+                ledger_text=None, context_window=None):
     base_url = _checked_base_url(base_url)
     if mode == 'direct':
+        # Qwen can spend more than 1024 tokens reasoning before its JSON.
         response = direct.chat(
             base_url, model,
             [{'role': 'system', 'content': 'Return the requested JSON only.'},
-             {'role': 'user', 'content': prompt}], max_tokens=1024,
+             {'role': 'user', 'content': prompt}], max_tokens=4096,
             timeout=timeout, api_key=direct.api_key_from_env())
         choice = (response.get('choices') or [{}])[0]
         message = choice.get('message') or {}
@@ -247,7 +264,8 @@ def run_harness(mode, prompt, *, model, base_url, timeout, command=None,
         command = None
     if ledger_text is None:
         raise ValueError('harness mode requires ledger text to write into its workspace')
-    with tempfile.TemporaryDirectory(prefix=f'oaken-{mode}-') as cwd:
+    with tempfile.TemporaryDirectory(prefix=f'oaken-{mode}-',
+                                     ignore_cleanup_errors=True) as cwd:
         container_url = _container_base_url(base_url)
         workspace = os.path.join(cwd, 'workspace')
         os.makedirs(workspace)
@@ -263,7 +281,8 @@ def run_harness(mode, prompt, *, model, base_url, timeout, command=None,
             with open(os.path.join(config_dir, 'models.json'), 'w', encoding='utf-8') as f:
                 json.dump({'providers': {'local-llama': {
                     'baseUrl': container_url, 'api': 'openai-completions', 'apiKey': 'local',
-                    'models': [{'id': model, 'name': model, 'contextWindow': 262144,
+                    'models': [{'id': model, 'name': model,
+                                'contextWindow': context_window or 131072,
                                 'maxTokens': 32768, 'input': ['text']}],
                 }}}, f)
         else:
@@ -274,7 +293,14 @@ def run_harness(mode, prompt, *, model, base_url, timeout, command=None,
             with open(settings_path, encoding='utf-8') as f:
                 settings = f.read()
             settings = settings.replace('http://llama:8080/v1', container_url)
-            settings = settings.replace('gemma-4-12B-it-qat-UD-Q4_K_XL.gguf', model)
+            # The model registry already contains Qwen. Replacing the Gemma
+            # registry entry too creates duplicate IDs and DSH rejects it.
+            lines = settings.splitlines(keepends=True)
+            defaults = [i for i, line in enumerate(lines) if line.startswith('  model: ')]
+            if len(defaults) != 1:
+                raise ValueError('expected one agent-default-model in DSH settings')
+            lines[defaults[0]] = f'  model: {model}\n'
+            settings = ''.join(lines)
             with open(settings_path, 'w', encoding='utf-8') as f:
                 f.write(settings)
             env['LOCAL_LLAMA_KEY'] = 'local'
@@ -283,21 +309,53 @@ def run_harness(mode, prompt, *, model, base_url, timeout, command=None,
         # Supplied fake commands run on the host in the same mounted-workspace
         # path so tests exercise file visibility without needing Docker.
         command_cwd = workspace if command is not None else cwd
-        completed, elapsed = _run_command(argv, prompt, timeout, command_cwd, env)
+        try:
+            completed, elapsed = _run_command(argv, prompt, timeout, command_cwd, env)
+        finally:
+            if command is None:
+                _make_container_files_removable(workspace, config_dir)
     if completed.returncode:
         raise RuntimeError(f'{mode} exited {completed.returncode}')
     return parse_answers(completed.stdout), elapsed
 
 
 def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct', 'pi', 'dsh'),
-                   pi_command=None, dsh_command=None):
+                   pi_command=None, dsh_command=None, count_tokens_fn=None,
+                   served_context=None):
     base_url = _checked_base_url(base_url)
     result_depths = []
     all_item_rows = []
     for depth in depths:
-        case_set = build_case_set(depth, seed)
+        case_set = (build_case_set(depth, seed, count_tokens_fn=count_tokens_fn)
+                    if count_tokens_fn is not None else build_case_set(depth, seed))
         direct_prompt = build_prompt(case_set)
+        prompt_tokens = None
+        if count_tokens_fn is not None:
+            try:
+                prompt_tokens = count_tokens_fn(direct_prompt)
+            except Exception:
+                pass
         harness_prompt = build_prompt(case_set, ledger_path='/work/ledger.txt')
+        depth_meta = {
+            'depthTokens': depth,
+            'ledgerTokenCount': case_set['haystack'].token_count,
+            'tokenCountSource': case_set['haystack'].token_count_source,
+            'directPromptTokenCount': prompt_tokens,
+            'servedContextTokens': served_context,
+        }
+        # The model needs room for the prompt, its answer, and harness framing.
+        # An over-window ledger can yield plausible pi/dsh answers after the
+        # harness trims context; comparing those with direct would be false.
+        if (served_context is not None and prompt_tokens is not None
+                and prompt_tokens + 4096 > served_context):
+            result_depths.append({
+                **depth_meta, 'questionSetDigest': case_set['digest'],
+                'validForComparison': False,
+                'skipReason': 'direct prompt plus 4096-token reserve exceeds served context',
+                'modes': {mode: {'status': 'skipped'} for mode in modes},
+                'items': [], 'comparisons': {},
+            })
+            continue
         mode_results = {}
         classified_by_mode = {}
         for mode in modes:
@@ -309,7 +367,8 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
                 answers, elapsed = run_harness(
                     mode, prompt, model=model, base_url=base_url,
                     timeout=timeout, command=command,
-                    ledger_text=case_set['haystack'].text if mode in ('pi', 'dsh') else None)
+                    ledger_text=case_set['haystack'].text if mode in ('pi', 'dsh') else None,
+                    context_window=served_context)
                 status = 'ok' if answers is not None else 'unparseable'
                 entry = {'status': status,
                          'elapsedSeconds': round(elapsed if elapsed is not None else
@@ -348,7 +407,8 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
                     item_rows, mode, 'direct', mode_results[mode]['status'],
                     mode_results['direct']['status'])
         result_depths.append({
-            'depthTokens': depth, 'questionSetDigest': case_set['digest'],
+            **depth_meta, 'questionSetDigest': case_set['digest'],
+            'validForComparison': True,
             'modes': mode_results, 'items': item_rows, 'comparisons': comparisons,
         })
     effects = {}
@@ -371,8 +431,9 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
         for mode in modes:
             if mode == 'direct':
                 continue
-            left_statuses = [d['modes'][mode]['status'] for d in result_depths]
-            right_statuses = [d['modes']['direct']['status'] for d in result_depths]
+            valid_depths = [d for d in result_depths if d['validForComparison']]
+            left_statuses = [d['modes'][mode]['status'] for d in valid_depths]
+            right_statuses = [d['modes']['direct']['status'] for d in valid_depths]
             overall_comparisons[f'{mode}_vs_direct'] = _compare_item_rows(
                 all_item_rows, mode, 'direct',
                 'ok' if all(s == 'ok' for s in left_statuses) else 'partial',
@@ -402,11 +463,19 @@ def main(argv=None):
     parser.add_argument('--dsh-command')
     parser.add_argument('--out', required=True, help='JSON output path')
     args = parser.parse_args(argv)
+    args.base_url = _checked_base_url(args.base_url)
     depths = [recall.parse_depth(item) for item in args.depths.split(',')]
+    root_url = recall.server_root_url(args.base_url)
+    served_context, _ = recall.fetch_served_context_tokens(root_url)
+    tokenize_available, _ = recall.probe_tokenize(root_url)
+    count_tokens_fn = (lambda text: recall.count_tokens_via_server(root_url, text)) \
+        if tokenize_available else None
     report = run_comparison(depths, args.seed, args.model, base_url=args.base_url,
                             timeout=args.timeout,
                             modes=tuple(args.modes.split(',')),
-                            pi_command=args.pi_command, dsh_command=args.dsh_command)
+                            pi_command=args.pi_command, dsh_command=args.dsh_command,
+                            count_tokens_fn=count_tokens_fn,
+                            served_context=served_context)
     report['createdAt'] = datetime.now(timezone.utc).isoformat()
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, 'w', encoding='utf-8') as stream:
