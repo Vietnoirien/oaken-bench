@@ -71,7 +71,9 @@ docker run --rm \
   -v "$OUT:/out" \
   "$OAKEN_IMAGE" "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" &
 RUN_PID=$!
-while jobs -pr | grep -qx "$RUN_PID"; do
+# Bash reports a pipeline job by its group leader, while $! is the last
+# process (tee). Match any running job here; this script starts only this one.
+while jobs -pr | grep -q .; do
   sleep 30
   ELAPSED=$(($(date +%s) - RUN_START))
   printf '[progress] %s %s\n' "$LABEL" "$(python3 "$B/scripts/run_progress.py" "$OUT" "$HARNESS" "$ELAPSED")"
