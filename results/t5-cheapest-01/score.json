@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "tier": "t5",
+  "protocol": "t5-sealed-snapshot/1",
+  "contract": "t5/1",
+  "runtime": "v24.14.1",
+  "oracle": {
+    "archiveSha256": "892b2efaf3f7506b313fc305aa0fd42f7307bae65cf083224724ab85a26fb747",
+    "seedsSha256": "ca896f91705e5c183fd911b2d280753393c05d864897a0cc34286328043ef2c1",
+    "poolSha256": "15103553a3840817b9c114ff76f84c098c9b88b6688c5c4d1ca9949a7fbaabdb",
+    "frozenSha256": "6c007bd234380a064bcab063c4fabf8a2ccf0cd0973f5d5eb8337fb59910d843",
+    "refengineSha256": "c9a04e839d7bc53782caf3ef3a39c88f634a7350a63ce065e4e3883976dda82f",
+    "scorerSha256": "cb5a4a5e770da3da488e5c461030fd721b06df1cd5042d4b02420460b92b4047"
+  },
+  "bot": {
+    "spec": "baseline:cheapest",
+    "sha256": "8bd3037ec756099fa29e6e71cf433ddd7516d363e197179ab04c2cb46b60d992",
+    "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+  },
+  "seedCount": 48,
+  "matches": 144,
+  "wins": 126,
+  "losses": 18,
+  "winRate": 0.875,
+  "confidenceInterval": {
+    "method": "seed-cluster-percentile-bootstrap",
+    "level": 0.95,
+    "replicates": 10000,
+    "lower": 0.7917,
+    "upper": 0.9444
+  },
+  "invalidSnapshots": 0,
+  "meanDays": 11.0417,
+  "counters": {
+    "calls": 3220,
+    "actions": 1630,
+    "illegal": 0,
+    "malformed": 0,
+    "decideErrors": 0,
+    "dropped": 0,
+    "impure": 0
+  }
+}

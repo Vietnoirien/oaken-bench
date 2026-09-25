@@ -2,10 +2,11 @@
 
 Write `decide(state) -> actions[]`, play it against the reference engine, and
 measure against the three public baselines. The contract is [SPEC.md](SPEC.md).
-The author exclusion for the next oracle is in [AUTHORSHIP.md](AUTHORSHIP.md).
+The contract author exclusion is in [AUTHORSHIP.md](AUTHORSHIP.md). The
+independent sealed oracle is documented in [oracle/README.md](oracle/README.md).
 
 These are visible development scores. They do not estimate the held-out
-snapshot-pool score planned in issue #40. All original T2 assets and published
+snapshot-pool score from issue #40. All original T2 assets and published
 results keep their existing meaning.
 
 ## Run locally
@@ -65,7 +66,7 @@ The score stops when either run ends and compares status/trophies/lives,
 so it is not the fraction of ten-trophy runs completed. The artifact records
 that separate count. Rates have a ceiling of 100%; more seeds add resolution.
 The two seat outcomes per seed are dependent, and this visible fixture makes
-no population-confidence claim. Issue #40 owns held-out uncertainty reporting.
+no population-confidence claim. The sealed oracle reports a seed-cluster interval.
 
 ## Validation
 
@@ -96,6 +97,6 @@ seeds 1-20. Tests use only visible fixtures and the sealed reference engine.
 - `FROZEN.sha256`: contract, simulator, baselines, seeds and dependency hashes.
 - `AUTHORSHIP.md`: recovered work and the oracle author exclusion.
 
-`results/t5-*` dispatch, sealed seeds/pool and final scoring belong to #40.
-Published trace-derived behavior metrics belong to #41. This patch only adds
-`t5/`; it requires the #36/#37 base commits named in AUTHORSHIP.md.
+`results/t5-*` dispatch, sealed seeds/pool and held-out scoring are in
+`oracle/` and `scripts/t5_oracle.py`. Published trace-derived behavior metrics
+belong to #41.
