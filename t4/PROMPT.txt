@@ -1,0 +1,8 @@
+Implement SPEC-v1.1.md on top of the supplied v1.0 reference engine.
+Read SPEC.md and SPEC-v1.1.md. Preserve every v1.0 behavior for v1.0 inputs.
+The workspace already contains the reference implementation and both versions'
+frozen data. Add the new exports and behavior described in SPEC-v1.1.md.
+Do not edit either spec, any data file, package.json, tsconfig.json, or
+vitest.config.ts. Do not add dependencies. Run the visible tests and typecheck.
+Hidden v1.1 and v1.0 suites are scored separately. Complete the implementation
+within the allotted time without asking for clarification.

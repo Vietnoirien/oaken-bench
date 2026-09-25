@@ -56,6 +56,7 @@ ITER=200000
 declare -A BUNDLE_DEFAULT_PASS=(
   [hidden]="oaken-bench-held-out"
   [refengine]="oaken-bench-refengine-v1"
+  [t4oracle]="oaken-bench-t4-v1.1"
 )
 
 # Optional glob narrowing what counts as "the bundle's files" for the file
@@ -65,6 +66,7 @@ declare -A BUNDLE_DEFAULT_PASS=(
 declare -A BUNDLE_GLOB=(
   [hidden]="*.test.ts"
   [refengine]="*.ts"
+  [t4oracle]="*.ts"
 )
 
 die() { echo "error: $*" >&2; exit 1; }

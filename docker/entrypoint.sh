@@ -12,7 +12,14 @@ HARNESS="$1"; MODEL="$2"; TIMEOUT="${3:-3600}"
 OUT=/out
 
 mkdir -p "$OUT"
-rm -rf /work && cp -r /opt/seed /work && cd /work
+rm -rf /work
+if [ -f /t4-input/workspace.tgz ]; then
+  tar xzf /t4-input/workspace.tgz -C /
+  cp -a /opt/seed/node_modules /work/node_modules
+else
+  cp -r /opt/seed /work
+fi
+cd /work
 
 # Baseline commit so the run's diff is recoverable at scoring time.
 git init -q . && git add -A && git -c user.email=b@x -c user.name=bench commit -qm baseline

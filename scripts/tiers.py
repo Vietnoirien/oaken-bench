@@ -65,11 +65,18 @@ def _t2_score(result_dir, detail=True):
     return score_run(result_dir, detail=detail)
 
 
+def _t4_score(result_dir, detail=True):
+    from t4 import score_run
+    return score_run(result_dir, detail=detail)
+
+
 TIERS = (
     Tier(id='t2',
          label='T2 -- long-horizon greenfield (the original task)',
          dir_prefix=None,
          score=_t2_score),
+    Tier(id='t4', label='T4 -- v1.1 extension and v1.0 regressions',
+         dir_prefix='t4-', score=_t4_score),
     # T1 (#46), T3 (#42), T4 (#44), T5 (#40): add a Tier(...) here, each
     # with its own dir_prefix ('t1-', 't3-', 't4-', 't5-') and its own
     # score callable. Nothing else in this file, or in score.py /

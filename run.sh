@@ -22,6 +22,19 @@ B="$(cd "$(dirname "$0")" && pwd)"
 OUT="$B/results/$LABEL"
 
 if [ -e "$OUT" ]; then echo "refusing to overwrite existing result: $OUT" >&2; exit 1; fi
+TIER="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); from tiers import resolve_tier; print(resolve_tier(sys.argv[2]).id)' "$B/scripts" "$LABEL")"
+T4_DOCKER_ARGS=()
+T4_ENTRY_ARGS=()
+T4_TMP=""
+if [ "$TIER" = t4 ]; then
+  T4_TMP=$(mktemp -d)
+  trap 'rm -rf "$T4_TMP"' EXIT
+  python3 "$B/scripts/t4.py" assemble "$T4_TMP/input"
+  T4_DOCKER_ARGS=(-v "$T4_TMP/input:/t4-input:ro"
+                  -v "$B/docker/entrypoint.sh:/t4-entrypoint.sh:ro"
+                  -v "$B/t4/PROMPT.txt:/opt/PROMPT.txt:ro" --entrypoint /bin/bash)
+  T4_ENTRY_ARGS=(/t4-entrypoint.sh)
+fi
 mkdir -p "$OUT"
 
 if ! curl -s -m 5 http://172.17.0.1:8080/v1/models >/dev/null; then
@@ -44,7 +57,7 @@ docker run --rm \
   --dns 0.0.0.0 \
   -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
   -v "$OUT:/out" \
-  oaken-bench:1.0 "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" || RC=$?
+  "${T4_DOCKER_ARGS[@]}" "${OAKEN_IMAGE:-oaken-bench:1.0}" "${T4_ENTRY_ARGS[@]}" "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" || RC=$?
 
 END=$(date -u +%s)
 echo "$((END - START))" > "$OUT/wallclock.seconds"

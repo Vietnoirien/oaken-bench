@@ -28,13 +28,13 @@ def test_unprefixed_label_resolves_to_t2():
         assert resolve_tier(label).id == 't2'
 
 
-def test_t2_is_the_only_registered_tier_today():
+def test_registered_tiers():
     """Issue #36's brief: T2 is the only registered tier today; T1/T3/T4/T5
     register later, each as their own ticket. A test pinning this count
     isn't asserting a permanent fact -- it's a tripwire so the day a new
     Tier() lands, whoever adds it notices this test and updates it
     deliberately, rather than the registry silently growing."""
-    assert [t.id for t in TIERS] == ['t2']
+    assert [t.id for t in TIERS] == ['t2', 't4']
 
 
 def test_only_one_tier_may_claim_the_unprefixed_fallback():

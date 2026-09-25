@@ -83,6 +83,9 @@ def build_row(results_dir, label):
     hm = d.get('harnessMetrics') or {}
     u = hm.get('usage') or {}
     tier = resolve_tier(label)
+    if tier.id == 't4':
+        return {'label': label, 'tier': tier.id, 'tierLabel': tier.label,
+                'suites': d['suites'], 'outcome': d.get('outcome')}
     return {
         'label': label,
         'tier': tier.id,
@@ -248,6 +251,13 @@ def print_tier(tier_label, rows):
     single tier's rows. Called once per tier from main(); never fed rows
     from more than one tier (see rows_by_tier())."""
     print(f"=== {tier_label} ===")
+
+    if rows and rows[0]['tier'] == 't4':
+        for r in rows:
+            a, b = r['suites']['v1.0'], r['suites']['v1.1']
+            print(f"{r['label']}: v1.0 {a['passed']}/{a['total']}; "
+                  f"v1.1 {b['passed']}/{b['total']}; {r['outcome']}")
+        return
 
     header = (f"{'run':<26} {'outcome':<26} {'hidden':>12} {'visible':>11} {'gap':>7} "
               f"{'tc':>3} {'wall':>6} {'turns':>6} {'tools':>6} {'mut':>6} {'cmp':>5}")
