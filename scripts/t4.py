@@ -73,9 +73,9 @@ def container(mode, inputs, output):
         cmd.extend(['-e', var + '=' + env[var]])
     cmd.extend([image, '/runner.py', mode])
     try:
-        rc, _, _ = sh(cmd, timeout=1100 if mode == 'score' else 120)
+        rc, _, err = sh(cmd, timeout=1100 if mode == 'score' else 120)
         if rc:
-            raise RuntimeError('T4 Docker operation failed; no score produced')
+            raise RuntimeError(f'T4 Docker operation failed (exit {rc}); no score produced: {err[:500]}')
     finally:
         subprocess.run(['docker', 'rm', '-f', name], stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL, timeout=30)
@@ -145,6 +145,19 @@ def score_run(result_dir, detail=True):
     print(f"{result_dir.name}: v1.0 {suites['v1.0']['passed']}/{suites['v1.0']['total']}; "
           f"v1.1 {suites['v1.1']['passed']}/{suites['v1.1']['total']}; {report['outcome']}")
     return report
+
+
+def summary_row(data, label, tier):
+    return {'label': label, 'tier': tier.id, 'tierLabel': tier.label,
+            'suites': data['suites'], 'outcome': data.get('outcome')}
+
+
+def print_summary(label, rows):
+    print(f"=== {label} ===")
+    for row in rows:
+        a, b = row['suites']['v1.0'], row['suites']['v1.1']
+        print(f"{row['label']}: v1.0 {a['passed']}/{a['total']}; "
+              f"v1.1 {b['passed']}/{b['total']}; {row['outcome']}")
 
 
 def main():

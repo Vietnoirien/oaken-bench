@@ -12,7 +12,7 @@ tier's rows at a time, same as before tiering existed.
 import json, os, statistics, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from tiers import resolve_tier  # noqa: E402
+from tiers import resolve_tier, tier_by_id  # noqa: E402
 
 B = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 R = os.path.join(B, 'results')
@@ -80,12 +80,11 @@ def list_result_labels(results_dir):
 def build_row(results_dir, label):
     p = os.path.join(results_dir, label, 'score.json')
     d = json.load(open(p))
+    tier = resolve_tier(label)
+    if tier.build_row:
+        return tier.build_row(d, label, tier)
     hm = d.get('harnessMetrics') or {}
     u = hm.get('usage') or {}
-    tier = resolve_tier(label)
-    if tier.id == 't4':
-        return {'label': label, 'tier': tier.id, 'tierLabel': tier.label,
-                'suites': d['suites'], 'outcome': d.get('outcome')}
     return {
         'label': label,
         'tier': tier.id,
@@ -124,8 +123,7 @@ def collect_rows(results_dir):
 
 def rows_by_tier(rows):
     """`rows`, partitioned by tier, as an ordered list of (tier_id, rows)
-    pairs -- first-seen order, so T2 (today's only tier, and the one every
-    existing label resolves to) comes first exactly as it always has.
+    pairs -- first-seen order, so the older T2 rows come first.
 
     This is the one place summarize.py splits the run list before doing
     anything else with it. Every downstream step -- aggregate_groups(),
@@ -252,13 +250,6 @@ def print_tier(tier_label, rows):
     from more than one tier (see rows_by_tier())."""
     print(f"=== {tier_label} ===")
 
-    if rows and rows[0]['tier'] == 't4':
-        for r in rows:
-            a, b = r['suites']['v1.0'], r['suites']['v1.1']
-            print(f"{r['label']}: v1.0 {a['passed']}/{a['total']}; "
-                  f"v1.1 {b['passed']}/{b['total']}; {r['outcome']}")
-        return
-
     header = (f"{'run':<26} {'outcome':<26} {'hidden':>12} {'visible':>11} {'gap':>7} "
               f"{'tc':>3} {'wall':>6} {'turns':>6} {'tools':>6} {'mut':>6} {'cmp':>5}")
     print(header)
@@ -305,10 +296,11 @@ def main():
     rows = collect_rows(R)
 
     tiers = rows_by_tier(rows)
-    for i, (_tier_id, trows) in enumerate(tiers):
+    for i, (tier_id, trows) in enumerate(tiers):
         if i:
             print()
-        print_tier(trows[0]['tierLabel'], trows)
+        printer = tier_by_id(tier_id).print_rows or print_tier
+        printer(trows[0]['tierLabel'], trows)
 
 
 if __name__ == '__main__':

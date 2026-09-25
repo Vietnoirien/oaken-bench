@@ -381,7 +381,8 @@ def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
     same rows, same aggregates, same excluded list, same legend, same bar
     line.
     """
-    actual_lines = _run_summarize().splitlines()
+    # The T5 block is new; the original T2 block must still match exactly.
+    actual_lines = _run_summarize().split('=== T4 --')[0].split('T5 -- sealed snapshot-pool strategy')[0].splitlines()
     pre_lines = open(GOLDEN_PRE_TIERING).read().splitlines()
 
     added = [l for l in actual_lines if l not in pre_lines]
@@ -391,15 +392,17 @@ def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
     assert added == ['=== T2 -- long-horizon greenfield (the original task) ===']
 
 
-def test_rows_by_tier_groups_all_committed_runs_under_t2():
-    """Every committed results/ label predates tiering, so today they must
-    all land in exactly one tier group: T2."""
+def test_rows_by_tier_keeps_t5_apart_from_t2():
+    """The T5 score cannot enter a T2 aggregate."""
     from summarize import R, collect_rows
 
     rows = collect_rows(R)
     grouped = rows_by_tier(rows)
 
-    assert len(grouped) == 1
+    assert len(grouped) == 3
     tier_id, trows = grouped[0]
     assert tier_id == 't2'
-    assert len(trows) == len(rows)
+    assert len(trows) == len(rows) - 2
+    assert grouped[1][0] == 't4'
+    assert grouped[2][0] == 't5'
+    assert [row['label'] for row in grouped[2][1]] == ['t5-cheapest-01']

@@ -19,6 +19,7 @@ import tarfile
 INPUT = Path('/input')
 OUTPUT = Path('/out')
 SEED = INPUT / 'seed'
+DEPS = Path('/opt/seed/node_modules')
 
 
 def extract(archive, target):
@@ -28,7 +29,9 @@ def extract(archive, target):
             parts = Path(member.name).parts
             if member.name.startswith('/') or '..' in parts or not (member.isfile() or member.isdir()):
                 raise ValueError('unsafe archive')
-        tar.extractall(target, filter='data')
+        # The pinned image predates tarfile's filter keyword. Every member
+        # above is a regular file/directory with no traversal or links.
+        tar.extractall(target)
 
 
 def decrypt(bundle, target):
@@ -96,7 +99,7 @@ def run_suite(work, bundle, total):
     for path in bundle.glob('*.ts'):
         shutil.copyfile(path, tests / path.name)
     output = work / 'report.json'
-    command = ['/opt/seed/node_modules/.bin/vitest', 'run', '--reporter=json',
+    command = [str(work / 'node_modules/.bin/vitest'), 'run', '--reporter=json',
                '--testTimeout=10000', '--maxWorkers=1', '--minWorkers=1',
                '--outputFile=' + str(output)]
     result = subprocess.run(['timeout', '-s', 'KILL', '420', *command], cwd=work,
@@ -118,7 +121,10 @@ def candidate_workspace(source, path):
     # what gets scored. Only implementation modules cross this boundary.
     shutil.copytree(source / 'src', path / 'src')
     copy_frozen(path)
-    (path / 'node_modules').symlink_to('/opt/seed/node_modules')
+    # Vite writes .vite-temp beside its dependencies even with an explicit
+    # cache directory. A link to the read-only image fails before collection.
+    shutil.copytree(DEPS, path / 'node_modules', symlinks=True,
+                    ignore=shutil.ignore_patterns('.vite', '.vite-temp'))
     return path
 
 
@@ -134,8 +140,9 @@ def score():
     check = candidate_workspace(source, Path('/tmp/typecheck'))
     shutil.copytree(SEED / 'tests', check / 'tests')
     tc = subprocess.run(['timeout', '-s', 'KILL', '120',
-                         '/opt/seed/node_modules/.bin/tsc', '--noEmit'], cwd=check,
+                         str(check / 'node_modules/.bin/tsc'), '--noEmit'], cwd=check,
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    shutil.rmtree(check)
     # Decrypt each oracle only after typechecking candidate source.
     totals = json.loads((INPUT / 'oracle.json').read_text())['totals']
     suites = {}
@@ -152,8 +159,8 @@ def score():
 if __name__ == '__main__':
     try:
         {'assemble': assemble, 'score': score}[sys.argv[1]]()
-    except Exception:
+    except Exception as exc:
         # Exceptions can include decrypted paths or attacker-written code.
         # Emit no traceback into Docker logs or published score records.
-        print('T4 container operation failed; no score produced', file=sys.stderr)
+        print('T4 container operation failed (' + type(exc).__name__ + '); no score produced', file=sys.stderr)
         sys.exit(1)

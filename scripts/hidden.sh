@@ -57,6 +57,7 @@ declare -A BUNDLE_DEFAULT_PASS=(
   [hidden]="oaken-bench-held-out"
   [refengine]="oaken-bench-refengine-v1"
   [t4oracle]="oaken-bench-t4-v1.1"
+  [t5oracle]="oaken-bench-t5oracle-v1"
 )
 
 # Optional glob narrowing what counts as "the bundle's files" for the file
@@ -67,6 +68,7 @@ declare -A BUNDLE_GLOB=(
   [hidden]="*.test.ts"
   [refengine]="*.ts"
   [t4oracle]="*.ts"
+  [t5oracle]="*.json"
 )
 
 die() { echo "error: $*" >&2; exit 1; }

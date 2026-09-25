@@ -4,7 +4,7 @@
 Every tier gets its own `results/` namespace, its own scorer, and its own
 summary -- and #26 is explicit that tiers are **never combined into one
 number**. This module is the one place that mapping lives, so a later tier
-(T1 #46, T3 #42, T4 #44, T5 #40) registers itself by adding one `Tier(...)`
+(T1 #46, T3 #42, T4 #44) registers itself by adding one `Tier(...)`
 entry to TIERS below. Nothing outside this file should grow a
 tier-by-tier if/else: `scripts/score.py` and `scripts/summarize.py` both
 dispatch through `resolve_tier()`.
@@ -36,6 +36,10 @@ A `Tier` is:
              this -- it only reads the score.json the run already produced).
              T2's `score` is `scripts.score.score_run`, wired in below
              rather than reimplemented here.
+  build_row  optional `callable(data, label, tier) -> dict` for a tier's
+             distinct score schema. T2 uses summarize.py's original row.
+  print_rows optional `callable(label, rows)` for that tier's summary. T2
+             uses summarize.py's original table and aggregates.
 
 `resolve_tier(label)` is the only function callers need: it decides a
 result directory's tier from its name alone, by prefix. A label that starts
@@ -47,7 +51,9 @@ T2's un-prefixed rule and get scored by the wrong scorer) -- see
 import collections
 import re
 
-Tier = collections.namedtuple('Tier', ['id', 'label', 'dir_prefix', 'score'])
+Tier = collections.namedtuple('Tier',
+    ['id', 'label', 'dir_prefix', 'score', 'build_row', 'print_rows'],
+    defaults=[None, None])
 
 # A results/ label claims tier N by starting with this. Matched before
 # falling through to the None-prefix (T2) rule -- see resolve_tier().
@@ -70,15 +76,44 @@ def _t4_score(result_dir, detail=True):
     return score_run(result_dir, detail=detail)
 
 
+def _t4_build_row(data, label, tier):
+    from t4 import summary_row
+    return summary_row(data, label, tier)
+
+
+def _t4_print_rows(label, rows):
+    from t4 import print_summary
+    return print_summary(label, rows)
+
+
+def _t5_score(result_dir, detail=True):
+    from t5_oracle import score_run
+    return score_run(result_dir, detail=detail)
+
+
+def _t5_build_row(data, label, tier):
+    from t5_oracle import summary_row
+    return summary_row(data, label, tier)
+
+
+def _t5_print_rows(label, rows):
+    from t5_oracle import print_summary
+    return print_summary(label, rows)
+
+
 TIERS = (
     Tier(id='t2',
          label='T2 -- long-horizon greenfield (the original task)',
          dir_prefix=None,
          score=_t2_score),
     Tier(id='t4', label='T4 -- v1.1 extension and v1.0 regressions',
-         dir_prefix='t4-', score=_t4_score),
-    # T1 (#46), T3 (#42), T4 (#44), T5 (#40): add a Tier(...) here, each
-    # with its own dir_prefix ('t1-', 't3-', 't4-', 't5-') and its own
+         dir_prefix='t4-', score=_t4_score,
+         build_row=_t4_build_row, print_rows=_t4_print_rows),
+    Tier(id='t5', label='T5 -- sealed snapshot-pool strategy',
+         dir_prefix='t5-', score=_t5_score,
+         build_row=_t5_build_row, print_rows=_t5_print_rows),
+    # T1 (#46), T3 (#42), T4 (#44): add a Tier(...) here, each
+    # with its own dir_prefix ('t1-', 't3-', 't4-') and its own
     # score callable. Nothing else in this file, or in score.py /
     # summarize.py, needs to change.
 )
