@@ -6,10 +6,10 @@ Harness comparison is T2.
 
 ## Tiers
 
-T0 and T0.5 are direct model probes. T1 and T3-T5 are planned task tiers whose
-implementations are in progress or deferred. Only T0, T0.5, and T2 have shipped
-commands. No T1 or T3-T5 measurements exist. The 53 committed `results/*`
-score files are T2 runs; their meaning and values are unchanged.
+T0 and T0.5 are direct model probes. T1, T3 and T4 are planned task tiers whose
+implementations are in progress or deferred. T5 has a sealed snapshot oracle
+and one CPU baseline measurement. The 53 earlier `results/*` score files are
+T2 runs; their meaning and values are unchanged.
 
 | Tier | What it isolates | Status and command |
 |---|---|---|
@@ -19,7 +19,7 @@ score files are T2 runs; their meaning and values are unchanged.
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
 | T3 | Find and fix planted bugs against the reference engine. | Implementation in progress. No command or measurements yet. |
 | T4 | Extend the existing engine and count regressions against the earlier suite. | Implementation in progress. No command or measurements yet. |
-| T5 | Write a bot that plays the game, scored over held-out seeds. | Implementation in progress. No command or measurements yet. |
+| T5 | Write a bot that plays the game against fixed held-out baseline snapshots. | Shipped. `python3 scripts/t5_oracle.py run --bot baseline:cheapest --label cheapest-01`; see [T5 oracle](t5/oracle/README.md). |
 
 The short screening command combines T0 and T0.5. Its six thresholds and
 under-15-minute runtime target are still uncalibrated; see [Short T0 + T0.5
@@ -628,9 +628,10 @@ result; a probe result is not a T2 task score.
    compare direct mode with pi and dsh, but no live comparison has run. Its
    result format and implementation do not establish whether either harness
    changes recall or abstention scores.
-9. **T1 and T3-T5 have no measurements.** T1 is deferred pending review of
-   more archived Gemma plateau runs. T3, T4, and T5 implementations are in
-   progress. Do not infer their performance from T2 or from the probe tiers.
+9. **T1, T3 and T4 have no measurements.** T1 is deferred pending review of
+   more archived Gemma plateau runs. T3 and T4 implementations are in
+   progress. T5 has one CPU baseline measurement under its own protocol.
+   Do not infer any tier's performance from T2 or from the probe tiers.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than 12 GB consumer cards.
