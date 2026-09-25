@@ -62,6 +62,7 @@ declare -A BUNDLE_DEFAULT_PASS=(
   # fix" (CANARY.md section 5) is meant to be regenerated and re-sealed per
   # seed, not accumulated into a growing multi-instance archive.
   [t3instance]="oaken-bench-t3instance-v1"
+  [t5oracle]="oaken-bench-t5oracle-v1"
 )
 
 # Optional glob narrowing what counts as "the bundle's files" for the file
@@ -72,6 +73,7 @@ declare -A BUNDLE_GLOB=(
   [hidden]="*.test.ts"
   [refengine]="*.ts"
   [t3instance]="*.ts"
+  [t5oracle]="*.json"
 )
 
 die() { echo "error: $*" >&2; exit 1; }

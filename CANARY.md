@@ -96,6 +96,7 @@ Registered canaries, digest only:
 | `hidden` | `219cdf9b7e5f13f7847673944908ff0e54db9a887c6e3faa25733665ee3e3855` (see §1) |
 | `refengine` | `5b4d41dfd38043367fbe4ec324210ca125120b2e227ab630cd65b5d64404c3f1` (see §4) |
 | `t3instance` | same GUID as `refengine` (see §5) -- mutation operators never touch the canary comment lines |
+| `t5oracle` | `0988596cad8141578b0a356b52024419ad816690cb8cfdb3c8abe95f63c1e313` |
 
 Add a row here in the same PR that registers a new bundle in
 `scripts/hidden.sh`'s `BUNDLE_DEFAULT_PASS`. `scripts/tests/test_hidden_bundles.py`

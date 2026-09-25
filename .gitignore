@@ -6,6 +6,7 @@
 /hidden/
 /refengine/
 /t3instance/
+/t5oracle/
 
 # Vendored offline dependencies. Restore with scripts/bootstrap.sh.
 node_modules/

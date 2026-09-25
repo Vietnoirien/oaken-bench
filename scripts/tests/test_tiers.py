@@ -29,12 +29,12 @@ def test_unprefixed_label_resolves_to_t2():
 
 
 def test_registered_tiers_today():
-    """Issue #36 registered only T2; issue #42 (this ticket) adds T3.
-    T1/T4/T5 still register later, each as their own ticket. A test
+    """Issue #36 registered T2; issue #42 adds T3 and #40 adds T5.
+    T1/T4 still register later. A test
     pinning this list isn't asserting a permanent fact -- it's a tripwire
     so the day a new Tier() lands, whoever adds it notices this test and
     updates it deliberately, rather than the registry silently growing."""
-    assert [t.id for t in TIERS] == ['t2', 't3']
+    assert [t.id for t in TIERS] == ['t2', 't3', 't5']
 
 
 def test_only_one_tier_may_claim_the_unprefixed_fallback():
@@ -60,7 +60,7 @@ def test_tier_prefixed_label_for_an_unregistered_tier_raises():
 
 def test_error_names_the_missing_registration_not_just_the_label():
     with pytest.raises(ValueError, match='no Tier is registered'):
-        resolve_tier('t5-bugfarm-01')
+        resolve_tier('t4-bugfarm-01')
 
 
 # ---------------------------------------------------------------------------
