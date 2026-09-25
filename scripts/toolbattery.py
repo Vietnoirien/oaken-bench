@@ -57,6 +57,23 @@ unparseable `arguments` string is recorded per call as `parse_error` by
 parse_message() and scored under schemaAdherence, which is a strictly better
 place for it than a log grep.
 
+schemaAdherence's probes (#15): SCHEMA_CASES mixes flat argument objects
+(`{"city": ...}`) with two compound-schema probes built on TOOL_EDIT_FILE --
+a required top-level scalar (`path`) alongside a required nested
+array-of-objects (`edits[]`), lifted from pi's real `edit` tool schema
+rather than hand-written. This is the shape that let a Gemma run score
+schemaAdherence 3/3 while failing 17/17 real `edit` calls, all by omitting
+`path` while filling in the nested structure correctly -- a failure mode no
+one-level-deep probe can express. `dimensions.schemaAdherence.byTool` reports
+pass/fail per probed tool for the same reason `errorsByTool` exists in
+events-summary.json: an aggregate score can hide one catastrophic tool.
+**The four `toolbattery-results/*.json` artefacts committed before this
+change were scored without these probes and without `byTool`** -- they
+answer "passed the flat-schema battery", not "passes schema adherence" (the
+Gemma one is the exact 3/3 the issue is about). Per-tool granularity beyond
+schemaAdherence, and any SCHEMA_VERSION bump to mark this formally, is
+issue #29's scope, not this change's.
+
 On raw model output in the artefact: unlike `edit`/`write` arguments in the
 real harness traces (agent-written solution code against a held-out spec --
 see events.py's module docstring and CANARY.md), what these probes elicit
@@ -68,12 +85,78 @@ asset here to leak, so the case records below keep the actual arguments
 well as the digest, rather than digest-only. Model free-text answers are
 truncated for the same reason a large log is truncated -- volume, not
 sensitivity.
+
+Issue #29: per-call classification and pseudo-tool-call detection
+-------------------------------------------------------------------
+Before this change, a dimension recorded one pass/fail bit per case. That
+bit cannot say WHERE a call went wrong -- a model that emits `<tool_call>`
+XML instead of a structured call, one that calls the right tool with a
+truncated argument string, and one that calls the wrong tool outright all
+land on the same `passed: false`, indistinguishable in the artefact. Every
+real tool call each case produces is now additionally classified with
+`classify_call()` into four CUMULATIVE levels -- a call can only reach
+level N having cleared every level below it -- plus a floor and a "no call
+made" bucket:
+
+  0. noCall          -- the model answered in text (or, for schemaAdherence/
+                        toolSelection/multiStepDependency, silently skipped
+                        the turn). Not a failure of any level; there is
+                        nothing to classify.
+  1. notWellFormed   -- a call WAS made, but `arguments` failed to decode
+                        as a JSON object (`parse_message()`'s `parse_error`,
+                        e.g. truncated or malformed JSON). This is the
+                        `malformed_tool_calls` equivalent the module
+                        docstring above promises: the model tried to call
+                        something and the wire-level shape is broken.
+  2. wellFormed      -- `arguments` decoded to a JSON object, but either the
+                        named tool isn't one this case offered (schema
+                        unknown, so it cannot be judged further) or the
+                        object fails ITS OWN tool's schema (missing
+                        required params, invented params, wrong types) --
+                        evaluated against whichever tool was actually
+                        called, not the one the case wanted.
+  3. schemaValid     -- well-formed AND passes that schema check, but the
+                        tool called is not the one the case expected (a
+                        decoy was taken, or -- for refusal cases, where NO
+                        tool is ever the right one -- any tool call at all
+                        tops out here).
+  4. rightTool       -- schema-valid AND the tool called matches what the
+                        case expected, but the dimension-specific "right
+                        args" check for that particular call did not pass.
+  5. rightArgs       -- rightTool AND the call is substantively correct for
+                        what the case is testing. What that means is
+                        dimension-specific, spelled out on classify_call().
+
+`_by_tool_classification()` folds every call from every dimension into one
+per-tool table (issue #29 asks this to generalise past #15's
+`schemaAdherence.byTool` alone) -- so ONE catastrophic tool across the
+*whole* battery is visible, not just within one dimension.
+
+`detect_pseudo_tool_calls()` covers the other half of #29: a model that
+never emits a structured `tool_calls` entry at all, and instead writes the
+call as text in `content` -- invisible to every scorer above, which only
+ever look at `message['tool_calls']`. See that function's docstring for the
+six shapes covered and why "prose that merely mentions a tool name" must
+not be one of them.
+
+v1 vs v2 (issue #29): the four `toolbattery-results/*.json` artefacts
+committed before this change (`schemaVersion: 1`, or `1` before that, the
+plain flat-schema battery from issue #8) have neither per-call
+classification nor pseudo-tool-call detection -- they were never rescored,
+their meaning is unchanged, and per house style (AGENTS.md) that is
+documented here rather than silently redefined. Read a `schemaVersion: 1`
+artefact as "passed the v1 battery" (dimension pass/fail, plus #15's
+`schemaAdherence.byTool` for anything after that commit); read a
+`schemaVersion: 2` artefact as "passed the v2 battery": v1's dimensions
+PLUS a per-call classification level for every call made and a
+pseudo-tool-call count for every case's free text.
 """
 import argparse
 import json
 import os
 import re
 import sys
+from collections import namedtuple
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -81,7 +164,13 @@ from direct import ServerError, api_key_from_env, chat, server_reachable  # noqa
 from direct_env import VramSampler, build_environment  # noqa: E402
 from events import Call, _canonical_digest, _safe_tool_name, call_metrics  # noqa: E402
 
-SCHEMA_VERSION = 1
+# v2 (issue #29): per-call classification levels + pseudo-tool-call
+# detection, on top of v1's per-dimension pass/fail and (post-#15)
+# schemaAdherence.byTool. See the module docstring's "v1 vs v2" section --
+# the four committed toolbattery-results/*.json artefacts predate this and
+# are NOT rescored; they stay schemaVersion 1 and mean what they always
+# meant.
+SCHEMA_VERSION = 2
 
 DEFAULT_BASE_URL = os.environ.get('OAKEN_TOOLBATTERY_BASE_URL', 'http://172.17.0.1:8080/v1')
 
@@ -176,20 +265,20 @@ def _type_ok(value, expected_type):
     return isinstance(value, py)
 
 
-def score_schema_adherence(tool_schema, parsed_call):
-    """required params present, types correct, no invented parameters."""
+def _args_schema_valid(tool_schema, args):
+    """required present, types correct, no invented -- schema-only check
+    against ONE tool's schema, independent of which tool name was actually
+    called. Split out from score_schema_adherence() (which also enforces
+    the name match) because classify_call() needs to grade a call's
+    arguments against whatever tool it named, even when that is not the
+    tool the case expected."""
     fn = tool_schema['function']
     params = fn.get('parameters') or {}
     props = params.get('properties') or {}
     required = set(params.get('required') or [])
-    if parsed_call is None:
-        return False, ['no tool call made']
-    reasons = []
-    if parsed_call['name'] != fn['name']:
-        return False, [f"wrong tool called: {parsed_call['name']!r} (expected {fn['name']!r})"]
-    args = parsed_call['args']
     if args is None:
-        return False, [f"arguments did not parse as a JSON object: {parsed_call.get('parse_error')}"]
+        return False, ['arguments did not parse as a JSON object']
+    reasons = []
     missing = sorted(required - set(args))
     if missing:
         reasons.append(f'missing required params: {missing}')
@@ -201,6 +290,19 @@ def score_schema_adherence(tool_schema, parsed_call):
     if type_errors:
         reasons.append('type mismatches: ' + '; '.join(type_errors))
     return (not reasons), reasons
+
+
+def score_schema_adherence(tool_schema, parsed_call):
+    """required params present, types correct, no invented parameters."""
+    fn = tool_schema['function']
+    if parsed_call is None:
+        return False, ['no tool call made']
+    if parsed_call['name'] != fn['name']:
+        return False, [f"wrong tool called: {parsed_call['name']!r} (expected {fn['name']!r})"]
+    args = parsed_call['args']
+    if args is None:
+        return False, [f"arguments did not parse as a JSON object: {parsed_call.get('parse_error')}"]
+    return _args_schema_valid(tool_schema, args)
 
 
 def score_tool_selection(expected_tool_name, parsed_call):
@@ -281,6 +383,115 @@ def score_refusal(parsed):
 
 
 # ---------------------------------------------------------------------------
+# Per-call classification (issue #29): well-formed / schema-valid /
+# right tool / right args, cumulative, plus a "no call" floor.
+# ---------------------------------------------------------------------------
+
+CALL_LEVEL_NO_CALL = 'noCall'
+CALL_LEVEL_NOT_WELL_FORMED = 'notWellFormed'
+CALL_LEVEL_WELL_FORMED = 'wellFormed'
+CALL_LEVEL_SCHEMA_VALID = 'schemaValid'
+CALL_LEVEL_RIGHT_TOOL = 'rightTool'
+CALL_LEVEL_RIGHT_ARGS = 'rightArgs'
+
+# Ordered floor-to-ceiling. Used only to render a stable column order in
+# print_report()/the artefact's counts -- classify_call() never iterates
+# this, it returns one level directly.
+CALL_LEVELS = (CALL_LEVEL_NO_CALL, CALL_LEVEL_NOT_WELL_FORMED, CALL_LEVEL_WELL_FORMED,
+               CALL_LEVEL_SCHEMA_VALID, CALL_LEVEL_RIGHT_TOOL, CALL_LEVEL_RIGHT_ARGS)
+
+
+def classify_call(tools_by_name, expected_tool_name, parsed_call, right_args_ok=None):
+    """Classify one (attempted) tool call into the four cumulative levels
+    issue #29 asks for, plus the `noCall` floor for a turn that made no
+    call at all. A call can only reach level N having cleared every level
+    below it:
+
+      1. well-formed   -- `parsed_call['args']` is a dict, i.e. `arguments`
+                          decoded as JSON to an object. `parse_message()`
+                          already records a failure to do that as
+                          `parse_error` with `args=None` -- that IS the
+                          not-well-formed level, not a separate check here.
+      2. schema-valid  -- well-formed AND the arguments satisfy the JSON
+                          schema of the tool ACTUALLY named in the call
+                          (required params present, correct types, no
+                          invented params) -- looked up in `tools_by_name`
+                          by the call's own tool name, not the case's
+                          expected one. A tool name outside `tools_by_name`
+                          (nothing offered by that shape) has no schema to
+                          check against, so it caps at well-formed.
+      3. right tool    -- schema-valid AND `parsed_call['name']` equals
+                          `expected_tool_name`. `expected_tool_name=None`
+                          means no tool is ever "right" for this case (the
+                          refusal dimension: any call at all is a false
+                          positive) -- such a call can reach schema-valid
+                          at most.
+      4. right args    -- right tool AND `right_args_ok` is not False. What
+                          "right args" checks is dimension-specific, passed
+                          in already computed by the caller:
+                            - schemaAdherence / toolSelection: no further
+                              check beyond the schema itself -- there is no
+                              single expected VALUE for "book a room called
+                              Falcon", only an expected shape. Pass
+                              `right_args_ok=None` (the default): once
+                              right-tool is reached, right-args follows
+                              automatically, so these two levels collapse
+                              for these dimensions.
+                            - multiStepDependency: `right_args_ok` is
+                              score_dependency()'s bool -- the second
+                              call's argument at the dependency key equals
+                              the value the simulated first result
+                              returned, not an invented one.
+                            - errorRecovery, the FIRST (failing) call of a
+                              pair: no correct value exists yet to adapt
+                              to, so pass `right_args_ok=None`, same as
+                              schemaAdherence -- it collapses to whether
+                              the retry target tool was even named right.
+                              The SECOND (retry) call: `right_args_ok` is
+                              score_error_recovery()'s bool -- the retry's
+                              (tool, args) pair differs from the first
+                              call's, i.e. adapted rather than repeated
+                              verbatim. Note score_error_recovery() also
+                              passes when the retry uses a DIFFERENT tool;
+                              classify_call() still requires
+                              `expected_tool_name` to match to reach
+                              right-tool, so an adaptive-but-different-tool
+                              retry is a real, valid pass at the dimension
+                              level while capping at schema-valid here --
+                              the two are answering different questions
+                              (did it recover? vs. did it recover WITH the
+                              tool this case is about?).
+    """
+    if parsed_call is None:
+        return CALL_LEVEL_NO_CALL
+    if parsed_call.get('args') is None:
+        return CALL_LEVEL_NOT_WELL_FORMED
+    name = parsed_call.get('name')
+    schema = tools_by_name.get(name)
+    if schema is None:
+        return CALL_LEVEL_WELL_FORMED
+    schema_ok, _ = _args_schema_valid(schema, parsed_call['args'])
+    if not schema_ok:
+        return CALL_LEVEL_WELL_FORMED
+    if expected_tool_name is None or name != expected_tool_name:
+        return CALL_LEVEL_SCHEMA_VALID
+    if right_args_ok is False:
+        return CALL_LEVEL_RIGHT_TOOL
+    return CALL_LEVEL_RIGHT_ARGS
+
+
+def _call_record(turn, expected_tool_name, parsed_call, right_args_ok=None, tools_by_name=None):
+    """Build the `{turn, tool, expectedTool, level}` dict attached to a case
+    record's `calls` list. `tools_by_name` defaults to the full catalog
+    (TOOLS_BY_NAME, defined below) so callers in the run_* functions don't
+    each have to thread it through."""
+    reg = tools_by_name if tools_by_name is not None else TOOLS_BY_NAME
+    level = classify_call(reg, expected_tool_name, parsed_call, right_args_ok=right_args_ok)
+    return {'turn': turn, 'tool': parsed_call['name'] if parsed_call else None,
+            'expectedTool': expected_tool_name, 'level': level}
+
+
+# ---------------------------------------------------------------------------
 # Tool catalog -- fresh, generic, unrelated to SPEC.md/seed/held-out (CANARY.md)
 # ---------------------------------------------------------------------------
 # A small fictional "ops assistant" surface: weather, currency, a customer
@@ -348,11 +559,269 @@ TOOL_LIST_ROOMS = _tool(  # decoy: adjacent operation
     'list_available_rooms', 'List meeting rooms free in a given building.',
     {'building': {'type': 'string'}}, ['building'])
 
+# Lifted, not hand-written (issue #15): the flat probes above ({"city": ...},
+# {"room": ..., "start": ...}) are all one level deep, and every one of them
+# missed the live failure that opened #15 -- Gemma 4 12B QAT omitted pi's
+# required top-level `path` on 17/17 `edit` calls while filling in the nested
+# `edits[]` array correctly. A flat probe cannot express "drops a sibling
+# scalar while concentrating on a nested structure" because it has no
+# sibling to drop. This schema is pi's real `edit` tool, field-for-field, as
+# captured live in a `session`/`toolsAdded` event under
+# `~/.cache/oaken-bench/schema-capture-pi/` (`message.toolsAdded[]` on the
+# system message, EVENTS.md section 1) -- not reinvented, so the probe
+# reproduces the actual shape that broke rather than a guess at one. Renamed
+# `edit_file` here only to keep this module's tool names to its own fictional
+# ops-assistant domain (CANARY.md); `path` + `edits[]` and both `required`
+# lists are unchanged from the capture.
+TOOL_EDIT_FILE = _tool(
+    'edit_file',
+    'Edit an existing text file by replacing literal text. Every edits[].oldText '
+    'must match a unique, non-overlapping region of the original file.',
+    {'path': {'type': 'string', 'description': 'Path to the file to edit (relative or absolute)'},
+     'edits': {'type': 'array', 'description': 'One or more targeted replacements.',
+               'items': {'type': 'object', 'required': ['oldText', 'newText'],
+                         'properties': {
+                             'oldText': {'type': 'string',
+                                         'description': 'Exact text for one targeted replacement. Must be '
+                                                         'unique in the original file.'},
+                             'newText': {'type': 'string', 'description': 'Replacement text for this edit.'},
+                         }}}},
+    ['path', 'edits'])
+
+# Registry of every tool this module's cases can offer, by name -- used by
+# classify_call() (via _call_record()) to look up the schema of whatever
+# tool a call actually named, and by detect_pseudo_tool_calls() to decide
+# whether a name found in free text is one of "ours" rather than
+# coincidental text. Built once from the ALL-CAPS TOOL_* constants above
+# rather than hand-listed, so a new tool can't be added up there and
+# forgotten down here.
+ALL_TOOLS = [v for k, v in list(globals().items())
+             if k.startswith('TOOL_') and isinstance(v, dict) and 'function' in v]
+TOOLS_BY_NAME = {t['function']['name']: t for t in ALL_TOOLS}
+
 SYSTEM_PROMPT = (
     'You are an operations assistant with access to a fixed set of tools. '
     'Call a tool only when it is needed to fulfil the request; otherwise answer directly in text. '
     'Use only the parameters each tool declares.'
 )
+
+
+# ---------------------------------------------------------------------------
+# Pseudo-tool-call detection (issue #29): a call written as TEXT instead of
+# landing in the OpenAI-shaped `message['tool_calls']` array -- invisible to
+# every scorer above, all of which only ever look at `tool_calls`. Six
+# shapes, matching what real chat templates and servers are observed to
+# leak when the parsing layer between them and this module's `chat()`
+# doesn't turn the marker into a structured call:
+# ---------------------------------------------------------------------------
+
+PseudoToolCall = namedtuple('PseudoToolCall', ['format', 'tool', 'raw'])
+
+# Qwen2.5/Nous-Hermes-2 style: <tool_call>\n{"name": ..., "arguments": ...}\n</tool_call>
+_TOOL_CALL_TAG_RE = re.compile(r'<tool_call>\s*(.*?)\s*</tool_call>', re.DOTALL | re.IGNORECASE)
+
+# A `<|tool_call|>` sentinel token wrapping JSON, seen when a chat
+# template's special token leaks into `content` verbatim instead of being
+# stripped and parsed server-side. Closing sentinel is optional -- a
+# truncated completion can cut off before it.
+_SENTINEL_TAG_RE = re.compile(r'<\|tool_call\|>\s*(.*?)\s*(?:<\|/tool_call\|>|$)', re.DOTALL)
+
+# Hermes/Qwen XML function-call form: <function=name>{...}</function> or
+# <function:name>{...}</function> (both separators are attested live).
+_FUNCTION_XML_RE = re.compile(r'<function[=:]([\w.\-]+)>(.*?)</function>', re.DOTALL | re.IGNORECASE)
+
+# Mistral's raw template: [TOOL_CALLS] [{"name": ..., "arguments": {...}}]
+_MISTRAL_TOOL_CALLS_RE = re.compile(r'\[TOOL_CALLS\]\s*(\[.*\])', re.DOTALL)
+
+# gpt-oss Harmony channel routing: `to=functions.<name>` addresses the
+# commentary channel at a function. When the server fails to turn that into
+# a structured call, it leaks into `content` as plain text with this marker
+# still in it.
+_HARMONY_TO_FUNCTIONS_RE = re.compile(r'to=functions\.([A-Za-z_][\w.\-]*)')
+
+# A fenced code block of any kind (```json, ```python, bare ```...```).
+_FENCED_CODE_RE = re.compile(r'```(\w*)\n(.*?)```', re.DOTALL)
+
+
+def _tool_name_from_json_obj(obj):
+    """Pull a tool name out of a decoded JSON object shaped like
+    `{"name": ..., "arguments": ...}`, `{"tool": ...}`, or the OpenAI/
+    Harmony-ish `{"function": {"name": ...}}`. Returns None if `obj` isn't
+    a dict or none of those keys hold a string."""
+    if not isinstance(obj, dict):
+        return None
+    fn = obj.get('function')
+    if isinstance(fn, dict) and isinstance(fn.get('name'), str):
+        return fn['name']
+    for key in ('name', 'tool', 'tool_name'):
+        v = obj.get(key)
+        if isinstance(v, str):
+            return v
+    return None
+
+
+def _scan_json_objects(s):
+    """Yield (start, end, obj) for every brace-matched, JSON-decodable
+    object substring of `s`, scanning left to right and skipping past each
+    match found. Brace-matching (not a flat regex) because `arguments` is
+    routinely a nested object itself -- `\\{[^{}]*\\}` cannot span that, and
+    silently missing the exact case this exists to catch (a real,
+    multi-field tool call) would defeat the point."""
+    i, n = 0, len(s)
+    while i < n:
+        if s[i] != '{':
+            i += 1
+            continue
+        depth, in_str, esc, j = 0, False, False, i
+        while j < n:
+            c = s[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif c == '\\':
+                    esc = True
+                elif c == '"':
+                    in_str = False
+            else:
+                if c == '"':
+                    in_str = True
+                elif c == '{':
+                    depth += 1
+                elif c == '}':
+                    depth -= 1
+                    if depth == 0:
+                        break
+            j += 1
+        if depth == 0 and j < n:
+            snippet = s[i:j + 1]
+            try:
+                obj = json.loads(snippet)
+            except (ValueError, TypeError):
+                obj = None
+            if isinstance(obj, dict):
+                yield i, j + 1, obj
+                i = j + 1
+                continue
+        i += 1
+
+
+def _overlaps(start, end, claimed):
+    return any(start < c_end and end > c_start for c_start, c_end in claimed)
+
+
+def detect_pseudo_tool_calls(text, known_tool_names):
+    """Scan a model's free-text answer for a tool call written as TEXT
+    instead of a structured `tool_calls` entry. Six shapes, each tagged in
+    the returned `PseudoToolCall.format` so the artefact says which leaked,
+    not just that something did:
+
+      jsonObject          a bare JSON object naming a tool ({"name": ...,
+                           "arguments": {...}} or an OpenAI-shaped
+                           {"function": {"name": ...}}), found anywhere via
+                           brace-matched scanning (a flat regex cannot span
+                           a nested `arguments` object -- see
+                           _scan_json_objects()). Restricted to
+                           `known_tool_names` so an unrelated JSON blob in
+                           the answer text ("here's an example: {...}")
+                           isn't misread as a call.
+      toolCallTag         Qwen2.5/Nous-Hermes-2 `<tool_call>...</tool_call>`.
+      sentinelTag         a `<|tool_call|>` special-token sentinel wrapping
+                           JSON, leaked verbatim instead of parsed.
+      functionXml         `<function=name>...</function>` /
+                           `<function:name>...</function>`.
+      mistralToolCalls     Mistral's raw `[TOOL_CALLS] [...]` marker.
+      harmonyLeak         gpt-oss's Harmony `to=functions.<name>` channel
+                           routing marker, leaked as plain text.
+      fencedCode          a fenced ``` code block whose content is a JSON
+                           object naming a known tool, or a
+                           `known_tool_name(...)` call-syntax line.
+
+    A tool name is counted ONLY inside one of these structured shapes --
+    never for bare prose that merely mentions the name ("you could call
+    get_weather here" is not a pseudo-tool-call; see the unit test named
+    for exactly that). Matches are resolved in the order above, each
+    claiming its text span, so one leaked call is not double-counted under
+    two formats (e.g. the JSON inside a `<tool_call>` tag is not ALSO
+    reported as a bare `jsonObject`)."""
+    if not isinstance(text, str) or not text:
+        return []
+    known = set(known_tool_names)
+    found = []
+    claimed = []
+
+    def _claim(start, end, fmt, tool, raw):
+        claimed.append((start, end))
+        found.append(PseudoToolCall(fmt, tool, _preview(raw)))
+
+    for m in _TOOL_CALL_TAG_RE.finditer(text):
+        try:
+            obj = json.loads(m.group(1))
+        except (ValueError, TypeError):
+            obj = None
+        tool = _tool_name_from_json_obj(obj)
+        if tool:
+            _claim(m.start(), m.end(), 'toolCallTag', tool, m.group(0))
+
+    for m in _SENTINEL_TAG_RE.finditer(text):
+        if _overlaps(m.start(), m.end(), claimed):
+            continue
+        try:
+            obj = json.loads(m.group(1))
+        except (ValueError, TypeError):
+            obj = None
+        tool = _tool_name_from_json_obj(obj)
+        if tool:
+            _claim(m.start(), m.end(), 'sentinelTag', tool, m.group(0))
+
+    for m in _FUNCTION_XML_RE.finditer(text):
+        if _overlaps(m.start(), m.end(), claimed):
+            continue
+        _claim(m.start(), m.end(), 'functionXml', m.group(1), m.group(0))
+
+    for m in _MISTRAL_TOOL_CALLS_RE.finditer(text):
+        if _overlaps(m.start(), m.end(), claimed):
+            continue
+        try:
+            arr = json.loads(m.group(1))
+        except (ValueError, TypeError):
+            arr = None
+        if isinstance(arr, list):
+            for item in arr:
+                tool = _tool_name_from_json_obj(item)
+                if tool:
+                    _claim(m.start(), m.end(), 'mistralToolCalls', tool, m.group(0))
+                    break  # one claim per marker: the leak is what's counted, not each array entry
+
+    for m in _HARMONY_TO_FUNCTIONS_RE.finditer(text):
+        if _overlaps(m.start(), m.end(), claimed):
+            continue
+        _claim(m.start(), m.end(), 'harmonyLeak', m.group(1), m.group(0))
+
+    for m in _FENCED_CODE_RE.finditer(text):
+        if _overlaps(m.start(), m.end(), claimed):
+            continue
+        body = m.group(2)
+        matched = False
+        for _start, _end, obj in _scan_json_objects(body):
+            tool = _tool_name_from_json_obj(obj)
+            if tool and tool in known:
+                _claim(m.start(), m.end(), 'fencedCode', tool, m.group(0))
+                matched = True
+                break
+        if not matched:
+            for name in known:
+                if re.search(r'\b' + re.escape(name) + r'\s*\(', body):
+                    _claim(m.start(), m.end(), 'fencedCode', name, m.group(0))
+                    break
+
+    for start, end, obj in _scan_json_objects(text):
+        if _overlaps(start, end, claimed):
+            continue
+        tool = _tool_name_from_json_obj(obj)
+        if tool and tool in known:
+            _claim(start, end, 'jsonObject', tool, text[start:end])
+
+    return found
 
 
 def _msg(role, content):
@@ -380,6 +849,19 @@ def _case_record(case_id, description, passed, reasons, extra=None):
     return rec
 
 
+def _pseudo_calls_extra(known_tool_names, *turn_texts):
+    """`turn_texts`: (turn_number, text) pairs, one per model response the
+    case exercised. Returns the flat list of pseudo-tool-calls found across
+    all of them, each turn-tagged -- suitable for a case record's
+    `pseudoToolCalls` key. Empty list (not None) when nothing was found, so
+    every case record has the same shape whether or not anything leaked."""
+    found = []
+    for turn, text in turn_texts:
+        for p in detect_pseudo_tool_calls(text, known_tool_names):
+            found.append({'turn': turn, 'format': p.format, 'tool': p.tool, 'raw': p.raw})
+    return found
+
+
 # ---------------------------------------------------------------------------
 # Dimension A: schema adherence
 # ---------------------------------------------------------------------------
@@ -394,6 +876,20 @@ SCHEMA_CASES = [
     ('weather-units',
      'What is the weather in Tokyo right now, in fahrenheit?',
      TOOL_GET_WEATHER),
+    # Compound-schema probes (#15): a required top-level scalar (`path`)
+    # alongside a required nested array-of-objects (`edits[]`), shaped like
+    # pi's real `edit` tool -- see TOOL_EDIT_FILE above. Two cases, not one:
+    # the failure this exists to catch (model fills in `edits[]` correctly
+    # and drops the sibling `path`) is a tendency, not a certainty, and a
+    # single prompt risks passing by chance on a model that would still fail
+    # it most of the time -- the same reason room-basic/room-recurring
+    # already probe TOOL_BOOK_ROOM twice.
+    ('edit-single',
+     'In config/ops.yaml, replace the line "retries: 3" with "retries: 5".',
+     TOOL_EDIT_FILE),
+    ('edit-multi',
+     'In runbook.md, replace "Owner: TBD" with "Owner: SRE" and replace "Status: draft" with "Status: active".',
+     TOOL_EDIT_FILE),
 ]
 
 
@@ -405,15 +901,50 @@ def run_schema_adherence(base_url, model, max_tokens, timeout, errors, api_key=N
             parsed = _run_case(base_url, model, max_tokens, timeout, messages, [tool], api_key=api_key)
         except ServerError as e:
             errors.append(f'schemaAdherence/{case_id}: {e}')
-            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                       {'expectedTool': tool['function']['name'], 'calls': [],
+                                        'pseudoToolCalls': []}))
             continue
         call = _first_call(parsed)
         passed, reasons = score_schema_adherence(tool, call)
+        # right_args_ok=None (#29): schemaAdherence has no expected VALUE,
+        # only an expected shape -- right-tool and right-args collapse.
+        tool_name = tool['function']['name']
         cases.append(_case_record(case_id, prompt, passed, reasons, {
+            'expectedTool': tool_name,
             'toolCalled': call['name'] if call else None,
             'arguments': call['args'] if call else None,
+            'calls': [_call_record(1, tool_name, call)],
+            'pseudoToolCalls': _pseudo_calls_extra([tool_name], (1, parsed.get('text'))),
         }))
-    return _summarize('schemaAdherence', cases)
+    summary = _summarize('schemaAdherence', cases)
+    # Per-tool breakdown (#15): "schemaAdherence 3/3" hid that all three
+    # flat probes happened to be tools the model handles fine, while the one
+    # tool that matters most in a real harness trace (a compound-schema
+    # mutating call) was never asked. `byTool` makes a single catastrophic
+    # tool visible in the dimension total, the way `errorsByTool` does in
+    # events-summary.json -- granularity the full per-tool report (#29) will
+    # build on, not duplicate.
+    summary['byTool'] = _schema_adherence_by_tool(cases)
+    return summary
+
+
+def _schema_adherence_by_tool(cases):
+    by_tool = {}
+    for c in cases:
+        tool_name = c.get('expectedTool')
+        if tool_name is None:
+            continue
+        bucket = by_tool.setdefault(tool_name, {'passed': 0, 'total': 0, 'notAttempted': 0})
+        if c['passed'] is None:
+            bucket['notAttempted'] += 1
+        else:
+            bucket['total'] += 1
+            if c['passed']:
+                bucket['passed'] += 1
+    for bucket in by_tool.values():
+        bucket['score'] = round(bucket['passed'] / bucket['total'], 4) if bucket['total'] else None
+    return by_tool
 
 
 # ---------------------------------------------------------------------------
@@ -447,12 +978,16 @@ def run_tool_selection(base_url, model, max_tokens, timeout, errors, api_key=Non
             parsed = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
         except ServerError as e:
             errors.append(f'toolSelection/{case_id}: {e}')
-            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                       {'calls': [], 'pseudoToolCalls': []}))
             continue
         call = _first_call(parsed)
         passed, reasons = score_tool_selection(expected, call)
+        offered = [t['function']['name'] for t in tools]
         cases.append(_case_record(case_id, prompt, passed, reasons, {
             'expectedTool': expected, 'toolCalled': call['name'] if call else None,
+            'calls': [_call_record(1, expected, call)],
+            'pseudoToolCalls': _pseudo_calls_extra(offered, (1, parsed.get('text'))),
         }))
     return _summarize('toolSelection', cases)
 
@@ -471,12 +1006,15 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_
     fake_customer_id = 'cus_48291'
     messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
     try:
+        offered = [t['function']['name'] for t in tools]
         p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
         c1 = _first_call(p1)
         if c1 is None or c1['name'] != 'lookup_customer':
             cases.append(_case_record(case_id, prompt, False,
                                        [f"expected first call lookup_customer, got {c1['name'] if c1 else None}"],
-                                       {'firstCall': c1}))
+                                       {'firstCall': c1,
+                                        'calls': [_call_record(1, 'lookup_customer', c1)],
+                                        'pseudoToolCalls': _pseudo_calls_extra(offered, (1, p1.get('text')))}))
         else:
             messages.append({'role': 'assistant', 'content': p1.get('text'),
                               'tool_calls': [{'id': c1['id'], 'type': 'function',
@@ -488,10 +1026,14 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_
             passed, reasons = score_dependency(c2, 'customer_id', fake_customer_id)
             cases.append(_case_record(case_id, prompt, passed, reasons, {
                 'firstCall': c1, 'secondCall': c2, 'simulatedFirstResult': {'customer_id': fake_customer_id},
+                'calls': [_call_record(1, 'lookup_customer', c1),
+                          _call_record(2, 'get_order_status', c2, right_args_ok=passed)],
+                'pseudoToolCalls': _pseudo_calls_extra(offered, (1, p1.get('text')), (2, p2.get('text'))),
             }))
     except ServerError as e:
         errors.append(f'multiStepDependency/{case_id}: {e}')
-        cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+        cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                   {'calls': [], 'pseudoToolCalls': []}))
 
     # Scenario 2: get_exchange_rate -> apply_exchange_rate(rate=<looked-up rate>)
     case_id = 'rate-then-apply'
@@ -500,12 +1042,15 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_
     fake_rate = 0.9137
     messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
     try:
+        offered = [t['function']['name'] for t in tools]
         p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
         c1 = _first_call(p1)
         if c1 is None or c1['name'] != 'get_exchange_rate':
             cases.append(_case_record(case_id, prompt, False,
                                        [f"expected first call get_exchange_rate, got {c1['name'] if c1 else None}"],
-                                       {'firstCall': c1}))
+                                       {'firstCall': c1,
+                                        'calls': [_call_record(1, 'get_exchange_rate', c1)],
+                                        'pseudoToolCalls': _pseudo_calls_extra(offered, (1, p1.get('text')))}))
         else:
             messages.append({'role': 'assistant', 'content': p1.get('text'),
                               'tool_calls': [{'id': c1['id'], 'type': 'function',
@@ -517,10 +1062,14 @@ def run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_
             passed, reasons = score_dependency(c2, 'rate', fake_rate)
             cases.append(_case_record(case_id, prompt, passed, reasons, {
                 'firstCall': c1, 'secondCall': c2, 'simulatedFirstResult': {'rate': fake_rate},
+                'calls': [_call_record(1, 'get_exchange_rate', c1),
+                          _call_record(2, 'apply_exchange_rate', c2, right_args_ok=passed)],
+                'pseudoToolCalls': _pseudo_calls_extra(offered, (1, p1.get('text')), (2, p2.get('text'))),
             }))
     except ServerError as e:
         errors.append(f'multiStepDependency/{case_id}: {e}')
-        cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+        cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                   {'calls': [], 'pseudoToolCalls': []}))
 
     return _summarize('multiStepDependency', cases)
 
@@ -553,13 +1102,16 @@ def run_error_recovery(base_url, model, max_tokens, timeout, errors, api_key=Non
     ]
     for case_id, prompt, tools, expected_tool, error_result in scenarios:
         messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
+        offered = [t['function']['name'] for t in tools]
         try:
             p1 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
             c1 = _first_call(p1)
             if c1 is None:
                 cases.append(_case_record(case_id, prompt, False,
                                            ['no tool call made on the first turn; cannot probe recovery'],
-                                           {'firstCall': None}))
+                                           {'firstCall': None,
+                                            'calls': [_call_record(1, expected_tool, None)],
+                                            'pseudoToolCalls': _pseudo_calls_extra(offered, (1, p1.get('text')))}))
                 continue
             messages.append({'role': 'assistant', 'content': p1.get('text'),
                               'tool_calls': [{'id': c1['id'], 'type': 'function',
@@ -568,13 +1120,23 @@ def run_error_recovery(base_url, model, max_tokens, timeout, errors, api_key=Non
             p2 = _run_case(base_url, model, max_tokens, timeout, messages, tools, api_key=api_key)
             c2 = _first_call(p2)
             passed, reasons = score_error_recovery(c1, c2)
+            # First call: no expected VALUE exists yet, so right_args_ok=None
+            # (collapses to schemaAdherence's rule). Second (retry) call:
+            # right_args_ok=passed -- score_error_recovery()'s bool, i.e.
+            # "adapted rather than repeated verbatim". See classify_call()'s
+            # docstring for why a retry that adapts with a DIFFERENT tool
+            # still caps at schemaValid here despite being a dimension pass.
             cases.append(_case_record(case_id, prompt, passed, reasons, {
                 'firstCall': c1, 'simulatedError': error_result, 'secondCall': c2,
                 'secondCallText': _preview(p2.get('text')),
+                'calls': [_call_record(1, expected_tool, c1),
+                          _call_record(2, expected_tool, c2, right_args_ok=passed)],
+                'pseudoToolCalls': _pseudo_calls_extra(offered, (1, p1.get('text')), (2, p2.get('text'))),
             }))
         except ServerError as e:
             errors.append(f'errorRecovery/{case_id}: {e}')
-            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                       {'calls': [], 'pseudoToolCalls': []}))
     return _summarize('errorRecovery', cases)
 
 
@@ -601,12 +1163,21 @@ def run_refusal(base_url, model, max_tokens, timeout, errors, api_key=None):
             parsed = _run_case(base_url, model, max_tokens, timeout, messages, REFUSAL_TOOLS, api_key=api_key)
         except ServerError as e:
             errors.append(f'refusal/{case_id}: {e}')
-            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}']))
+            cases.append(_case_record(case_id, prompt, False, [f'request failed: {e}'],
+                                       {'calls': [], 'pseudoToolCalls': []}))
             continue
         passed, reasons = score_refusal(parsed)
+        # expected_tool_name=None: no tool is ever "right" here, so any call
+        # made caps at schemaValid (see classify_call()'s docstring, point
+        # 3). A refusal case that behaves correctly makes zero calls, hence
+        # an empty `calls` list -- there is nothing to classify, not a
+        # noCall entry for each of the offered tools that weren't picked.
         cases.append(_case_record(case_id, prompt, passed, reasons, {
             'toolsCalled': [c['name'] for c in parsed['tool_calls']],
             'answerText': _preview(parsed.get('text')),
+            'calls': [_call_record(i + 1, None, c) for i, c in enumerate(parsed['tool_calls'])],
+            'pseudoToolCalls': _pseudo_calls_extra(
+                [t['function']['name'] for t in REFUSAL_TOOLS], (1, parsed.get('text'))),
         }))
     return _summarize('refusal', cases)
 
@@ -630,6 +1201,56 @@ def _summarize(name, cases):
             'score': round(passed / total, 4) if total else None}
 
 
+def _iter_calls(dimensions):
+    """Yield every per-call classification dict (`{turn, tool, expectedTool,
+    level}`) recorded across every case in every dimension -- the flat
+    stream both classification summaries below fold over."""
+    for d in dimensions.values():
+        for case in d['cases']:
+            for c in case.get('calls') or []:
+                yield c
+
+
+def _call_level_counts(calls):
+    counts = {lvl: 0 for lvl in CALL_LEVELS}
+    for c in calls:
+        counts[c['level']] = counts.get(c['level'], 0) + 1
+    return counts
+
+
+def _by_tool_classification(calls):
+    """Generalises #15's schemaAdherence-only `byTool` across every
+    dimension (issue #29): for each tool a call actually NAMED anywhere in
+    the battery, how many of those calls reached each classification
+    level. `tool` is None for a `noCall` entry (nothing was named), so
+    those are skipped -- there is nothing to attribute to a tool. One
+    catastrophic tool used across several dimensions is visible here even
+    if it never looks bad within any single dimension's own byTool."""
+    by_tool = {}
+    levels_without_no_call = [lvl for lvl in CALL_LEVELS if lvl != CALL_LEVEL_NO_CALL]
+    for c in calls:
+        tool_name = c.get('tool')
+        if tool_name is None:
+            continue
+        bucket = by_tool.setdefault(tool_name, {lvl: 0 for lvl in levels_without_no_call})
+        bucket[c['level']] = bucket.get(c['level'], 0) + 1
+    return by_tool
+
+
+def _pseudo_summary(dimensions):
+    """Every pseudo-tool-call found across every case (issue #29), plus a
+    per-format count, so "how many leaked as text" and "which shape leaked"
+    are both answerable from the artefact without walking every case."""
+    found = []
+    by_format = {}
+    for d in dimensions.values():
+        for case in d['cases']:
+            for p in case.get('pseudoToolCalls') or []:
+                found.append({'dimension': d['dimension'], 'case': case['case'], **p})
+                by_format[p['format']] = by_format.get(p['format'], 0) + 1
+    return {'total': len(found), 'byFormat': by_format, 'found': found}
+
+
 def run_battery(base_url, model, max_tokens=512, timeout=60, api_key=None):
     errors = []
     dimensions = {
@@ -646,6 +1267,7 @@ def run_battery(base_url, model, max_tokens=512, timeout=60, api_key=None):
     total = sum(d['total'] for d in dimensions.values())
     passed = sum(d['passed'] for d in dimensions.values())
     not_attempted = sum(d['notAttempted'] for d in dimensions.values())
+    all_calls = list(_iter_calls(dimensions))
     return {
         'schemaVersion': SCHEMA_VERSION,
         'label': f"toolbattery-{_slug(model)}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
@@ -656,6 +1278,17 @@ def run_battery(base_url, model, max_tokens=512, timeout=60, api_key=None):
         'overall': {'passed': passed, 'total': total,
                     'notAttempted': not_attempted,
                     'score': round(passed / total, 4) if total else None},
+        # #29: per-call classification counts (well-formed / schema-valid /
+        # right tool / right args, cumulative) folded across every call in
+        # every dimension, plus the per-tool breakdown generalised past
+        # #15's schemaAdherence-only one.
+        'callClassification': {
+            'counts': _call_level_counts(all_calls),
+            'byTool': _by_tool_classification(all_calls),
+        },
+        # #29: tool calls the model wrote as free text instead of a
+        # structured tool_calls entry.
+        'pseudoToolCalls': _pseudo_summary(dimensions),
         'transportErrors': errors,
     }
 
@@ -670,6 +1303,10 @@ def print_report(report):
         na = f"  [{d['notAttempted']} not attempted]" if d.get('notAttempted') else ''
         pct = '  --' if d['score'] is None else f"  ({d['score'] * 100:.0f}%)"
         print(f"  {name:22s} {d['passed']}/{d['total']}{pct}{na}")
+        if d.get('byTool'):
+            for tool_name, b in d['byTool'].items():
+                tpct = '  --' if b['score'] is None else f"  ({b['score'] * 100:.0f}%)"
+                print(f"    by tool: {tool_name:18s} {b['passed']}/{b['total']}{tpct}")
         for c in d['cases']:
             mark = {True: 'PASS', False: 'FAIL', None: 'N/A '}[c['passed']]
             print(f"    [{mark}] {c['case']}: {'; '.join(c['reasons']) if c['reasons'] else 'ok'}")
@@ -679,6 +1316,23 @@ def print_report(report):
               f"excluded from the denominator, not scored as passes")
     print(f"  {'OVERALL':22s} {report['overall']['passed']}/{report['overall']['total']}"
           f"  ({report['overall']['score']*100:.0f}%)")
+    cc = report.get('callClassification')
+    if cc:
+        counts = cc['counts']
+        print('  call classification (cumulative):')
+        for lvl in CALL_LEVELS:
+            if counts.get(lvl):
+                print(f"    {lvl:16s} {counts[lvl]}")
+        if cc.get('byTool'):
+            print('  call classification by tool:')
+            for tool_name, bucket in cc['byTool'].items():
+                nonzero = {lvl: n for lvl, n in bucket.items() if n}
+                print(f"    {tool_name:20s} {nonzero}")
+    pt = report.get('pseudoToolCalls')
+    if pt and pt['total']:
+        print(f"  pseudo-tool-calls written as text: {pt['total']} {pt['byFormat']}")
+        for p in pt['found']:
+            print(f"    [{p['format']}] {p['dimension']}/{p['case']} turn {p['turn']}: {p['tool']!r}")
     if report['transportErrors']:
         print('  transport errors:')
         for e in report['transportErrors']:
