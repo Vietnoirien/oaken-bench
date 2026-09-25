@@ -1,8 +1,34 @@
-# Harness benchmark: Pi vs DeepSeek Harness on a local model
+# Local-model benchmark: tiered probes, with pi vs dsh at T2
 
-Measures which agent harness drives a local model further through a
-**long-horizon** implementation task, and whether their differing context
-strategies help or hurt.
+This repo measures local models at separate tasks and probes. Each tier answers
+a different question and keeps its own results. The original pi vs DeepSeek
+Harness comparison is T2.
+
+## Tiers
+
+T0 and T0.5 are direct model probes. T1 and T3-T5 are planned task tiers whose
+implementations are in progress or deferred. Only T0, T0.5, and T2 have shipped
+commands. No T1 or T3-T5 measurements exist. The 53 committed `results/*`
+score files are T2 runs; their meaning and values are unchanged.
+
+| Tier | What it isolates | Status and command |
+|---|---|---|
+| T0 | Tool-call reliability over short chains, including schema use, tool choice, refusals, and recovery. Direct model call, no harness. | Shipped. `./scripts/toolbattery.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
+| T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
+| T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred until more archived Gemma plateau runs can be examined. No command. |
+| T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
+| T3 | Find and fix planted bugs against the reference engine. | Implementation in progress. No command or measurements yet. |
+| T4 | Extend the existing engine and count regressions against the earlier suite. | Implementation in progress. No command or measurements yet. |
+| T5 | Write a bot that plays the game, scored over held-out seeds. | Implementation in progress. No command or measurements yet. |
+
+The short screening command combines T0 and T0.5. Its six thresholds and
+under-15-minute runtime target are still uncalibrated; see [Short T0 + T0.5
+screen](#short-t0--t05-screen). The harness-effect comparison for T0.5 is
+implemented, but no live model or harness comparison has been run; see
+[Comparing the T0.5 harness effect](#comparing-the-t05-harness-effect).
+
+The tiers are reported separately. A score from one tier does not combine with
+or stand in for a score from another.
 
 ## Where it stands
 
@@ -541,9 +567,10 @@ mean the probe and the graded runs no longer share a task.
 
 ## Before you trust a number from this
 
-Five limitations, stated up front rather than buried.
+These limitations apply to different tiers. Read the tier name with every
+result; a probe result is not a T2 task score.
 
-1. **One task.** A single spec in a single domain. Three runs of one
+1. **T2 is one task.** It uses a single spec in a single domain. Three runs of one
    configuration in the original study spanned **0 % to 75.8 %** hidden. One run
    is not a result; report at least three and show the spread.
 2. **The oracle is model-written.** The 132 held-out tests were authored blind
@@ -585,6 +612,25 @@ Five limitations, stated up front rather than buried.
    closely than any parameter under test. gpt-oss spans 0-81.8 % on one harness
    and GLM 0-65.1 %. The Qwen runs on b10751 are the exception: a 5.3-point
    spread, no early exits. Expect to throw away runs.
+
+6. **T0 and T0.5 are plaintext probes.** Their prompts, schemas, and fixed
+   vocabulary are committed in the repository and can enter training data.
+   T0.5 regenerates its facts and absent pairs by seed, but the probe shape
+   stays fixed. These scores measure performance on these probes, not resistance
+   to contamination. See [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
+   and [§3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
+7. **The T0 + T0.5 screen has no calibrated verdict.** Its six thresholds
+   remain pending, and its under-15-minute runtime target has not been verified
+   on a live 12 GB-class run. Do not treat `go` as a calibrated model-selection
+   decision until [screen-calibration.md](screen-calibration.md) records the
+   required evidence.
+8. **The T0.5 harness effect is not measured yet.** `harness_effect.py` can
+   compare direct mode with pi and dsh, but no live comparison has run. Its
+   result format and implementation do not establish whether either harness
+   changes recall or abstention scores.
+9. **T1 and T3-T5 have no measurements.** T1 is deferred pending review of
+   more archived Gemma plateau runs. T3, T4, and T5 implementations are in
+   progress. Do not infer their performance from T2 or from the probe tiers.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than 12 GB consumer cards.
