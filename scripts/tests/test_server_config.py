@@ -22,6 +22,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from server_config import (  # noqa: E402
     capture, fetch_props, find_server_cmdline, host_gpus, image_provenance,
+    probe_decode_rate,
     parse_launch_flags, stat_model_file,
 )
 
@@ -59,6 +60,24 @@ class _PropsHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
+    def do_POST(self):
+        if self.path != '/v1/completions':
+            self.send_response(404)
+            self.end_headers()
+            return
+        request = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+        body = json.dumps({
+            'choices': [{'text': 'ready'}],
+            'usage': {'completion_tokens': 2},
+            'timings': {'predicted_n': 2, 'predicted_ms': 40,
+                        'predicted_per_second': 50.0},
+            'seenModel': request['model'],
+        }).encode()
+        self.send_response(200)
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def log_message(self, *a):  # silence -- pytest -q output should stay quiet
         pass
 
@@ -80,6 +99,18 @@ def fake_server():
 def test_fetch_props_returns_parsed_json(fake_server):
     props = fetch_props(fake_server)
     assert props == PROPS_BODY
+
+
+def test_decode_rate_probe_uses_fake_completion_endpoint(fake_server):
+    probe = probe_decode_rate(fake_server, 'fake-model')
+    assert probe['completionTokens'] == 2
+    assert probe['decodeTokensPerSecond'] == 50.0
+    assert probe['serverTimings']['predicted_n'] == 2
+
+
+def test_decode_rate_probe_failure_is_data():
+    probe = probe_decode_rate('http://127.0.0.1:1', 'fake-model', timeout=0.1)
+    assert 'error' in probe
 
 
 def test_fetch_props_unreachable_server_reports_error_not_raise():

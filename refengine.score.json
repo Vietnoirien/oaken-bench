@@ -1,0 +1,32 @@
+{
+  "_comment": "Committed totals-only score record for the refengine bundle (issue #37). Produced by scripts/score.py against a scratch results dir (never results/), scoring the engine plaintext restored into a seed-shaped workspace under scripts/score.py's own docker/scorer.sh path. No per-test names or source -- see CANARY.md section 4.",
+  "label": "refengine-v1-verification",
+  "harness": "claude-code",
+  "model": "claude-refengine",
+  "exitCode": 0,
+  "wallclockSeconds": 60,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": true,
+  "suiteHung": false,
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "hidden": {
+    "passed": 132,
+    "failed": 0,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 1.0
+  },
+  "harnessMetrics": null,
+  "outcome": "complete",
+  "overfitGap": 0.0
+}

@@ -1,12 +1,42 @@
 #!/usr/bin/env python3
 """Score one benchmark run.
 
-  ./scripts/score.py results/<label>
+  ./scripts/score.py results/<label> [--no-detail]
 
 Reconstructs the agent's workspace, runs the visible and held-out suites,
 checks the frozen artefacts were not tampered with, and extracts harness
-metrics. Held-out results are reported as COUNTS ONLY; per-test detail is
-written to <label>/hidden-detail.json and is deliberately not printed.
+metrics. Held-out results are reported as COUNTS ONLY in score.json; the
+full per-test breakdown is written to <label>/hidden-detail.json instead
+and is deliberately never printed or merged into a published file.
+
+hidden-detail.json holds, per suite, one entry per test FILE (basename,
+pass/fail counts) plus one entry per individual TEST -- a plaintext name
+for the visible suite (already public), a content-addressed digest for
+the held-out suite (docker/score_detail.py; the held-out test NAMES are
+themselves benchmark data, so only a hash of each one is ever written to
+a host mount). Digests are stable across runs, so two runs' held-out pass
+sets can be compared exactly. score.py itself never reads this file back
+in or forwards it anywhere -- it only receives it from the container and
+writes it out. hidden-detail.json is matched by .gitignore's /results/*/*
+rule (only score.json and events-summary.json are excepted from that
+rule, see AGENTS.md), so it is written by default; there is no cost to
+this beyond the JSON encoding, since the container already ran both
+suites either way. --no-detail skips writing the file anyway, for callers
+who want score.json's counts without the per-test breakdown sitting next
+to it.
+
+NOTE: docker/scorer.sh and docker/score_detail.py are baked into the
+runner image at build time (see docker/Dockerfile's COPY lines) -- a
+change to either only takes effect after rebuilding the image
+(scripts/bootstrap.sh, or `docker build` directly).
+
+Everything above describes this module's own scorer, `score_run()`, which
+is T2's (the original long-horizon task's) entry in the tier registry --
+see scripts/tiers.py. The CLI (`main()`, below) does not call score_run()
+directly: it resolves `results/<label>`'s tier from the label itself and
+dispatches through the registry, so a t3-/t4-/... label reaches that
+tier's own scorer once one is registered, without this file knowing about
+it.
 """
 import json, os, re, shutil, signal, subprocess, sys, tarfile, tempfile, time
 
@@ -637,11 +667,18 @@ def score_in_container(result_dir, detail=False, timeout=1800):
 
 
 
-def main():
-    if len(sys.argv) < 2:
-        print(__doc__)
-        sys.exit(2)
-    result_dir = os.path.abspath(sys.argv[1])
+def score_run(result_dir, detail=True):
+    """Score one run under `result_dir` and print the same summary the CLI
+    has always printed. Returns the report dict (also written to
+    score.json) for callers that want it without re-reading the file.
+
+    This is T2's tier scorer (scripts/tiers.py wires it in as such) and
+    also score.py's own direct entry point -- there is currently exactly
+    one tier, so those are the same code path. A later tier's scorer is
+    free to look nothing like this one: tiers.py's registry is what keeps
+    that from turning into an if/else in here.
+    """
+    result_dir = os.path.abspath(result_dir)
     label = os.path.basename(result_dir)
 
     def read(name, default=''):
@@ -674,11 +711,26 @@ def main():
         'exitCode': exit_code, 'wallclockSeconds': wall, 'restored': restored,
     }
 
+    # None until (if) this scoring pass actually produces a hidden-detail
+    # payload below. Whatever it ends up as, it is written or the file is
+    # removed at the very end -- see the comment down there for why a
+    # leftover from a PRIOR run of this same label must not survive a
+    # scoring pass that didn't reproduce it (--no-detail, a decrypt
+    # __error, a __hung suite, or restored=False all leave it None).
+    hidden_detail = None
+    hidden_detail_path = os.path.join(result_dir, 'hidden-detail.json')
+
     if restored:
         TOT = canonical_totals()
-        vis, hid, tc, tampered = score_in_container(result_dir)
+        vis, hid, tc, tampered = score_in_container(result_dir, detail=detail)
         vis = vis or {}
         hid = hid or {}
+        # Pop, don't leave in place: 'detail' carries per-test entries
+        # (docker/score_detail.py), and report['hidden'] below is built by
+        # pulling specific keys off `hid` rather than by copying it, but a
+        # future edit to that pattern must not find this key still sitting
+        # here to copy by accident.
+        hidden_detail = hid.pop('detail', None)
         report['tamperedFrozenFiles'] = tampered or []
         report['typecheckClean'] = bool((tc or {}).get('clean'))
         report['suiteHung'] = bool(vis.get('__hung')) or bool(hid.get('__hung'))
@@ -700,6 +752,18 @@ def main():
         report['hidden'] = {'passed': 0, 'failed': 0, 'total': 0, 'rate': 0.0}
         report['typecheckClean'] = False
         report['tamperedFrozenFiles'] = []
+
+    if hidden_detail is not None:
+        with open(hidden_detail_path, 'w') as f:
+            json.dump(hidden_detail, f, indent=2)
+    elif os.path.exists(hidden_detail_path):
+        # A rescoring pass that did NOT produce detail this time (rerun
+        # with --no-detail, a decrypt __error, a __hung suite, or the
+        # workspace no longer restoring at all) must not leave a stale
+        # hidden-detail.json from a PREVIOUS pass sitting next to the
+        # score.json this pass just wrote -- that pairing would silently
+        # claim the old per-test detail still describes the new score.
+        os.remove(hidden_detail_path)
 
     harness = meta.get('harness')
     hm = pi_metrics(result_dir) or dsh_metrics(result_dir)
@@ -759,6 +823,35 @@ def main():
         # (see events.py), but a reader scanning this table has to be told,
         # not left to notice the count is one higher than expected.
         print(f"  UNKNOWN TOOLS  : {hm['unknownTools']}")
+
+    return report
+
+
+def main():
+    argv = sys.argv[1:]
+    # Default on -- see the module docstring for why that costs nothing.
+    # --detail is accepted as a no-op for parity with docker/entrypoint.sh's
+    # own flag of the same name.
+    detail = '--no-detail' not in argv
+    argv = [a for a in argv if a not in ('--detail', '--no-detail')]
+    if len(argv) < 1:
+        print(__doc__)
+        sys.exit(2)
+    result_dir = os.path.abspath(argv[0])
+    label = os.path.basename(result_dir)
+
+    # Dispatch through the tier registry (scripts/tiers.py) rather than
+    # calling score_run() directly: un-prefixed labels (every run so far)
+    # resolve to T2, whose scorer IS score_run, but a t3-/t4-/... label
+    # must go to that tier's own scorer once one exists, without this file
+    # growing a branch per tier. Imported here, not at module scope, so
+    # `import score` alone (score_run() is also called that way, from
+    # tiers._t2_score) never has to resolve tiers.py's import of this
+    # module back -- see tiers.py's own lazy import for the other half of
+    # why that would be circular at module-load time.
+    import tiers
+    tier = tiers.resolve_tier(label)
+    tier.score(result_dir, detail=detail)
 
 
 if __name__ == '__main__':

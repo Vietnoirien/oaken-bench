@@ -45,18 +45,14 @@ run_suite() {   # $1 = tag
     echo "{\"__hung\": $([ $rc -eq 137 ] && echo true || echo false)}" > "$OUT/suite-$tag.json"
     return
   fi
-  # Counts only by default. The held-out test NAMES are themselves benchmark
-  # data: emitting them to a host mount would defeat the encryption.
-  python3 - "$tag" "$DETAIL" <<'PY'
-import json,sys
-tag,detail=sys.argv[1],sys.argv[2]=='1'
-d=json.load(open(f'/tmp/vitest-{tag}.json'))
-o={'passed':d.get('numPassedTests',0),'failed':d.get('numFailedTests',0),
-   'total':d.get('numTotalTests',0),'files':len(d.get('testResults',[])),'__hung':False}
-if detail or tag=='visible':
-    o['detail']=[{'name':r.get('name'),'status':r.get('status')} for r in d.get('testResults',[])]
-json.dump(o,open(f'/out/suite-{tag}.json','w'))
-PY
+  # Counts only by default. When detail is on, per-test entries are added
+  # too (see score_detail.py) -- but the held-out test NAMES are
+  # themselves benchmark data: emitting them to a host mount would defeat
+  # the encryption, so the hidden suite's per-test entries are
+  # content-addressed digests, never names. Only the visible suite (public
+  # already) gets plaintext names.
+  python3 /usr/local/bin/score_detail.py "$tag" "$DETAIL" \
+      "/tmp/vitest-$tag.json" "$OUT/suite-$tag.json"
 }
 
 cd /work 2>/dev/null || true

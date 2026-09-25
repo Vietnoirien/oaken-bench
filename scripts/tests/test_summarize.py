@@ -2,10 +2,14 @@
 
 Fixtures are synthetic score.json trees built under tmp_path -- never real
 data from the repo's results/ directory. Real run data belongs in results/,
-not committed as a test fixture.
+not committed as a test fixture. The one exception is the golden-output
+test at the bottom of this file (issue #36): it deliberately runs against
+the repo's own committed results/, because its whole point is to pin down
+that tiering summarize.py did not change what those runs' summary says.
 """
 import json
 import os
+import subprocess
 import sys
 
 import pytest
@@ -13,8 +17,15 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from summarize import (  # noqa: E402
     ORDER, aggregate_groups, build_row, collect_rows, exclusion_reason,
-    format_row, list_result_labels,
+    format_row, list_result_labels, rows_by_tier,
 )
+
+BENCH_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+GOLDEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'testdata',
+                      'summarize_golden.txt')
+GOLDEN_PRE_TIERING = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'testdata',
+    'summarize_golden_pre_tiering.txt')
 
 
 def write_score(results_dir, label, harness='dsh', outcome='complete',
@@ -332,3 +343,63 @@ def test_the_262k_q4_kv_qwen_runs_do_not_pool_with_the_131k_q8_ones(tmp_path):
     assert by_label['pi-qwen35kvq4-262k-01'] != by_label['pi-qwen35q4ks-b10751-01']
     # and not the fall-through either, which is where an unknown label lands
     assert by_label['pi-qwen35kvq4-262k-01'] != by_label['pi-01']
+
+
+# ---------------------------------------------------------------------------
+# Golden output: issue #36's acceptance criterion that tiering does not
+# change what the committed runs' summary says, apart from a T2 label.
+# ---------------------------------------------------------------------------
+
+def _run_summarize():
+    """The real CLI, as a subprocess against the repo's own results/ --
+    not summarize.main() in-process, so this also catches an import-time
+    break (e.g. a circular import with tiers.py) that capsys would hide."""
+    proc = subprocess.run(
+        [sys.executable, os.path.join(BENCH_ROOT, 'scripts', 'summarize.py')],
+        cwd=BENCH_ROOT, capture_output=True, text=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout
+
+
+def test_committed_results_output_matches_golden_fixture():
+    """Regenerate scripts/tests/testdata/summarize_golden.txt (via
+    `python3 scripts/summarize.py > scripts/tests/testdata/summarize_golden.txt`)
+    whenever a new run is legitimately committed to results/ -- that is the
+    one expected reason this test's fixture goes stale. Any OTHER diff
+    means summarize.py changed what an already-committed run's row says,
+    which issue #36 explicitly rules out.
+    """
+    actual = _run_summarize()
+    expected = open(GOLDEN).read()
+    assert actual == expected
+
+
+def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
+    """summarize_golden_pre_tiering.txt was captured from this same
+    results/ tree on the commit immediately before tiering landed. Tiering
+    must add exactly one line -- the T2 heading -- and change nothing else:
+    same rows, same aggregates, same excluded list, same legend, same bar
+    line.
+    """
+    actual_lines = _run_summarize().splitlines()
+    pre_lines = open(GOLDEN_PRE_TIERING).read().splitlines()
+
+    added = [l for l in actual_lines if l not in pre_lines]
+    removed = [l for l in pre_lines if l not in actual_lines]
+
+    assert removed == []
+    assert added == ['=== T2 -- long-horizon greenfield (the original task) ===']
+
+
+def test_rows_by_tier_groups_all_committed_runs_under_t2():
+    """Every committed results/ label predates tiering, so today they must
+    all land in exactly one tier group: T2."""
+    from summarize import R, collect_rows
+
+    rows = collect_rows(R)
+    grouped = rows_by_tier(rows)
+
+    assert len(grouped) == 1
+    tier_id, trows = grouped[0]
+    assert tier_id == 't2'
+    assert len(trows) == len(rows)
