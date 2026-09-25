@@ -16,6 +16,13 @@ LABEL="${3:?label required}"
 TIMEOUT="${4:-1800}"
 
 B="$(cd "$(dirname "$0")" && pwd)"
+# LABEL becomes the results/ directory name verbatim -- this is also where
+# tier namespacing (issue #36) lives: pass a `t<N>-`-prefixed label (e.g.
+# `t3-bugfarm-01`) to land the run under that tier, or an un-prefixed one
+# for T2 (the original task; every existing label is un-prefixed and stays
+# that way). scripts/tiers.py is what actually reads the prefix back off
+# this directory name at scoring time -- run.sh itself does no tier
+# validation, so a typo'd prefix is only caught later, by score.py.
 OUT="$B/results/$LABEL"
 
 if [ -e "$OUT" ]; then echo "refusing to overwrite existing result: $OUT" >&2; exit 1; fi
