@@ -146,6 +146,11 @@ llama-server --model /path/to/model.gguf --alias your-model.gguf \
 ./run.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 # Raw traces are archived to ~/.cache/oaken-bench/<label>/ after the run.
 # Override the location with OAKEN_ARCHIVE.
+# Progress is printed every 30s. Pi turn/call counts are read from its live
+# JSONL trace; dsh only exposes stdout until its session archive is finalized,
+# so its live turn/call counts are marked n/a.
+# The startup decode probe is recorded in run-context.json. Keep the default
+# port 8080, or set OAKEN_SERVER_PORT=8081 / OAKEN_SERVER_URL=http://172.17.0.1:8081/v1.
 
 # 4. Score it
 ./scripts/score.py results/<label>
@@ -214,6 +219,34 @@ assistant) -- **not** drawn from `SPEC.md`, `seed/`, or the held-out suite, per 
 are, however, a new contaminable asset in their own right, committed in plaintext with none of the
 held-out suite's protections; see [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
 for why, and for the recommendation on how much confidence to put in a score from it.
+
+**Per-call classification and pseudo-tool-calls (issue #29, `schemaVersion` 2).** A pass/fail bit
+per case cannot say WHERE a call went wrong -- a model that emits `<tool_call>` XML instead of a
+structured call, one that calls the right tool with a truncated argument string, and one that
+calls the wrong tool outright all used to land on the same `passed: false`. Every call each case
+produces is now additionally classified into four CUMULATIVE levels (a call can only reach level N
+having cleared every level below it): **well-formed** (`arguments` decoded as JSON) ->
+**schema-valid** (satisfies its own tool's schema) -> **right tool** (matches the tool the case
+expected) -> **right args** (dimension-specific: for `multiStepDependency`, the value the simulated
+first result returned; for `errorRecovery`'s retry, adapted rather than repeated verbatim; for
+`schemaAdherence`/`toolSelection`, no further check beyond the schema itself). See
+`classify_call()`'s docstring in `scripts/toolbattery.py` for the exact per-dimension definitions.
+`report['callClassification']` folds every call from every dimension into one table, `byTool`
+included -- generalising #15's `schemaAdherence.byTool` past a single dimension, so one
+catastrophic tool used in several places is visible even if no single dimension's own numbers show
+it. `detect_pseudo_tool_calls()` separately scans each case's free-text answer for a tool call
+written as TEXT instead of landing in the structured `tool_calls` array -- JSON objects naming a
+known tool, `<tool_call>...</tool_call>`, a `<|tool_call|>` sentinel or `<function=...>` XML,
+Mistral's `[TOOL_CALLS]` marker, gpt-oss's Harmony `to=functions.x` leak, and fenced code blocks --
+reported per case and rolled up in `report['pseudoToolCalls']`.
+
+**v1 vs v2.** The four artefacts already committed under `toolbattery-results/` predate this change
+(`schemaVersion` 1) and were **not rescored** -- they carry per-dimension pass/fail and (for the
+GLM/gpt-oss/Qwen3.6 runs, after #15) `schemaAdherence.byTool`, but no per-call classification and no
+pseudo-tool-call detection. Per AGENTS.md's rule on published fields, that is documented here rather
+than silently redefined: read a `schemaVersion: 1` artefact as "passed the v1 battery", a
+`schemaVersion: 2` one as "passed the v1 battery AND has per-call classification and
+pseudo-tool-call counts".
 
 The artefact is a JSON file with a `schemaVersion`, one block per dimension, and a `cases` list per
 block -- shaped after `events-summary.json`'s conventions, not embedded in `results/*/score.json`
@@ -311,7 +344,25 @@ results/           one directory per run; score.json and events-summary.json are
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
                    ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
-                   isn't lost to a git clean
+                   isn't lost to a git clean. score.py also writes
+                   hidden-detail.json (per-file counts plus one entry per
+                   test -- a digest, not a name, for the held-out suite;
+                   see docker/score_detail.py) next to score.json,
+                   gitignored, never published. It needs a runner image
+                   built after issue #16 (`scripts/bootstrap.sh`, or
+                   `docker build -t oaken-bench:1.0 docker/`), since
+                   scorer.sh and score_detail.py are baked into the image
+                   at build time. score.py reads <result_dir>/workspace.tgz,
+                   so re-scoring an archived run means pointing it at the
+                   archive directory directly, or copying workspace.tgz
+                   (and run.meta etc.) back into results/<label>/ first:
+                   `./scripts/score.py ~/.cache/oaken-bench/<label>` (or
+                   `$OAKEN_ARCHIVE/<label>`) works as-is if that directory
+                   still has workspace.tgz. Either way this REWRITES
+                   score.json (and events-summary.json, hidden-detail.json)
+                   in whichever directory you point it at -- a run whose
+                   workspace.tgz is gone cannot be re-scored at all
+                   (issue #7)
 FROZEN.sha256      hashes of every frozen input
 MODELS.md          how to add and tune a model  <- start here
 CANARY.md          contamination control

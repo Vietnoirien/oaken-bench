@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
-"""Final comparison table across all scored runs."""
+"""Final comparison table across all scored runs.
+
+Issue #36: every run belongs to exactly one tier (scripts/tiers.py,
+resolved from its results/ label), and tiers are never combined into one
+number -- there is no grand total, no cross-tier mean, nothing that sums a
+T2 count with any other tier's. `main()` groups rows by tier first and
+prints one heading + table + set of aggregates per tier; everything below
+that point (aggregate_groups, group_label, ...) still operates on one
+tier's rows at a time, same as before tiering existed.
+"""
 import json, os, statistics, sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from tiers import resolve_tier  # noqa: E402
 
 B = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 R = os.path.join(B, 'results')
@@ -70,8 +82,11 @@ def build_row(results_dir, label):
     d = json.load(open(p))
     hm = d.get('harnessMetrics') or {}
     u = hm.get('usage') or {}
+    tier = resolve_tier(label)
     return {
         'label': label,
+        'tier': tier.id,
+        'tierLabel': tier.label,
         'harness': d.get('harness'),
         'outcome': d.get('outcome'),
         'hid': d['hidden']['passed'], 'hidr': d['hidden']['rate'],
@@ -102,6 +117,27 @@ def build_row(results_dir, label):
 def collect_rows(results_dir):
     """Ordered list of row dicts for every scored run in results_dir."""
     return [build_row(results_dir, label) for label in list_result_labels(results_dir)]
+
+
+def rows_by_tier(rows):
+    """`rows`, partitioned by tier, as an ordered list of (tier_id, rows)
+    pairs -- first-seen order, so T2 (today's only tier, and the one every
+    existing label resolves to) comes first exactly as it always has.
+
+    This is the one place summarize.py splits the run list before doing
+    anything else with it. Every downstream step -- aggregate_groups(),
+    the per-group means, the 'runs clearing the bar' line -- runs once per
+    tier, against that tier's rows only, so no aggregate can ever mix two
+    tiers' numbers (see scripts/tests/test_tiers.py for the assertion that
+    no cross-tier total exists).
+    """
+    order = []
+    by_tier = {}
+    for r in rows:
+        by_tier.setdefault(r['tier'], []).append(r)
+        if r['tier'] not in order:
+            order.append(r['tier'])
+    return [(t, by_tier[t]) for t in order]
 
 
 def exclusion_reason(row):
@@ -206,8 +242,12 @@ def format_row(r):
     return '\n'.join(lines)
 
 
-def main():
-    rows = collect_rows(R)
+def print_tier(tier_label, rows):
+    """One tier's table, aggregates, legend and bar line -- everything
+    main() used to print once for the whole run list, now scoped to a
+    single tier's rows. Called once per tier from main(); never fed rows
+    from more than one tier (see rows_by_tier())."""
+    print(f"=== {tier_label} ===")
 
     header = (f"{'run':<26} {'outcome':<26} {'hidden':>12} {'visible':>11} {'gap':>7} "
               f"{'tc':>3} {'wall':>6} {'turns':>6} {'tools':>6} {'mut':>6} {'cmp':>5}")
@@ -249,6 +289,16 @@ def main():
 
     print(f"\nbar = 80% hidden.  runs clearing it: "
           f"{[r['label'] for r in rows if r['hidr'] >= 0.8] or 'none of the Gemma runs'}")
+
+
+def main():
+    rows = collect_rows(R)
+
+    tiers = rows_by_tier(rows)
+    for i, (_tier_id, trows) in enumerate(tiers):
+        if i:
+            print()
+        print_tier(trows[0]['tierLabel'], trows)
 
 
 if __name__ == '__main__':
