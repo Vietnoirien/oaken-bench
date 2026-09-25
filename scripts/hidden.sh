@@ -55,6 +55,7 @@ ITER=200000
 # bundle gets the same lock/unlock/verify/status behaviour for free.
 declare -A BUNDLE_DEFAULT_PASS=(
   [hidden]="oaken-bench-held-out"
+  [refengine]="oaken-bench-refengine-v1"
 )
 
 # Optional glob narrowing what counts as "the bundle's files" for the file
@@ -63,6 +64,7 @@ declare -A BUNDLE_DEFAULT_PASS=(
 # reference engine is plain .ts).
 declare -A BUNDLE_GLOB=(
   [hidden]="*.test.ts"
+  [refengine]="*.ts"
 )
 
 die() { echo "error: $*" >&2; exit 1; }

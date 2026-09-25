@@ -331,6 +331,11 @@ vocabulary) is still constant across runs, the same lower-but-nonzero contaminat
 seed/              the repo each run starts from (SPEC.md, src stubs, visible tests, frozen item data)
 hidden.tar.gz.enc  held-out suite, encrypted. `scripts/hidden.sh unlock` -> hidden/
 hidden/            the oracle, once unlocked. Gitignored. Do not read when authoring a task.
+refengine.tar.gz.enc  sealed 132/132 v1.0 solution (issue #37), encrypted the same way. `scripts/hidden.sh unlock refengine` -> refengine/
+refengine/         the reference engine, once unlocked (`*.ts`, one file per `seed/src/` module).
+                   Gitignored. T3/T4/T5 build on this, not on an agent's own T2 output -- see
+                   CANARY.md section 4 for the contaminated author and the verification record
+                   in refengine.score.json (committed, totals only).
 docker/            image, harness configs, entrypoint, PROMPT.txt
   scorer.sh        runs both suites INSIDE the image (see MODELS.md §8)
 examples/          guarded llama-server launchers: Gemma on one card; launch-dual.sh presets for the two-card models
