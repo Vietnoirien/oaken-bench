@@ -376,9 +376,23 @@ For example, with a separate model server reachable from the container:
 
 `--pi-command` and `--dsh-command` replace the container invocation with host commands or
 fakes. The shared cases control the question set; each harness still applies its own
-prompting, context handling, and retries. Fake tests cover file visibility and config
-rewriting. Docker execution has not been exercised here, and no live model or harness run
-was made.
+prompting, context handling, and retries. The runner asks `/tokenize` and `/props` for
+the actual ledger and served-context sizes. It skips a case when the direct prompt
+plus a 4096-token answer reserve exceeds that context. If either endpoint is
+unavailable, the artefact labels the size as an estimate.
+
+One live Qwen3.6-35B-A3B UD-Q4_K_S run on 2026-09-25 used the 131072-token q8_0
+preset in `examples/launch-dual.sh`, llama.cpp b10751, and the pinned runner image.
+The [per-item result](harness-effect-results/qwen35-131k-20260925-01.json) has
+no ledger text or answers. The generated ledger's server-tokenized sizes were
+5347, 21277, 42426, and 84673 tokens at the first four targets. At each of
+those depths, direct, pi, and dsh all answered the same 3 present and 6 absent
+pairs correctly: 12/12 recall and 24/24 abstention per mode in total. The
+requested 131072-token target produced a 169477-token ledger, over the served
+window. An exploratory run obtained pi and dsh answers there while direct mode
+received a server error; that case is marked invalid and excluded from every
+aggregate. The new runner skips it before calling any mode. This single run
+shows a ceiling on these items, so it cannot resolve a harness advantage.
 
 ## Short T0 + T0.5 screen
 

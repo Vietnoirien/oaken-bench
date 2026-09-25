@@ -1,0 +1,1577 @@
+{
+  "schemaVersion": 2,
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+  "seed": 20260924,
+  "modes": [
+    "direct",
+    "pi",
+    "dsh"
+  ],
+  "depths": [
+    {
+      "depthTokens": 4096,
+      "questionSetDigest": "815f7b182d1936abb8ca3ca7f0828424e135265cec89f86c23f38741eaa8a61c",
+      "modes": {
+        "direct": {
+          "status": "ok",
+          "elapsedSeconds": 27.496,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "pi": {
+          "status": "ok",
+          "elapsedSeconds": 29.209,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "dsh": {
+          "status": "ok",
+          "elapsedSeconds": 24.456,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        }
+      },
+      "items": [
+        {
+          "itemId": "3a2e82d3c64576753c6f1b7b82bf06a9a61436d2a50bbf2afa693cb3c0687f60",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "c021a1744cc093e105445b3096301939be02943584364f5007e14aa108021ddd",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "ac1c943a06dfb6fcb9feebe0a7d3720f4b9ab67e4ac76207ed46ed05649b8b8d",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "ba18398525b4dffada380435d987829fe0c3ca124cb276f8f807fde939147693",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "85a1ee3ad7b7c24fbeff2bb8afef6dd15281677ba37555d6c32e518c6f4501ac",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "d3f419a0674cbdfb8796af664e2dc5a9bbc4d065e18efd7ba48aabde522429ea",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "ffee61e5b85f8f4f17e000048b7104314a41bf1cd8f87fd47c55e5cd7feebcc0",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "7f1cd8322dfab917ca00cd4ab08ebee8c1229ae19d2b2184cb8110877e73118b",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "34ab8d86b1e78f43d856b5f4ed22558faf2c0a750b86f13c25849aa53c5b485d",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        }
+      ],
+      "comparisons": {
+        "pi_vs_direct": {
+          "leftMode": "pi",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        },
+        "dsh_vs_direct": {
+          "leftMode": "dsh",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        }
+      },
+      "ledgerTokenCount": 5347,
+      "tokenCountSource": "server_tokenize",
+      "directPromptTokenCount": 5611,
+      "servedContextTokens": 131072,
+      "validForComparison": true
+    },
+    {
+      "depthTokens": 16384,
+      "questionSetDigest": "a180c40b992ca498c23a4501b18c9751a03caab6bb9c79b7e0b780821f0a9431",
+      "modes": {
+        "direct": {
+          "status": "ok",
+          "elapsedSeconds": 52.439,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "pi": {
+          "status": "ok",
+          "elapsedSeconds": 46.404,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "dsh": {
+          "status": "ok",
+          "elapsedSeconds": 58.399,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        }
+      },
+      "items": [
+        {
+          "itemId": "e580d8c185a57362ed347924f89c269f41014bf2424e4fe378f893690d60e319",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "fe539f30de65911a643c8f2d02a4c2fda3462ff0387768a9bc23fe35ffcd2bba",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "29bd5f1c27f79ce1694406197086636e8c8d4280ce4dbb6e9aec0103ff34acae",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "6470bd01781f0f938a6e95704d70cc3c03779dcc8f3bf5a3224d694dd7d73518",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "38826b29a02f60b94af60d0ff9f2068c6bb9b721170973e456222796544ff0b4",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "6f9295560b113afd93089775fe6d26d9d03cdebb9dda41d622f71449978404f3",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "231f8ba741f105263239d6c2e793f4566297dd067cdf32fa3b523ebcf7de0a5e",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "0c057f94d06f5029ad8ce9912dad4707df621825552388260ad28feaa65d525c",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "be5983cf09e008c0acb12be8780878093b977f58642f5ebaa5b48bd32f544991",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        }
+      ],
+      "comparisons": {
+        "pi_vs_direct": {
+          "leftMode": "pi",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        },
+        "dsh_vs_direct": {
+          "leftMode": "dsh",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        }
+      },
+      "ledgerTokenCount": 21277,
+      "tokenCountSource": "server_tokenize",
+      "directPromptTokenCount": 21538,
+      "servedContextTokens": 131072,
+      "validForComparison": true
+    },
+    {
+      "depthTokens": 32768,
+      "questionSetDigest": "04bf029a2290faa6a70ff221ad659733e2de90f20765b41cb574b1962126c31b",
+      "modes": {
+        "direct": {
+          "status": "ok",
+          "elapsedSeconds": 76.114,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "pi": {
+          "status": "ok",
+          "elapsedSeconds": 41.814,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "dsh": {
+          "status": "ok",
+          "elapsedSeconds": 68.235,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        }
+      },
+      "items": [
+        {
+          "itemId": "ae1b955248e6122f4d9d0495829ed4e80ba7541b76c909d566cd7ac4a664d2de",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "3344dfa6af9837bc305e238e60b317465072c6706dcf3a76ca5a4863ba4fb1e0",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "812c336e4a81487b2692b4e914d2bd65380cd8632fda990bcbf5aaa0cd3fc166",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "6a992c9ee6dca4fb6630a1d536b8c74fe2e26c89814583e43cefdf26eaeaccff",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "f06b9e3b2a1003b1bd6678c649d322a9661349094a296780403c913b0c422785",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "09de1dd26d10a26c8b91640df50a4eeb06b99f1d401d832564a61e4c797e42d5",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "5a1cc0c17e0b423397e0870c7e279b84f2db0d38c15db39328ea00d2fa06cedd",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "7e54f28cbfee31f988eb0cf1332d84ca5a851de5344c04920f1e1fd21e246642",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "44fb6b84fe66e1d820d6de0ec67bd80b35390d852fa2d52314afffa1d7282696",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        }
+      ],
+      "comparisons": {
+        "pi_vs_direct": {
+          "leftMode": "pi",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        },
+        "dsh_vs_direct": {
+          "leftMode": "dsh",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        }
+      },
+      "ledgerTokenCount": 42426,
+      "tokenCountSource": "server_tokenize",
+      "directPromptTokenCount": 42694,
+      "servedContextTokens": 131072,
+      "validForComparison": true
+    },
+    {
+      "depthTokens": 65536,
+      "questionSetDigest": "32a2a5e2a5e5ce36582cd5e0e03bba031fc857c0d3f6a2294ce54b897f749c15",
+      "modes": {
+        "direct": {
+          "status": "ok",
+          "elapsedSeconds": 120.18,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "pi": {
+          "status": "ok",
+          "elapsedSeconds": 37.152,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "dsh": {
+          "status": "ok",
+          "elapsedSeconds": 55.036,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        }
+      },
+      "items": [
+        {
+          "itemId": "b954ad21356d44a83df196d70c5b48618f3f41d857bd48174af03118792ba1f4",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "92c7e9c3f63961eae2fc01cb4aadc5b9e39704cda2752cd8e27b660ef1f9733a",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "8957940873ee62b867b8f41c5ccd2143b1899f14fbd3ecc60e014408ad1dc13f",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "167008ade8d133ff082a2936f453294aea22c131c34a561eff4b1aaaa081edf8",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "342787e53a50018b2c8e3c36317a3ecd56cbc4a2b7cf1f8888f599f3a7b4025a",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "5d1236318603b09c7add0ad3fc75e59d60c48496a2e0ee000c61f5ce45b6cbe1",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "1e72c08097c81a1b2ee25728d61527adb40f0b8baa92add5ceeb94307b6e6e38",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "3e644b6d11784585a28b8bc209f2565ab99b867e21a0b7035838d90e0bf56baf",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "f844192c5174ebafd0339a5b21063660f084bf8de704dd182e9b10792451c0fc",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        }
+      ],
+      "comparisons": {
+        "pi_vs_direct": {
+          "leftMode": "pi",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        },
+        "dsh_vs_direct": {
+          "leftMode": "dsh",
+          "rightMode": "direct",
+          "leftStatus": "ok",
+          "rightStatus": "ok",
+          "presentRecallDeltaPercentagePoints": 0.0,
+          "presentRecallCommonItemCount": 3,
+          "absentAbstentionDeltaPercentagePoints": 0.0,
+          "absentAbstentionCommonItemCount": 6
+        }
+      },
+      "ledgerTokenCount": 84673,
+      "tokenCountSource": "server_tokenize",
+      "directPromptTokenCount": 84937,
+      "servedContextTokens": 131072,
+      "validForComparison": true
+    },
+    {
+      "depthTokens": 131072,
+      "questionSetDigest": "cbb6361b342fddd1ee8c249f578ba8407543a7e3723044beea169cac293bb72c",
+      "modes": {
+        "direct": {
+          "status": "error",
+          "errorType": "ServerError"
+        },
+        "pi": {
+          "status": "ok",
+          "elapsedSeconds": 38.458,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        },
+        "dsh": {
+          "status": "ok",
+          "elapsedSeconds": 38.197,
+          "score": {
+            "present": {
+              "correct_answer": 3,
+              "wrong_answer": 0,
+              "false_abstention": 0,
+              "total": 3
+            },
+            "absent": {
+              "correct_abstention": 6,
+              "invented_answer": 0,
+              "total": 6
+            },
+            "abstentionByKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 2,
+                "invented_answer": 0,
+                "total": 2
+              }
+            }
+          }
+        }
+      },
+      "items": [
+        {
+          "itemId": "f2f4233f5ac2003eeb5b1106a0d6b519bacf47d02aa3947e391ce103c3511198",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "0f5956d025e7652968d0f6f86edf5505253a3491d98a9a61e88878752a5aacfc",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "ad72117f96bb444aa28994fc00fe7689468472fbc5f0ee4df3ca8469e6cf4735",
+          "questionType": "present",
+          "kind": "recall",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_answer"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_answer"
+            }
+          }
+        },
+        {
+          "itemId": "4f86fa6f1c24f4ffa57421bb8fecde90ba07a6ddf75c80de59810b32a34c387c",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "dd462f241af155365fdf6a255b8fefa89b635e1f86686ebfa4553ae3b5776971",
+          "questionType": "absent",
+          "kind": "guaranteed_absent",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "fc9dd4445bb0f61d87c0298fd1f2e0f37b4deaa83e382aaae1d7b8822d1b92c6",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "063c66df8fd7be83026fd40f5a6019a6293745bedf1c13e2cbb2825bd5b268f9",
+          "questionType": "absent",
+          "kind": "near_miss_same_entity",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "95dacbb92eb307888df5fb46d84888959194a646126786e785180e9130968fa5",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        },
+        {
+          "itemId": "03dee6b7b3019c86594bfb7dd4134f2b539c7bf828b995d0d80050d0afe4ffc9",
+          "questionType": "absent",
+          "kind": "near_miss_same_attribute",
+          "modes": {
+            "direct": {
+              "status": "error",
+              "classification": null
+            },
+            "pi": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            },
+            "dsh": {
+              "status": "scored",
+              "classification": "correct_abstention"
+            }
+          }
+        }
+      ],
+      "comparisons": {},
+      "ledgerTokenCount": 169477,
+      "tokenCountSource": "server_tokenize",
+      "directPromptTokenCount": 169739,
+      "servedContextTokens": 131072,
+      "validForComparison": false,
+      "skipReason": "direct prompt plus 4096-token reserve exceeds served context"
+    }
+  ],
+  "byMode": {
+    "direct": {
+      "presentCorrect": 12,
+      "presentTotal": 12,
+      "absentCorrect": 24,
+      "absentTotal": 24,
+      "depthsScored": 4,
+      "presentScore": 1.0,
+      "absentScore": 1.0
+    },
+    "pi": {
+      "presentCorrect": 12,
+      "presentTotal": 12,
+      "absentCorrect": 24,
+      "absentTotal": 24,
+      "depthsScored": 4,
+      "presentScore": 1.0,
+      "absentScore": 1.0
+    },
+    "dsh": {
+      "presentCorrect": 12,
+      "presentTotal": 12,
+      "absentCorrect": 24,
+      "absentTotal": 24,
+      "depthsScored": 4,
+      "presentScore": 1.0,
+      "absentScore": 1.0
+    }
+  },
+  "harnessEffect": {
+    "pi_vs_direct": {
+      "leftMode": "pi",
+      "rightMode": "direct",
+      "leftStatus": "ok",
+      "rightStatus": "ok",
+      "presentRecallDeltaPercentagePoints": 0.0,
+      "presentRecallCommonItemCount": 12,
+      "absentAbstentionDeltaPercentagePoints": 0.0,
+      "absentAbstentionCommonItemCount": 24
+    },
+    "dsh_vs_direct": {
+      "leftMode": "dsh",
+      "rightMode": "direct",
+      "leftStatus": "ok",
+      "rightStatus": "ok",
+      "presentRecallDeltaPercentagePoints": 0.0,
+      "presentRecallCommonItemCount": 12,
+      "absentAbstentionDeltaPercentagePoints": 0.0,
+      "absentAbstentionCommonItemCount": 24
+    }
+  },
+  "createdAt": "2026-09-25T14:33:23.231805+00:00",
+  "servedContextTokens": 131072,
+  "tokenCountSource": "server_tokenize",
+  "environment": {
+    "llamaCppBuild": "b1-125c6d1",
+    "runnerImageId": "sha256:db70dc755e2d68747eabb681ebcd89fd1d46ecc443f114b44cb6698277e874f6",
+    "harnessVersions": {
+      "@deepseek-ai/dsh": "0.1.5-rc.2",
+      "@earendil-works/pi-coding-agent": "0.86.0"
+    },
+    "modelSizeBytes": 20893015008,
+    "modelSha256": null,
+    "modelSha256Reason": "model file exceeds 4 GiB hash cap",
+    "gpuModels": [
+      "NVIDIA GeForce RTX 5070",
+      "NVIDIA GeForce RTX 3060"
+    ],
+    "backend": "CUDA",
+    "cacheTypeK": "q8_0",
+    "cacheTypeV": "q8_0",
+    "batchSize": 512,
+    "microBatchSize": 256,
+    "serverPort": 18081
+  }
+}

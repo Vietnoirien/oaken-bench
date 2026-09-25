@@ -181,6 +181,51 @@ def test_default_harness_command_uses_benchmark_container_and_host_gateway(
     assert command[-1] == 'read /work/ledger.txt'
 
 
+def test_default_harness_command_passes_prompt_once(monkeypatch, tmp_path):
+    prompt = 'read /work/ledger.txt'
+    command = harness_effect._docker_command(
+        'pi', None, prompt, 'fake-model', '/tmp/workspace', '/tmp/config')
+    observed = {}
+
+    def fake_run(argv, **kwargs):
+        observed['argv'] = argv
+        return subprocess.CompletedProcess(argv, 0, '', '')
+
+    monkeypatch.setattr(harness_effect.subprocess, 'run', fake_run)
+    harness_effect._run_command(command, prompt, 2, str(tmp_path), {})
+    assert observed['argv'].count(prompt) == 1
+
+
+def test_direct_mode_allows_reasoning_before_json(monkeypatch):
+    observed = {}
+
+    def fake_chat(*args, **kwargs):
+        observed['max_tokens'] = kwargs['max_tokens']
+        return {'choices': [{'message': {'content': '{"answers":[]}'}}]}
+
+    monkeypatch.setattr(harness_effect.direct, 'chat', fake_chat)
+    answers, _ = harness_effect.run_harness(
+        'direct', 'question', model='fake-model',
+        base_url='http://127.0.0.1:18081/v1', timeout=2)
+    assert answers == {'answers': []}
+    assert observed['max_tokens'] >= 4096
+
+
+def test_over_context_depth_is_skipped_before_any_mode_runs(monkeypatch):
+    def fail_if_run(*args, **kwargs):
+        raise AssertionError('over-context case reached a model')
+
+    monkeypatch.setattr(harness_effect, 'run_harness', fail_if_run)
+    report = harness_effect.run_comparison(
+        [4096], 7, 'fake-model', base_url='http://127.0.0.1:18081/v1',
+        count_tokens_fn=lambda text: 6000, served_context=8192)
+    depth = report['depths'][0]
+    assert depth['validForComparison'] is False
+    assert depth['directPromptTokenCount'] == 6000
+    assert depth['modes']['direct']['status'] == 'skipped'
+    assert report['byMode']['direct']['depthsScored'] == 0
+
+
 @pytest.mark.parametrize('mode,config_path', [
     ('pi', '.pi/agent/models.json'), ('dsh', '.dsh/settings.yaml'),
 ])
@@ -207,3 +252,22 @@ def test_harness_adapter_rewrites_endpoint_in_temporary_config(monkeypatch, mode
     assert endpoint in observed['contents']
     assert '8080' not in observed['contents']
     assert observed['ledger'] == 'private ledger text'
+
+
+def test_dsh_qwen_config_does_not_duplicate_registered_model(monkeypatch):
+    observed = {}
+
+    def fake_run(argv, **kwargs):
+        path = os.path.join(kwargs['env']['HOME'], '.dsh', 'settings.yaml')
+        with open(path, encoding='utf-8') as stream:
+            observed['settings'] = stream.read()
+        return subprocess.CompletedProcess(argv, 0, '{"answers":[]}', '')
+
+    monkeypatch.setattr(harness_effect.subprocess, 'run', fake_run)
+    model = 'Qwen3.6-35B-A3B-UD-Q4_K_S.gguf'
+    harness_effect.run_harness(
+        'dsh', 'question', model=model,
+        base_url='http://172.17.0.1:18081/v1', timeout=2,
+        command=['fake-harness'], ledger_text='ledger')
+    assert observed['settings'].count(f'- id: {model}') == 1
+    assert f'  model: {model}' in observed['settings']
