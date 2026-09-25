@@ -53,3 +53,65 @@ Other inherited gaps and the exact test-input limits are in section 11.
 The freeze precedes handoff to the independent oracle author. Do not regenerate
 the manifest to accommodate edits after that handoff. Record later ambiguities
 in a separate note and decide explicitly whether a new spec version is needed.
+
+## Independent oracle and T4 execution
+
+Issue #44 adds the named `t4oracle` bundle, 137 tests, authored after freeze.
+See [CANARY.md](../CANARY.md#6-independent-t4-v11-oracle-issue-44) for the
+separate author record, task-ID provenance limitation, and canary digest.
+Neither frozen manifest changed.
+
+The suite covers the new item throughout placement, merging, selling and
+snapshots; schedule boundaries and dropped-trigger RNG consumption; perks,
+including errors, order and duplication; encounter outcomes and rewards; and
+run-loop integration. Assertions follow section 11's input limits. No v1.0
+held-out source or reference implementation was consulted to write them.
+
+With Docker and the pinned `oaken-bench:1.0` image available:
+
+```bash
+# CPU-only assembly and scoring, with no model endpoint.
+python3 scripts/t4.py baseline results/t4-reference-sanity-new
+
+# Assembly only, for a separately managed implementation session.
+# The destination must not exist. Treat its reference source as contaminated.
+python3 scripts/t4.py assemble /tmp/my-t4-input
+
+# A live implementation trial, when a model server is intentionally available.
+./run.sh pi MODEL_ID t4-LABEL
+python3 scripts/score.py results/t4-LABEL --no-detail
+python3 scripts/summarize.py
+```
+
+`OAKEN_IMAGE` overrides the runner image. Bundle passphrase overrides are
+`OAKEN_REFENGINE_PASS`, `OAKEN_HIDDEN_PASS` and `OAKEN_T4ORACLE_PASS`.
+Assembly receives the reference bundle and frozen public inputs only.
+It writes `workspace.tgz`, containing `work/` with the reference modules,
+`SPEC.md`, `SPEC-v1.1.md`, and the three data files. `run.sh` mounts this
+workspace and the T4 prompt for the harness. Neither oracle is mounted in
+the agent's container. T3's instance setup and T5's registry remain separate.
+
+The scorer mounts the two encrypted oracles only for evaluation. It restores
+candidate `src/` into fresh workspaces with trusted tests, config, data and
+pinned dependencies. It records original frozen-file drift before restoring
+those inputs. Each suite runs separately. Missing imports, startup failures
+and skipped tests cannot shrink its fixed denominator. `uncollected` reports
+missing assertions; `failed` includes every test that did not pass.
+
+The score has `suites["v1.0"]` and `suites["v1.1"]`. There is no combined
+pass count, denominator or rate. The T4 summary prints the two counts side by
+side through the tier registry's summary callbacks. Existing T2/T3 scores
+and their summary fields retain their meanings. T4 accepts the shared
+`--detail` option for dispatch compatibility but always emits counts only.
+
+[The reference sanity score](../results/t4-reference-sanity/score.json) records
+132/132 v1.0 and 2/137 v1.1, with a clean typecheck and no frozen-file drift.
+It ran through the tier namespace on the unchanged reference engine. This is
+an assembly/scoring smoke run, not a live agent implementation trial. No GPU
+or model endpoint was used. A positive v1.1 implementation has not been
+validated against this new suite; that remains a separate calibration step.
+
+The new Python machinery has public fixture tests in `scripts/tests/test_t4.py`.
+They check tier dispatch, separate version counts, fixed denominators, archive
+path rejection, frozen-input checks, candidate-test/config exclusion, offline
+Docker arguments and cleanup. Those fixtures contain no held-out cases.

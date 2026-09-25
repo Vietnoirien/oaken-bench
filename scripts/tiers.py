@@ -132,8 +132,8 @@ TIERS = (
     Tier(id='t5', label='T5 -- sealed snapshot-pool strategy',
          dir_prefix='t5-', score=_t5_score,
          build_row=_t5_build_row, print_rows=_t5_print_rows),
-    # T1 (#46), T4 (#44): add a Tier(...) here, each
-    # with its own dir_prefix ('t1-', 't4-') and its own
+    # T1 (#46): add a Tier(...) here, with its own
+    # dir_prefix ('t1-') and its own
     # score callable. Nothing else in this file, or in score.py /
     # summarize.py, needs to change.
 )
