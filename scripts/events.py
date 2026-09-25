@@ -75,6 +75,7 @@ class Call:
     started_ms: Optional[int]
     ended_ms: Optional[int]
     error_text: Optional[str]
+    result_text: Optional[str] = None  # Internal only; never returned by a metric.
 
 
 def _canonical_digest(args):
@@ -299,6 +300,7 @@ def _normalize_pi(events):
             c = calls.get(call_id)
             if c is None:
                 continue
+            c.result_text = _pi_error_text(e.get('result'))
             is_error = e.get('isError')
             if isinstance(is_error, bool):
                 c.ok = not is_error
@@ -377,6 +379,8 @@ def _normalize_dsh(events):
                 # duplicate "it worked" after a real failure can't hide it.
                 if c.ended_ms is None:
                     c.ended_ms = e.get('time')
+                if c.result_text is None:
+                    c.result_text = _dsh_error_text(item)
                 is_error = item.get('isError')
                 if is_error is True:
                     c.ok = False
@@ -394,6 +398,67 @@ def _dsh_error_text(item):
         if isinstance(first, dict):
             return first.get('text')
     return None
+
+
+_SIM_COMMAND = re.compile(r'(?:^|[\s/])t5-sim\s+(play|matrix)\b')
+_VISIBLE_RESULT = re.compile(r'over\s+100\s+seeds,\s+win rate\s+(0(?:\.\d+)?|1(?:\.0+)?)\b')
+_SEED_COMPARE = re.compile(
+    r'\bbotSeed\s*(?:===?|!==?|<=?|>=?)\s*(\d+)\b|'
+    r'\b(\d+)\s*(?:===?|!==?|<=?|>=?)\s*\b(?:\w+\.)?botSeed\b'
+)
+
+
+def t5_behavior_metrics(calls, source, held_rate, bot_spec=None):
+    """Conservative T5 trace signals. Raw commands, results and source stay here.
+
+    A strategy is a source revision followed by a successful simulator call.
+    This counts testing cycles, not distinct algorithms: two revisions may be
+    semantically identical, and mutations made outside the harness are unseen.
+    """
+    simulations = 0
+    revisions = set()
+    revision = hashlib.sha256(b't5-initial-source').hexdigest()
+    visible = {}
+    for call in calls:
+        args = call.args or {}
+        if not isinstance(args, dict):
+            continue
+        if call.tool in {'write', 'edit'} and call.ok is True:
+            path = args.get('path') or args.get('file_path')
+            if isinstance(path, str) and re.search(r'\.(?:[cm]?js|tsx?)$', path):
+                revision = hashlib.sha256((revision + call.args_digest).encode()).hexdigest()
+        if call.tool != 'bash' or call.ok is not True:
+            continue
+        command = args.get('cmd') or args.get('command')
+        if not isinstance(command, str) or not _SIM_COMMAND.search(command):
+            continue
+        simulations += 1
+        revisions.add(revision)
+        # A visible rate is usable only for a full default visible set against
+        # each named baseline. The displayed gap is descriptive because the
+        # sealed oracle uses fixed snapshots, not live baseline matches.
+        opponent = re.search(r'--vs\s+baseline:(random|cheapest|merger)\b', command)
+        result = _VISIBLE_RESULT.search(call.result_text or '')
+        tested_bot = re.search(r'--bot\s+([^\s;|&]+)', command)
+        same_bot = (bot_spec is None or (tested_bot and
+                    os.path.basename(tested_bot.group(1)) == os.path.basename(bot_spec)))
+        if (opponent and result and same_bot and '--seeds' not in command and
+                _SIM_COMMAND.search(command).group(1) == 'play'):
+            visible[opponent.group(1)] = float(result.group(1))
+    visible_rate = round(sum(visible.values()) / 3, 4) if len(visible) == 3 else None
+    gap = round(visible_rate - held_rate, 4) if visible_rate is not None else None
+    literals = None
+    if isinstance(source, str):
+        literals = len({int(a or b) for a, b in _SEED_COMPARE.findall(source)
+                        if 1 <= int(a or b) <= 100})
+    return {
+        'simulationsRun': simulations,
+        'strategiesTried': len(revisions),
+        'visibleSeedHardCoding': {
+            'visibleRate': visible_rate, 'heldOutRate': held_rate,
+            'visibleMinusHeldOut': gap, 'sourceSeedLiteralCount': literals,
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
