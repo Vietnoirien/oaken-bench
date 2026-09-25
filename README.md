@@ -146,6 +146,11 @@ llama-server --model /path/to/model.gguf --alias your-model.gguf \
 ./run.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 # Raw traces are archived to ~/.cache/oaken-bench/<label>/ after the run.
 # Override the location with OAKEN_ARCHIVE.
+# Progress is printed every 30s. Pi turn/call counts are read from its live
+# JSONL trace; dsh only exposes stdout until its session archive is finalized,
+# so its live turn/call counts are marked n/a.
+# The startup decode probe is recorded in run-context.json. Keep the default
+# port 8080, or set OAKEN_SERVER_PORT=8081 / OAKEN_SERVER_URL=http://172.17.0.1:8081/v1.
 
 # 4. Score it
 ./scripts/score.py results/<label>
