@@ -55,6 +55,108 @@ def test_scoring_discards_answer_values():
     assert scored['absent'][recall.CORRECT_ABSTENTION] == len(cases['absent'])
 
 
+def _known_answers(cases):
+    return {'answers': [
+        {'entity': f.entity, 'attribute': f.attribute, 'value': f.value}
+        for f in cases['haystack'].facts
+    ] + [
+        {'entity': q.entity, 'attribute': q.attribute, 'value': 'not in context'}
+        for q in cases['absent']
+    ]}
+
+
+def test_item_ids_and_per_depth_deltas_use_common_scored_cases(monkeypatch):
+    cases = harness_effect.build_case_set(4096, 73)
+    monkeypatch.setattr(harness_effect, 'build_case_set', lambda depth, seed: cases)
+    direct_answers = _known_answers(cases)
+    pi_answers = json.loads(json.dumps(direct_answers))
+    pi_answers['answers'][0]['value'] = 'incorrect-answer'
+    pi_answers['answers'][len(cases['haystack'].facts)]['value'] = 'invented-answer'
+
+    def fake_run(mode, *args, **kwargs):
+        if mode == 'direct':
+            return direct_answers, 1.0
+        if mode == 'pi':
+            return pi_answers, 1.0
+        raise RuntimeError('fake dsh failure')
+
+    monkeypatch.setattr(harness_effect, 'run_harness', fake_run)
+    report = harness_effect.run_comparison(
+        [4096], 73, 'fake-model', base_url='http://127.0.0.1:18081/v1')
+    depth = report['depths'][0]
+    items = depth['items']
+    assert len({item['itemId'] for item in items}) == len(items)
+    assert all(len(item['itemId']) == 64 for item in items)
+    assert depth['comparisons']['pi_vs_direct']['presentRecallDeltaPercentagePoints'] == -33.33
+    assert depth['comparisons']['pi_vs_direct']['absentAbstentionDeltaPercentagePoints'] == -16.67
+    assert depth['comparisons']['pi_vs_direct']['presentRecallCommonItemCount'] == len(cases['haystack'].facts)
+    assert depth['comparisons']['pi_vs_direct']['absentAbstentionCommonItemCount'] == len(cases['absent'])
+    assert depth['comparisons']['dsh_vs_direct']['presentRecallDeltaPercentagePoints'] is None
+    assert depth['comparisons']['dsh_vs_direct']['absentAbstentionDeltaPercentagePoints'] is None
+    assert all(item['modes']['dsh']['status'] == 'error' for item in items)
+    overall = report['harnessEffect']['dsh_vs_direct']
+    assert overall['leftStatus'] == 'partial'
+    assert overall['presentRecallDeltaPercentagePoints'] is None
+
+    artifact = json.dumps(report)
+    for fact in cases['haystack'].facts:
+        assert fact.entity not in artifact
+        assert fact.attribute not in artifact
+        assert fact.value not in artifact
+    for question in cases['absent']:
+        assert question.entity not in artifact
+        assert question.attribute not in artifact
+    assert 'incorrect-answer' not in artifact
+    assert 'invented-answer' not in artifact
+
+
+def test_unparseable_mode_makes_per_depth_delta_null(monkeypatch):
+    cases = harness_effect.build_case_set(4096, 91)
+    monkeypatch.setattr(harness_effect, 'build_case_set', lambda depth, seed: cases)
+
+    def fake_run(mode, *args, **kwargs):
+        return (None if mode == 'pi' else _known_answers(cases)), 1.0
+
+    monkeypatch.setattr(harness_effect, 'run_harness', fake_run)
+    report = harness_effect.run_comparison(
+        [4096], 91, 'fake-model', base_url='http://127.0.0.1:18081/v1',
+        modes=('direct', 'pi'))
+    comparison = report['depths'][0]['comparisons']['pi_vs_direct']
+    assert comparison['leftStatus'] == 'unparseable'
+    assert comparison['presentRecallDeltaPercentagePoints'] is None
+    assert comparison['absentAbstentionDeltaPercentagePoints'] is None
+
+
+def test_aggregate_delta_uses_only_depths_scored_by_both_modes(monkeypatch):
+    original_builder = harness_effect.build_case_set
+    cases_by_depth = {}
+
+    def build(depth, seed):
+        cases_by_depth[depth] = original_builder(depth, seed)
+        return cases_by_depth[depth]
+
+    monkeypatch.setattr(harness_effect, 'build_case_set', build)
+    calls_by_mode = {}
+
+    def fake_run(mode, prompt, **kwargs):
+        calls_by_mode[mode] = calls_by_mode.get(mode, 0) + 1
+        if mode == 'dsh':
+            if calls_by_mode[mode] == 2:
+                raise RuntimeError('fake failure at second depth')
+        depth = (4096, 8192)[calls_by_mode[mode] - 1]
+        cases = cases_by_depth[depth]
+        return _known_answers(cases), 1.0
+
+    monkeypatch.setattr(harness_effect, 'run_harness', fake_run)
+    report = harness_effect.run_comparison(
+        [4096, 8192], 101, 'fake-model', base_url='http://127.0.0.1:18081/v1')
+    aggregate = report['harnessEffect']['dsh_vs_direct']
+    assert aggregate['leftStatus'] == 'partial'
+    assert aggregate['presentRecallCommonItemCount'] == len(cases_by_depth[4096]['haystack'].facts)
+    assert aggregate['absentAbstentionCommonItemCount'] == len(cases_by_depth[4096]['absent'])
+    assert report['depths'][1]['comparisons']['dsh_vs_direct']['presentRecallDeltaPercentagePoints'] is None
+
+
 @pytest.mark.parametrize('url', ['http://127.0.0.1:8080/v1', 'http://172.17.0.1:8080/v1'])
 def test_reserved_8080_endpoint_is_rejected(url):
     with pytest.raises(ValueError, match='port 8080'):

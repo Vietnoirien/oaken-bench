@@ -31,7 +31,7 @@ import direct  # noqa: E402
 import haystack  # noqa: E402
 import recall  # noqa: E402
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_DEPTHS = (4096, 16384, 32768, 65536, 131072)
 
 
@@ -114,6 +114,61 @@ def score_answers(case_set, answers):
                                       recall.INVENTED_ANSWER, 'total')}
             for kind, v in ac['byKind'].items()},
     }
+
+
+def _item_id(depth_tokens, entity, attribute):
+    """Stable opaque identifier for one pair at one depth. It carries no answer."""
+    payload = json.dumps([depth_tokens, entity, attribute],
+                         ensure_ascii=False, separators=(',', ':')).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def classify_items(case_set, depth_tokens, answers):
+    """Return classifications keyed by digest, with identifying text removed."""
+    present = recall._score_recall(case_set['haystack'].facts, answers)
+    absent = recall._score_abstention(case_set['absent'], answers)
+    items = []
+    for result in present:
+        items.append({
+            'itemId': _item_id(depth_tokens, result['entity'], result['attribute']),
+            'questionType': 'present', 'kind': 'recall',
+            'classification': result['classification'],
+        })
+    for result in absent:
+        items.append({
+            'itemId': _item_id(depth_tokens, result['entity'], result['attribute']),
+            'questionType': 'absent', 'kind': result['kind'],
+            'classification': result['classification'],
+        })
+    return items
+
+
+def _compare_item_rows(item_rows, left_mode, right_mode, left_status, right_status,
+                       *, allow_partial=False):
+    """Compare matching classified items. Failed modes produce null deltas."""
+    groups = (
+        ('present', 'correct_answer'),
+        ('absent', recall.CORRECT_ABSTENTION),
+    )
+    comparison = {'leftMode': left_mode, 'rightMode': right_mode,
+                  'leftStatus': left_status, 'rightStatus': right_status}
+    modes_ok = allow_partial or (left_status == 'ok' and right_status == 'ok')
+    for item_type, correct_class in groups:
+        matched = [row for row in item_rows
+                   if row['questionType'] == item_type
+                   and row['modes'].get(left_mode, {}).get('status') == 'scored'
+                   and row['modes'].get(right_mode, {}).get('status') == 'scored']
+        delta = None
+        if modes_ok and matched:
+            left_correct = sum(row['modes'][left_mode]['classification'] == correct_class
+                               for row in matched)
+            right_correct = sum(row['modes'][right_mode]['classification'] == correct_class
+                                for row in matched)
+            delta = round((left_correct - right_correct) * 100 / len(matched), 2)
+        group_label = 'presentRecall' if item_type == 'present' else 'absentAbstention'
+        comparison[f'{group_label}DeltaPercentagePoints'] = delta
+        comparison[f'{group_label}CommonItemCount'] = len(matched) if modes_ok else 0
+    return comparison
 
 
 def _run_command(command, prompt, timeout, cwd, env):
@@ -238,11 +293,13 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
                    pi_command=None, dsh_command=None):
     base_url = _checked_base_url(base_url)
     result_depths = []
+    all_item_rows = []
     for depth in depths:
         case_set = build_case_set(depth, seed)
         direct_prompt = build_prompt(case_set)
         harness_prompt = build_prompt(case_set, ledger_path='/work/ledger.txt')
         mode_results = {}
+        classified_by_mode = {}
         for mode in modes:
             command = (shlex.split(pi_command) if mode == 'pi' and pi_command else
                        shlex.split(dsh_command) if mode == 'dsh' and dsh_command else None)
@@ -253,16 +310,46 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
                     mode, prompt, model=model, base_url=base_url,
                     timeout=timeout, command=command,
                     ledger_text=case_set['haystack'].text if mode in ('pi', 'dsh') else None)
-                mode_results[mode] = {
-                    'status': 'ok' if answers is not None else 'unparseable',
-                    'score': score_answers(case_set, answers),
-                    'elapsedSeconds': round(elapsed if elapsed is not None else
-                                             time.monotonic() - start, 3),
-                }
+                status = 'ok' if answers is not None else 'unparseable'
+                entry = {'status': status,
+                         'elapsedSeconds': round(elapsed if elapsed is not None else
+                                                  time.monotonic() - start, 3)}
+                if status == 'ok':
+                    entry['score'] = score_answers(case_set, answers)
+                    classified_by_mode[mode] = classify_items(case_set, depth, answers)
+                mode_results[mode] = entry
             except Exception as exc:  # each adapter failure is an observed outcome
                 mode_results[mode] = {'status': 'error', 'errorType': type(exc).__name__}
+        item_templates = classify_items(case_set, depth, None)
+        item_rows = []
+        per_mode = {
+            mode: {item['itemId']: item for item in classified_by_mode.get(mode, [])}
+            for mode in modes
+        }
+        for template in item_templates:
+            row = {k: template[k] for k in ('itemId', 'questionType', 'kind')}
+            row['modes'] = {}
+            for mode in modes:
+                result = per_mode[mode].get(template['itemId'])
+                row['modes'][mode] = ({'status': 'scored',
+                                       'classification': result['classification']}
+                                      if result else {
+                                          'status': mode_results[mode]['status'],
+                                          'classification': None,
+                                      })
+            item_rows.append(row)
+        all_item_rows.extend(item_rows)
+        comparisons = {}
+        if 'direct' in mode_results:
+            for mode in modes:
+                if mode == 'direct':
+                    continue
+                comparisons[f'{mode}_vs_direct'] = _compare_item_rows(
+                    item_rows, mode, 'direct', mode_results[mode]['status'],
+                    mode_results['direct']['status'])
         result_depths.append({
-            'depthTokens': depth, 'questionSetDigest': case_set['digest'], 'modes': mode_results,
+            'depthTokens': depth, 'questionSetDigest': case_set['digest'],
+            'modes': mode_results, 'items': item_rows, 'comparisons': comparisons,
         })
     effects = {}
     for mode in modes:
@@ -279,24 +366,23 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
                                               effects[mode]['presentTotal'])
         effects[mode]['absentScore'] = _rate(effects[mode]['absentCorrect'],
                                              effects[mode]['absentTotal'])
+    overall_comparisons = {}
+    if 'direct' in modes:
+        for mode in modes:
+            if mode == 'direct':
+                continue
+            left_statuses = [d['modes'][mode]['status'] for d in result_depths]
+            right_statuses = [d['modes']['direct']['status'] for d in result_depths]
+            overall_comparisons[f'{mode}_vs_direct'] = _compare_item_rows(
+                all_item_rows, mode, 'direct',
+                'ok' if all(s == 'ok' for s in left_statuses) else 'partial',
+                'ok' if all(s == 'ok' for s in right_statuses) else 'partial',
+                allow_partial=True)
     return {
         'schemaVersion': SCHEMA_VERSION, 'model': model, 'seed': seed,
         'modes': list(modes), 'depths': result_depths, 'byMode': effects,
-        'harnessEffect': {
-            'piMinusDirectPresentPercentagePoints': _difference(effects, 'pi', 'direct', 'presentScore'),
-            'dshMinusDirectPresentPercentagePoints': _difference(effects, 'dsh', 'direct', 'presentScore'),
-            'piMinusDirectAbsentPercentagePoints': _difference(effects, 'pi', 'direct', 'absentScore'),
-            'dshMinusDirectAbsentPercentagePoints': _difference(effects, 'dsh', 'direct', 'absentScore'),
-            'note': 'score differences are percentage points; each score uses that mode’s successfully scored shared cases',
-        },
+        'harnessEffect': overall_comparisons,
     }
-
-
-def _difference(effects, left, right, key):
-    if left not in effects or right not in effects:
-        return None
-    a, b = effects[left][key], effects[right][key]
-    return round((a - b) * 100, 2) if a is not None and b is not None else None
 
 
 def _rate(correct, total):
