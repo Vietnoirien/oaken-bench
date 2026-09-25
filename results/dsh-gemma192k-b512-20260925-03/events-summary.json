@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "label": "dsh-gemma192k-b512-20260925-03",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 20,
+  "toolOutcomes": {
+    "ok": 19,
+    "error": 1,
+    "unknown": 0
+  },
+  "errorRate": 0.05,
+  "errorsByTool": {
+    "edit": 1
+  },
+  "toolHistogram": {
+    "read": 9,
+    "glob": 1,
+    "edit": 1,
+    "write": 9
+  },
+  "unknownTools": [],
+  "mutatingCalls": 10,
+  "repeatedCalls": 1,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.95,
+  "callSequence": [
+    [
+      "read",
+      "6f1985105c4491a0",
+      1
+    ],
+    [
+      "glob",
+      "70a9d51f7cfa4192",
+      1
+    ],
+    [
+      "read",
+      "919ec7776ab69441",
+      1
+    ],
+    [
+      "read",
+      "87daa12fa0625f9e",
+      1
+    ],
+    [
+      "edit",
+      "32cf48cadc95dd03",
+      1
+    ],
+    [
+      "read",
+      "87daa12fa0625f9e",
+      1
+    ],
+    [
+      "write",
+      "7e481657f46b6e7c",
+      1
+    ],
+    [
+      "read",
+      "a5ab70e6fdc04b9b",
+      1
+    ],
+    [
+      "read",
+      "5c2510b2942091e6",
+      1
+    ],
+    [
+      "write",
+      "00d01ea12cc1dd81",
+      1
+    ],
+    [
+      "read",
+      "ef6ba856d7c37c07",
+      1
+    ],
+    [
+      "write",
+      "63d1d2311ba42fe4",
+      1
+    ],
+    [
+      "read",
+      "1badadaa0eba704d",
+      1
+    ],
+    [
+      "write",
+      "d7d0403c822c20b9",
+      1
+    ],
+    [
+      "read",
+      "d023c899f9d35147",
+      1
+    ],
+    [
+      "write",
+      "5fdee51d07eb6717",
+      1
+    ],
+    [
+      "write",
+      "eaf462d0dff8726a",
+      1
+    ],
+    [
+      "write",
+      "9d0cac9c0a43597d",
+      1
+    ],
+    [
+      "write",
+      "92596e3f64b3fdd9",
+      1
+    ],
+    [
+      "write",
+      "0c02fecc4d97ce21",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 4.903,
+  "toolCallIntervals": {
+    "n": 19,
+    "p50Seconds": 6.306,
+    "p95Seconds": 42.569
+  },
+  "generationSeconds": 225.554,
+  "toolExecutionSeconds": 0.352
+}

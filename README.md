@@ -16,7 +16,7 @@ are unchanged.
 |---|---|---|
 | T0 | Tool-call reliability over short chains, including schema use, tool choice, refusals, and recovery. Direct model call, no harness. | Shipped. `./scripts/toolbattery.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
 | T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
-| T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred until more archived Gemma plateau runs can be examined. No command. |
+| T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred. Three new archived 192k runs varied with work order and early exits; see [the 192k retest](MODELS.md#192k-with-less-free-5070-memory-2026-09-25). No command. |
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
 | T3 | Find and fix planted bugs against the reference engine. | Generator and runner shipped; no model measurements. See [T3 setup](docs/T3.md). |
 | T4 | Extend the existing engine and count regressions against the earlier suite. | Shipped. `./run.sh pi <model-id> t4-<label>` then `python3 scripts/score.py results/t4-<label>`; see [T4 setup](t4/README.md). Only reference and offline runner checks exist, with no model measurement. |
@@ -632,8 +632,9 @@ result; a probe result is not a T2 task score.
    compare direct mode with pi and dsh, but no live comparison has run. Its
    result format and implementation do not establish whether either harness
    changes recall or abstention scores.
-9. **T1, T3 and T4 have no model measurements.** T1 is deferred pending review
-   of more archived Gemma plateau runs. T3 and T4 have no-model runner checks;
+9. **T1, T3 and T4 have no model measurements.** T1 remains deferred after
+   three archived 192k Gemma retests varied by work order and early exit.
+   T3 and T4 have no-model runner checks;
    T4's unchanged reference engine passes 132/132 v1.0 tests and 2/137 v1.1
    tests. T5 has one CPU baseline measurement under its own protocol. Do not
    infer any tier's performance from T2 or the probe tiers.

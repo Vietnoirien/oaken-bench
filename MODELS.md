@@ -246,11 +246,49 @@ if grep -q 'cudaMalloc failed' "$LOG"; then
   echo "REFUSING: fell back after a failed CUDA allocation at ctx=$CTX" >&2
   kill -9 "$SRV"; exit 1
 fi
-# and a throughput floor, since the fallback is ~half speed
+# and a throughput floor calibrated for this 2048-batch setup, since the fallback is ~half speed
 awk -v t="$TPS" 'BEGIN{exit !(t < 110)}' && { echo "REFUSING: ${TPS} t/s" >&2; exit 1; }
 ```
 
 A worked example is in `examples/launch-gemma.sh`.
+
+#### 192k with less free 5070 memory (2026-09-25)
+
+With desktop use around 1.5 GiB, the 196608-token q8_0 configuration no
+longer had the earlier 646 MiB margin at a 2048 batch. The 5070 alone served
+it with `--batch-size 512 --ubatch-size 256 --flash-attn on`, the same Gemma
+weights and MTP draft, one slot, and `CUDA_VISIBLE_DEVICES=0` plus
+`GGML_VK_VISIBLE_DEVICES=0`. The smaller batch changes temporary inference
+memory; it does not change KV precision. Port 8082 kept these trials separate
+from the other project's server. A short completion decoded at 117 t/s; long
+requests were around 100-109 t/s with MTP. Free 5070 memory during the runs
+was 337-460 MiB. The log had no `cudaMalloc failed` or device loss, and the
+3060's allocation did not change. The example launcher uses a 90 t/s smoke
+floor for this setting; a throughput floor must be calibrated to its batch
+and workload, not copied from the 2048-batch measurement above.
+
+Three DSH runs on the pinned runner image archived `workspace.tgz` and raw
+traces under `~/.cache/oaken-bench/`:
+
+| run suffix | elapsed | hidden | visible | outcome |
+|---|---:|---:|---:|---|
+| `b512-20260925-01` | 301 s | 16/132 | 23/52 | declared done, tests red |
+| `b512-20260925-02` | 270 s | 36/132 | 36/52 | crash |
+| `b512-20260925-03` | 330 s | 41/132 | 31/52 | crash |
+
+They used the held-out suite identified by `hidden.sha256` digest
+`fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97`.
+No canary-recall check was run on this model, so these scores do not rule out
+training-data contamination.
+
+Only 7 held-out test digests passed in all three runs; 55 passed in at least
+one. The module counts followed which source files each run edited: for
+example, economy passed 9/12, 0/12 and 1/12, while items passed 0/15,
+15/15 and 13/15. This is evidence of run and work-order variance, not a
+stable module-difficulty ranking. These are new runs with smaller batches,
+not replacements for the missing original 192k plateau workspaces. T1 remains
+deferred pending a decision on whether isolated modules would answer a useful
+question beyond this variance.
 
 ### 4.2 Two cards: RTX 5070 + RTX 3060
 

@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "label": "dsh-gemma192k-b512-20260925-01",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 21,
+  "toolOutcomes": {
+    "ok": 21,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "read": 9,
+    "glob": 1,
+    "write": 11
+  },
+  "unknownTools": [],
+  "mutatingCalls": 11,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "read",
+      "6f1985105c4491a0",
+      1
+    ],
+    [
+      "glob",
+      "70a9d51f7cfa4192",
+      1
+    ],
+    [
+      "read",
+      "919ec7776ab69441",
+      1
+    ],
+    [
+      "read",
+      "87daa12fa0625f9e",
+      1
+    ],
+    [
+      "read",
+      "5c2510b2942091e6",
+      1
+    ],
+    [
+      "write",
+      "b3b2c9e60e0a7950",
+      1
+    ],
+    [
+      "read",
+      "a5ab70e6fdc04b9b",
+      1
+    ],
+    [
+      "write",
+      "efc623bd019aacff",
+      1
+    ],
+    [
+      "write",
+      "a88a22855a96be25",
+      1
+    ],
+    [
+      "read",
+      "1badadaa0eba704d",
+      1
+    ],
+    [
+      "write",
+      "a14f13c854bc93b1",
+      1
+    ],
+    [
+      "write",
+      "edf15178fd93c395",
+      1
+    ],
+    [
+      "write",
+      "4489fbd446019683",
+      1
+    ],
+    [
+      "read",
+      "01044a1110757fad",
+      1
+    ],
+    [
+      "write",
+      "0d432e8f5b3a1902",
+      1
+    ],
+    [
+      "read",
+      "d023c899f9d35147",
+      1
+    ],
+    [
+      "write",
+      "00dbb66fe2bff9b0",
+      1
+    ],
+    [
+      "read",
+      "4a14b427133b74b7",
+      1
+    ],
+    [
+      "write",
+      "d029a28ed31da185",
+      1
+    ],
+    [
+      "write",
+      "de8aa80c092ba054",
+      1
+    ],
+    [
+      "write",
+      "2805be3479417615",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 5.706,
+  "toolCallIntervals": {
+    "n": 20,
+    "p50Seconds": 8.765,
+    "p95Seconds": 31.033
+  },
+  "generationSeconds": 260.536,
+  "toolExecutionSeconds": 0.399
+}
