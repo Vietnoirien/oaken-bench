@@ -182,7 +182,7 @@ mean the model cannot call tools, cannot hold the spec in context, cannot
 write TypeScript, or just ran out of clock, and the harness's own
 retry/compaction logic sits between the model and the failure. `scripts/toolbattery.py`
 is a minutes-per-model battery that talks to the model's OpenAI-compatible
-endpoint DIRECTLY (no pi, no dsh) and scores five tool-calling dimensions
+endpoint DIRECTLY (no pi, no dsh) and scores six tool-calling dimensions
 independently, so a bad result says *what* broke instead of just *that*
 something did:
 
@@ -205,6 +205,19 @@ something did:
   bound by the token budget rather than by tool-calling capability -- the exact failure mode this
   battery exists to distinguish, one more time.
 - **refusal** -- no supplied tool applies; does the model call one anyway (the false-positive direction)
+- **shortChains** (issue #30) -- four fictional workflows of 3-5 dependent calls each (ship-and-track,
+  open-a-ticket, register-a-device, submit-an-expense); call N+1 needs a value only call N's simulated
+  result carries. Every threaded value is a 12-hex-digit id/token built by `_seeded_id()` from a fixed
+  seed -- deterministic run to run, but not a small guessable example like multiStepDependency's
+  `cus_48291`, so a correct downstream call is evidence the model actually carried the result forward.
+  Scored as **depth reached**, not only pass/fail: each case records `depthReached`/`chainLength` and,
+  when it broke, `brokenAtStep` plus the `classify_call()` level (below) the breaking call actually
+  reached -- `schemaValid` for a decoy taken, `notWellFormed` for truncated JSON, and so on. A model
+  that skips straight to a later step's tool, guessing at a value it was never handed, is judged
+  against the step it's ACTUALLY on and caps at `schemaValid` at best, so it earns zero depth rather
+  than credit for a lucky-looking guess; a turn with more than one tool call only counts its first call
+  toward the chain; any others are recorded but never advance or break it. See
+  `run_short_chains()`'s and `CHAIN_SCENARIOS`'s docstrings for the full reasoning.
 
 A case that never exercised its dimension is reported as **not attempted** and left out of that
 dimension's denominator -- it is not scored as a pass. This matters more than it sounds: a model

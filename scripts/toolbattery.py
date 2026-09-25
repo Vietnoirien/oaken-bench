@@ -22,13 +22,15 @@ not through pi or dsh. That is a deliberate design choice, not an oversight:
       harness/template interaction -- exactly the confound this tool is
       built to avoid. Screening the model means talking to the model.
 
-Five dimensions, scored independently, matching the issue:
+Six dimensions, scored independently, matching the issue (plus issue #30):
 
   - schemaAdherence     required params present, types correct, no invented params
   - toolSelection       right tool out of a set that includes plausible decoys
   - multiStepDependency call 2 must use the value call 1's (simulated) result returned
   - errorRecovery       call 1 is made to fail; does call 2 repeat it verbatim or adapt
   - refusal             no tool applies; does the model call one anyway (false positive)
+  - shortChains         3-5 dependent calls in a row; how deep does the model get before
+                        the thread breaks (issue #30)
 
 Reuse, not reinvention: error recovery's "repeated verbatim" check is built
 on `events.call_metrics()` and its digest machinery (`_canonical_digest`,
@@ -150,10 +152,76 @@ artefact as "passed the v1 battery" (dimension pass/fail, plus #15's
 `schemaVersion: 2` artefact as "passed the v2 battery": v1's dimensions
 PLUS a per-call classification level for every call made and a
 pseudo-tool-call count for every case's free text.
+
+Issue #30: short dependent chains of 3-5 calls
+-------------------------------------------------------------------
+`multiStepDependency` above chains exactly two calls. Whether a model keeps
+threading a value through call 3, 4 and 5 is a different question -- local
+models observed on this repo tend to lose the thread well before then --
+and that is what `shortChains` (`CHAIN_SCENARIOS`, `run_short_chains()`)
+measures: four scenarios of length 3, 3, 4 and 5, each a strict sequence
+where call N+1 needs a value that ONLY call N's simulated result carries.
+
+Unguessable values: every id/token/code threaded through a chain is built
+by `_seeded_id()` from a fixed seed string, not a small hand-picked example
+like multiStepDependency's `cus_48291`. A hand-picked id is memorable and
+short enough that a model could plausibly echo something LOOKING right by
+pattern-matching the domain ("a customer id starts with cus_"); a
+16-hex-digit tail seeded off a private string cannot be produced any way
+other than reading it back out of the simulated tool result this module
+injects as a `role: tool` message -- so a correct call 3 is evidence the
+model actually carried call 2's result forward, not evidence it guessed the
+shape of a plausible-looking id.
+
+Depth, not just pass/fail: each case record carries `chainLength`,
+`depthReached` (how many links were correct before the first break, 0 if
+the very first call already went wrong), `brokenAtStep` and
+`brokenAtLevel` -- the `classify_call()` level (#29) of the call that broke
+the chain, e.g. `schemaValid` for a decoy taken, `notWellFormed` for
+truncated JSON. A chain that completes all N links has `brokenAtStep`/
+`brokenAtLevel` both None. The dimension summary additionally carries a
+`depth` block (`_chain_depth_summary()`): total links reached over total
+links offered across all chains, and a count of which level each broken
+chain died at -- `_summarize()`'s own pass/fail (did the WHOLE chain
+complete) is still computed too, for the pass/total number every other
+dimension reports, but it collapses exactly the information `depth` exists
+to keep.
+
+A step only counts as reached when its call reaches `classify_call()`'s
+`rightArgs` ceiling -- not merely "right tool called". A well-formed,
+right-tool call with a stale, invented or truncated dependency value does
+not advance the chain; it IS the break, scored at whatever level it
+actually reached (typically `rightTool`, since the tool name matched but
+the value didn't).
+
+Two decisions this module makes, both recorded here because they change
+what "depth reached" means and nothing enforces them by construction:
+
+  - **Parallel calls.** If a turn returns more than one `tool_calls` entry,
+    only the FIRST is used to judge and advance the chain -- the others are
+    still recorded (tagged `'parallel': True`) and still counted in
+    `report['callClassification']`, but do not themselves advance depth or
+    break the chain. A later entry in the SAME turn cannot legitimately
+    carry a dependency value the model has not been handed back yet (the
+    tool result for the call still being decided is not in the transcript
+    when the model emits it), so crediting one would let a lucky/parallel
+    guess at a later step count as depth reached without ever threading
+    the intermediate value.
+  - **Skipping ahead.** A model that calls a LATER step's tool directly
+    (e.g. `activate_device` on turn 1, guessing at the device id and
+    activation code) is judged against THIS step's `expected_tool_name`,
+    which is the very next tool in the chain, not the one it guessed --
+    `classify_call()` then caps that call at `schemaValid` at best (right
+    tool never matches), so it cannot reach `rightArgs` and the chain
+    breaks at depth 0. Because every dependency value is unguessable
+    (`_seeded_id()`), a model also cannot luck into the right VALUE even if
+    it happened to call the right tool early -- there is no path to credit
+    for a call made before the value it needs has ever been revealed.
 """
 import argparse
 import json
 import os
+import random
 import re
 import sys
 from collections import namedtuple
@@ -373,6 +441,49 @@ def score_error_recovery(call1_parsed, call2_parsed):
     return True, reasons
 
 
+_CHAIN_SEED_NAMESPACE = 'oaken-toolbattery-shortChains-v1'
+
+
+def _seeded_id(qualifier, prefix, length=12):
+    """A deterministic but unguessable id (issue #30): `random.Random`
+    seeded on a private, fixed string (`_CHAIN_SEED_NAMESPACE` + `qualifier`)
+    always produces the same output run to run -- the artefact and this
+    module's own tests agree -- but the string itself is a 12-hex-digit
+    tail no model can shortcut to by pattern-matching the domain the way it
+    could a short hand-picked example like multiStepDependency's
+    `cus_48291`. The only way to produce it is to read it back out of the
+    simulated tool result `run_short_chains()` hands back after the
+    PREVIOUS call in the chain."""
+    rng = random.Random(f'{_CHAIN_SEED_NAMESPACE}:{qualifier}')
+    return f"{prefix}_{''.join(rng.choice('0123456789abcdef') for _ in range(length))}"
+
+
+def score_chain_step(call, dependency):
+    """Does this chain step's call carry forward the exact value(s) the
+    PREVIOUS step's simulated result handed back? `dependency` is None for
+    a chain's first step (nothing to depend on yet -- passes automatically,
+    same convention as schemaAdherence's `right_args_ok=None` collapse) or
+    a dict of `{arg_key: expected_value}` every one of which THIS call's
+    arguments must match exactly. More than one key covers a step like
+    `activate_device`, which needs both the device id from step 1 AND the
+    activation code from step 2 at once -- `score_dependency()` (the
+    multiStepDependency dimension's single-key version) cannot express
+    that, so this is a distinct function rather than a reuse."""
+    if dependency is None:
+        return True, []
+    if call is None:
+        return False, ['no call made']
+    args = call.get('args') or {}
+    missing = sorted(k for k in dependency if k not in args)
+    if missing:
+        return False, [f'missing dependency keys: {missing}']
+    mismatched = {k: args[k] for k in dependency if args.get(k) != dependency[k]}
+    if mismatched:
+        return False, [f'dependency value mismatch: {mismatched} '
+                        '(expected the value the simulated previous result returned)']
+    return True, []
+
+
 def score_refusal(parsed):
     """No tool applies -- the false-positive direction. Correct behaviour is
     zero tool calls."""
@@ -587,6 +698,106 @@ TOOL_EDIT_FILE = _tool(
                              'newText': {'type': 'string', 'description': 'Replacement text for this edit.'},
                          }}}},
     ['path', 'edits'])
+
+# ---------------------------------------------------------------------------
+# shortChains (issue #30): four small fictional workflows, each a strict
+# sequence of 3-5 calls where call N+1 needs a value only call N's
+# simulated result carries. Tools below are grouped by workflow; the
+# correct-path tool for each step is paired with 1-2 decoys in
+# CHAIN_SCENARIOS further down. None of this overlaps the auto-battler
+# domain (CANARY.md), same as every other tool in this module.
+# ---------------------------------------------------------------------------
+
+# Workflow: ship an order, then track it.
+TOOL_LOOKUP_ORDER_BY_EMAIL = _tool(
+    'lookup_order_by_email', "Look up a customer's most recent order by email, returning an order id.",
+    {'email': {'type': 'string'}}, ['email'])
+
+TOOL_GET_SHIPPING_LABEL = _tool(
+    'get_shipping_label', 'Generate a shipping label for an order, returning a tracking number.',
+    {'order_id': {'type': 'string'}}, ['order_id'])
+
+TOOL_GET_TRACKING_STATUS = _tool(
+    'get_tracking_status', 'Get the current delivery status for a tracking number.',
+    {'tracking_number': {'type': 'string'}}, ['tracking_number'])
+
+TOOL_REROUTE_SHIPMENT = _tool(  # decoy: same arg shape as get_tracking_status, wrong operation
+    'reroute_shipment', 'Reroute an in-transit shipment to a different address.',
+    {'tracking_number': {'type': 'string'}, 'new_address': {'type': 'string'}},
+    ['tracking_number', 'new_address'])
+
+# Workflow: open a support ticket, assign it, get the agent's contact.
+TOOL_OPEN_SUPPORT_TICKET = _tool(
+    'open_support_ticket', 'Open a new support ticket for an issue, returning a ticket id.',
+    {'issue': {'type': 'string'}}, ['issue'])
+
+TOOL_ASSIGN_TICKET_AGENT = _tool(
+    'assign_ticket_agent', 'Assign a support ticket to an agent, returning the agent id.',
+    {'ticket_id': {'type': 'string'}}, ['ticket_id'])
+
+TOOL_GET_AGENT_CONTACT = _tool(
+    'get_agent_contact', "Get a support agent's contact email by agent id.",
+    {'agent_id': {'type': 'string'}}, ['agent_id'])
+
+TOOL_CLOSE_SUPPORT_TICKET = _tool(  # decoy: same domain, wrong operation -- this chain never closes the ticket
+    'close_support_ticket', 'Close a support ticket by id.',
+    {'ticket_id': {'type': 'string'}}, ['ticket_id'])
+
+# Workflow: register a device, activate it (needs BOTH step 1's and step
+# 2's results at once), check its status.
+TOOL_REGISTER_DEVICE = _tool(
+    'register_device', 'Register a new device by name, returning a device id.',
+    {'device_name': {'type': 'string'}}, ['device_name'])
+
+TOOL_GENERATE_ACTIVATION_CODE = _tool(
+    'generate_activation_code', 'Generate a one-time activation code for a registered device.',
+    {'device_id': {'type': 'string'}}, ['device_id'])
+
+TOOL_ACTIVATE_DEVICE = _tool(
+    'activate_device',
+    'Activate a device using its id and a previously-generated activation code, returning a session token.',
+    {'device_id': {'type': 'string'}, 'activation_code': {'type': 'string'}},
+    ['device_id', 'activation_code'])
+
+TOOL_GET_DEVICE_STATUS = _tool(
+    'get_device_status', 'Get the current status of a device session by session token.',
+    {'session_token': {'type': 'string'}}, ['session_token'])
+
+TOOL_LIST_DEVICES = _tool(  # decoy: adjacent operation, never the correct next step
+    'list_devices', 'List devices already registered to the account.', {}, [])
+
+TOOL_DEREGISTER_DEVICE = _tool(  # decoy: opposite operation
+    'deregister_device', 'Remove a device from the account by device id.',
+    {'device_id': {'type': 'string'}}, ['device_id'])
+
+# Workflow: submit an expense, route/notify/wait for approval, release payment.
+TOOL_SUBMIT_EXPENSE = _tool(
+    'submit_expense', 'Submit an expense for reimbursement, returning an expense id.',
+    {'amount': {'type': 'number'}, 'description': {'type': 'string'}}, ['amount', 'description'])
+
+TOOL_ROUTE_FOR_APPROVAL = _tool(
+    'route_expense_for_approval', 'Route a submitted expense to an approver, returning the approver id.',
+    {'expense_id': {'type': 'string'}}, ['expense_id'])
+
+TOOL_NOTIFY_APPROVER = _tool(
+    'notify_approver', 'Notify an approver that an expense is waiting on them, returning a notification id.',
+    {'approver_id': {'type': 'string'}}, ['approver_id'])
+
+TOOL_GET_APPROVAL_STATUS = _tool(
+    'get_approval_status',
+    'Get the approval status for a notification, returning an approval code once approved.',
+    {'notification_id': {'type': 'string'}}, ['notification_id'])
+
+TOOL_RELEASE_PAYMENT = _tool(
+    'release_payment', "Release payment for an expense using its approval code.",
+    {'approval_code': {'type': 'string'}}, ['approval_code'])
+
+TOOL_LIST_PENDING_EXPENSES = _tool(  # decoy: adjacent operation
+    'list_pending_expenses', 'List expenses awaiting approval.', {}, [])
+
+TOOL_REJECT_EXPENSE = _tool(  # decoy: opposite outcome, never the correct next step
+    'reject_expense', 'Reject a submitted expense by id.',
+    {'expense_id': {'type': 'string'}, 'reason': {'type': 'string'}}, ['expense_id', 'reason'])
 
 # Registry of every tool this module's cases can offer, by name -- used by
 # classify_call() (via _call_record()) to look up the schema of whatever
@@ -1183,6 +1394,196 @@ def run_refusal(base_url, model, max_tokens, timeout, errors, api_key=None):
 
 
 # ---------------------------------------------------------------------------
+# Dimension F: short dependent chains of 3-5 calls (issue #30)
+# ---------------------------------------------------------------------------
+# See the module docstring's "Issue #30" section for the full rationale
+# (unguessable values, what "depth reached" means, and the parallel-call /
+# skip-ahead decisions). ChainStep.dependency mirrors the PREVIOUS step's
+# `result` dict (or, for a step needing more than one prior value, the
+# union of several previous results' dicts) so a generic runner can walk
+# any chain without per-scenario special-casing.
+
+ChainStep = namedtuple('ChainStep', ['tool', 'decoys', 'dependency', 'result'])
+ChainScenario = namedtuple('ChainScenario', ['chain_id', 'prompt', 'steps'])
+
+_ORDER_ID = _seeded_id('shipping/order_id', 'ord')
+_TRACKING_NUMBER = _seeded_id('shipping/tracking_number', 'trk')
+
+_TICKET_ID = _seeded_id('ticket/ticket_id', 'tick')
+_AGENT_ID = _seeded_id('ticket/agent_id', 'agt')
+
+_DEVICE_ID = _seeded_id('device/device_id', 'dev')
+_ACTIVATION_CODE = _seeded_id('device/activation_code', 'act')
+_SESSION_TOKEN = _seeded_id('device/session_token', 'sess')
+
+_EXPENSE_ID = _seeded_id('expense/expense_id', 'exp')
+_APPROVER_ID = _seeded_id('expense/approver_id', 'appr')
+_NOTIFICATION_ID = _seeded_id('expense/notification_id', 'notif')
+_APPROVAL_CODE = _seeded_id('expense/approval_code', 'apc')
+
+CHAIN_SCENARIOS = [
+    ChainScenario(
+        'order-ship-track',
+        'Ship the most recent order for the customer with email morgan@example.com, '
+        'then tell me its current delivery status.',
+        [
+            ChainStep(TOOL_LOOKUP_ORDER_BY_EMAIL, [TOOL_GET_ORDER_STATUS, TOOL_CANCEL_SUBSCRIPTION],
+                      None, {'order_id': _ORDER_ID}),
+            ChainStep(TOOL_GET_SHIPPING_LABEL, [TOOL_GET_ORDER_STATUS, TOOL_REROUTE_SHIPMENT],
+                      {'order_id': _ORDER_ID}, {'tracking_number': _TRACKING_NUMBER}),
+            ChainStep(TOOL_GET_TRACKING_STATUS, [TOOL_REROUTE_SHIPMENT, TOOL_GET_ORDER_STATUS],
+                      {'tracking_number': _TRACKING_NUMBER}, {'status': 'in_transit'}),
+        ]),
+    ChainScenario(
+        'ticket-assign-contact',
+        "Open a support ticket for \"VPN keeps disconnecting\", assign it to an agent, "
+        "and give me that agent's contact email.",
+        [
+            ChainStep(TOOL_OPEN_SUPPORT_TICKET, [TOOL_LOOKUP_CUSTOMER, TOOL_CLOSE_SUPPORT_TICKET],
+                      None, {'ticket_id': _TICKET_ID}),
+            ChainStep(TOOL_ASSIGN_TICKET_AGENT, [TOOL_CLOSE_SUPPORT_TICKET, TOOL_CREATE_REMINDER],
+                      {'ticket_id': _TICKET_ID}, {'agent_id': _AGENT_ID}),
+            ChainStep(TOOL_GET_AGENT_CONTACT, [TOOL_CLOSE_SUPPORT_TICKET, TOOL_LOOKUP_CUSTOMER],
+                      {'agent_id': _AGENT_ID}, {'contact_email': 'agent@example.com'}),
+        ]),
+    ChainScenario(
+        'device-register-activate',
+        'Register a new device named "kiosk-07", activate it, and tell me its status.',
+        [
+            ChainStep(TOOL_REGISTER_DEVICE, [TOOL_LIST_DEVICES, TOOL_DEREGISTER_DEVICE],
+                      None, {'device_id': _DEVICE_ID}),
+            ChainStep(TOOL_GENERATE_ACTIVATION_CODE, [TOOL_DEREGISTER_DEVICE, TOOL_LIST_DEVICES],
+                      {'device_id': _DEVICE_ID}, {'activation_code': _ACTIVATION_CODE}),
+            # Needs BOTH the device id (step 1) and the activation code
+            # (step 2) at once -- score_chain_step()'s reason for existing
+            # instead of reusing score_dependency().
+            ChainStep(TOOL_ACTIVATE_DEVICE, [TOOL_DEREGISTER_DEVICE, TOOL_LIST_DEVICES],
+                      {'device_id': _DEVICE_ID, 'activation_code': _ACTIVATION_CODE},
+                      {'session_token': _SESSION_TOKEN}),
+            ChainStep(TOOL_GET_DEVICE_STATUS, [TOOL_LIST_DEVICES, TOOL_DEREGISTER_DEVICE],
+                      {'session_token': _SESSION_TOKEN}, {'status': 'active'}),
+        ]),
+    ChainScenario(
+        'expense-submit-release',
+        'Submit a $42.50 expense for "client dinner", route it for approval, notify the approver, '
+        "and release payment once it's approved.",
+        [
+            ChainStep(TOOL_SUBMIT_EXPENSE, [TOOL_LIST_PENDING_EXPENSES, TOOL_REJECT_EXPENSE],
+                      None, {'expense_id': _EXPENSE_ID}),
+            ChainStep(TOOL_ROUTE_FOR_APPROVAL, [TOOL_REJECT_EXPENSE, TOOL_LIST_PENDING_EXPENSES],
+                      {'expense_id': _EXPENSE_ID}, {'approver_id': _APPROVER_ID}),
+            ChainStep(TOOL_NOTIFY_APPROVER, [TOOL_REJECT_EXPENSE, TOOL_LIST_PENDING_EXPENSES],
+                      {'approver_id': _APPROVER_ID}, {'notification_id': _NOTIFICATION_ID}),
+            ChainStep(TOOL_GET_APPROVAL_STATUS, [TOOL_LIST_PENDING_EXPENSES, TOOL_REJECT_EXPENSE],
+                      {'notification_id': _NOTIFICATION_ID}, {'approval_code': _APPROVAL_CODE}),
+            ChainStep(TOOL_RELEASE_PAYMENT, [TOOL_REJECT_EXPENSE, TOOL_LIST_PENDING_EXPENSES],
+                      {'approval_code': _APPROVAL_CODE}, {'confirmation': 'paid'}),
+        ]),
+]
+
+
+def _run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=None):
+    chain_id, prompt, steps = scenario.chain_id, scenario.prompt, scenario.steps
+    chain_len = len(steps)
+    messages = [_msg('system', SYSTEM_PROMPT), _msg('user', prompt)]
+    calls_records = []
+    pseudo = []
+    depth_reached = 0
+    broken_at_step = None
+    broken_at_level = None
+    break_reasons = None
+
+    for i, step in enumerate(steps):
+        step_no = i + 1
+        tools_here = [step.tool] + list(step.decoys)
+        offered = [t['function']['name'] for t in tools_here]
+        expected_name = step.tool['function']['name']
+        try:
+            parsed = _run_case(base_url, model, max_tokens, timeout, messages, tools_here, api_key=api_key)
+        except ServerError as e:
+            errors.append(f'shortChains/{chain_id}: {e}')
+            broken_at_step = step_no
+            break_reasons = [f'request failed: {e}']
+            break
+
+        raw_calls = parsed['tool_calls']
+        primary = raw_calls[0] if raw_calls else None
+        extra_calls = raw_calls[1:]
+        dep_ok, dep_reasons = score_chain_step(primary, step.dependency)
+        # right_args_ok=None on step 1 (no dependency exists yet) collapses
+        # right-tool/right-args the same way schemaAdherence does; every
+        # later step's right_args_ok is score_chain_step()'s own verdict.
+        right_args_ok = dep_ok if step.dependency is not None else None
+        rec = _call_record(step_no, expected_name, primary, right_args_ok=right_args_ok)
+        calls_records.append(rec)
+        # Parallel calls (see module docstring): recorded and still folded
+        # into report['callClassification'] via calls_records, but never
+        # used to advance or judge the chain -- only `primary` is.
+        for extra in extra_calls:
+            extra_rec = _call_record(step_no, expected_name, extra, right_args_ok=right_args_ok)
+            extra_rec['parallel'] = True
+            calls_records.append(extra_rec)
+        pseudo.extend(_pseudo_calls_extra(offered, (step_no, parsed.get('text'))))
+
+        # A step counts as reached only at the classify_call() ceiling
+        # (rightArgs) -- "right tool, stale/invented value" is the break,
+        # not a pass, scored at whatever level it actually landed on.
+        if rec['level'] != CALL_LEVEL_RIGHT_ARGS:
+            broken_at_step = step_no
+            broken_at_level = rec['level']
+            if primary is None:
+                break_reasons = ['no call made on this turn -- step skipped, or the model answered in text']
+            elif primary['name'] != expected_name:
+                break_reasons = [f"expected {expected_name!r}, got {primary['name']!r} "
+                                  '(decoy taken, or a later step guessed ahead of its dependency)']
+            else:
+                break_reasons = dep_reasons
+            break
+
+        depth_reached = step_no
+        messages.append({'role': 'assistant', 'content': parsed.get('text'),
+                          'tool_calls': [{'id': primary['id'], 'type': 'function',
+                                          'function': {'name': primary['name'],
+                                                       'arguments': json.dumps(primary['args'])}}]})
+        messages.append({'role': 'tool', 'tool_call_id': primary['id'], 'content': json.dumps(step.result)})
+
+    passed = depth_reached == chain_len
+    reasons = [f'completed all {chain_len} steps'] if passed else (break_reasons or ['chain not completed'])
+    return _case_record(chain_id, prompt, passed, reasons, {
+        'chainLength': chain_len, 'depthReached': depth_reached,
+        'brokenAtStep': broken_at_step, 'brokenAtLevel': broken_at_level,
+        'calls': calls_records, 'pseudoToolCalls': pseudo,
+    })
+
+
+def _chain_depth_summary(cases):
+    """Depth-based view alongside `_summarize()`'s pass/fail: total links
+    reached across every chain versus every link offered, plus a count of
+    which classification level each broken chain died at. Issue #30 asks
+    for depth to be reported, not collapsed into one pass/fail bit per
+    chain -- this is that number; `_summarize()`'s passed/total is "how
+    many chains went the full distance", a coarser, still-useful sibling."""
+    total_depth = sum(c['depthReached'] for c in cases)
+    total_length = sum(c['chainLength'] for c in cases)
+    broken_at_level = {}
+    for c in cases:
+        lvl = c.get('brokenAtLevel')
+        if lvl is not None:
+            broken_at_level[lvl] = broken_at_level.get(lvl, 0) + 1
+    return {'totalDepthReached': total_depth, 'totalPossibleDepth': total_length,
+            'score': round(total_depth / total_length, 4) if total_length else None,
+            'brokenAtLevel': broken_at_level}
+
+
+def run_short_chains(base_url, model, max_tokens, timeout, errors, api_key=None):
+    cases = [_run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=api_key)
+             for scenario in CHAIN_SCENARIOS]
+    summary = _summarize('shortChains', cases)
+    summary['depth'] = _chain_depth_summary(cases)
+    return summary
+
+
+# ---------------------------------------------------------------------------
 # Aggregation + artefact
 # ---------------------------------------------------------------------------
 
@@ -1259,6 +1660,7 @@ def run_battery(base_url, model, max_tokens=512, timeout=60, api_key=None):
         'multiStepDependency': run_multi_step_dependency(base_url, model, max_tokens, timeout, errors, api_key=api_key),
         'errorRecovery': run_error_recovery(base_url, model, max_tokens, timeout, errors, api_key=api_key),
         'refusal': run_refusal(base_url, model, max_tokens, timeout, errors, api_key=api_key),
+        'shortChains': run_short_chains(base_url, model, max_tokens, timeout, errors, api_key=api_key),
     }
     # Denominators already exclude not-attempted cases (see _summarize), so
     # the overall figure can never be inflated by a dimension that got no
@@ -1307,9 +1709,20 @@ def print_report(report):
             for tool_name, b in d['byTool'].items():
                 tpct = '  --' if b['score'] is None else f"  ({b['score'] * 100:.0f}%)"
                 print(f"    by tool: {tool_name:18s} {b['passed']}/{b['total']}{tpct}")
+        if d.get('depth'):  # shortChains (#30): depth reached, not just pass/fail per chain
+            dep = d['depth']
+            dpct = '  --' if dep['score'] is None else f"  ({dep['score'] * 100:.0f}%)"
+            print(f"    depth reached: {dep['totalDepthReached']}/{dep['totalPossibleDepth']}{dpct}")
+            if dep['brokenAtLevel']:
+                print(f"    broken at level: {dep['brokenAtLevel']}")
         for c in d['cases']:
             mark = {True: 'PASS', False: 'FAIL', None: 'N/A '}[c['passed']]
-            print(f"    [{mark}] {c['case']}: {'; '.join(c['reasons']) if c['reasons'] else 'ok'}")
+            extra = ''
+            if 'depthReached' in c:
+                extra = f" [depth {c['depthReached']}/{c['chainLength']}, broke at step " \
+                        f"{c['brokenAtStep']} level {c['brokenAtLevel']}]" if c['brokenAtStep'] else \
+                        f" [depth {c['depthReached']}/{c['chainLength']}]"
+            print(f"    [{mark}] {c['case']}{extra}: {'; '.join(c['reasons']) if c['reasons'] else 'ok'}")
     o = report['overall']
     if o.get('notAttempted'):
         print(f"  {'':22s} {o['notAttempted']} case(s) not attempted -- "

@@ -22,13 +22,15 @@ import toolbattery  # noqa: E402
 from toolbattery import (  # noqa: E402
     CALL_LEVEL_NO_CALL, CALL_LEVEL_NOT_WELL_FORMED, CALL_LEVEL_RIGHT_ARGS,
     CALL_LEVEL_RIGHT_TOOL, CALL_LEVEL_SCHEMA_VALID, CALL_LEVEL_WELL_FORMED,
-    DEFAULT_BASE_URL, REFUSAL_TOOLS, SCHEMA_VERSION, TOOL_BOOK_ROOM,
-    TOOL_CREATE_REMINDER, TOOL_EDIT_FILE, TOOL_GET_WEATHER, TOOLS_BY_NAME,
-    _by_tool_classification, _call_level_counts, _pseudo_calls_extra,
-    _schema_adherence_by_tool, _slug, _to_call, chat, classify_call,
+    CHAIN_SCENARIOS, DEFAULT_BASE_URL, REFUSAL_TOOLS, SCHEMA_VERSION,
+    TOOL_BOOK_ROOM, TOOL_CREATE_REMINDER, TOOL_EDIT_FILE, TOOL_GET_WEATHER,
+    TOOLS_BY_NAME, _by_tool_classification, _call_level_counts,
+    _chain_depth_summary, _pseudo_calls_extra, _run_chain,
+    _schema_adherence_by_tool, _seeded_id, _slug, _to_call, chat, classify_call,
     detect_pseudo_tool_calls, parse_message, run_battery, run_schema_adherence,
-    score_dependency, score_error_recovery, score_refusal, score_schema_adherence,
-    score_tool_selection, server_reachable, strip_reasoning,
+    run_short_chains, score_chain_step, score_dependency, score_error_recovery,
+    score_refusal, score_schema_adherence, score_tool_selection,
+    server_reachable, strip_reasoning,
 )
 
 
@@ -642,6 +644,243 @@ def test_run_schema_adherence_pseudo_detection_on_text_only_reply(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# _seeded_id: deterministic-but-unguessable chain values (#30)
+# ---------------------------------------------------------------------------
+
+def test_seeded_id_is_deterministic_across_calls():
+    assert _seeded_id('shipping/order_id', 'ord') == _seeded_id('shipping/order_id', 'ord')
+
+
+def test_seeded_id_differs_by_qualifier():
+    assert _seeded_id('shipping/order_id', 'ord') != _seeded_id('shipping/tracking_number', 'ord')
+
+
+def test_seeded_id_has_prefix_and_hex_tail():
+    v = _seeded_id('shipping/order_id', 'ord')
+    assert v.startswith('ord_')
+    tail = v.split('_', 1)[1]
+    assert len(tail) == 12
+    assert all(c in '0123456789abcdef' for c in tail)
+
+
+# ---------------------------------------------------------------------------
+# score_chain_step: multi-key dependency check (#30)
+# ---------------------------------------------------------------------------
+
+def test_chain_step_first_step_has_no_dependency_and_always_passes():
+    passed, reasons = score_chain_step(call('lookup_order_by_email', {'email': 'a@example.com'}), None)
+    assert passed is True
+    assert reasons == []
+
+
+def test_chain_step_passes_when_single_key_matches():
+    passed, _ = score_chain_step(call('get_shipping_label', {'order_id': 'ord_abc'}),
+                                  {'order_id': 'ord_abc'})
+    assert passed is True
+
+
+def test_chain_step_fails_when_value_invented():
+    passed, reasons = score_chain_step(call('get_shipping_label', {'order_id': 'ord_guessed'}),
+                                        {'order_id': 'ord_abc'})
+    assert passed is False
+    assert 'mismatch' in reasons[0]
+
+
+def test_chain_step_fails_when_key_missing():
+    passed, reasons = score_chain_step(call('get_shipping_label', {}), {'order_id': 'ord_abc'})
+    assert passed is False
+    assert 'missing dependency keys' in reasons[0]
+
+
+def test_chain_step_fails_on_no_call():
+    passed, reasons = score_chain_step(None, {'order_id': 'ord_abc'})
+    assert passed is False
+
+
+def test_chain_step_requires_every_key_of_a_multi_key_dependency():
+    # activate_device's real case: device_id AND activation_code together.
+    dep = {'device_id': 'dev_1', 'activation_code': 'act_1'}
+    passed, reasons = score_chain_step(
+        call('activate_device', {'device_id': 'dev_1', 'activation_code': 'wrong'}), dep)
+    assert passed is False
+    assert 'activation_code' in reasons[0]
+    ok, _ = score_chain_step(call('activate_device', dict(dep)), dep)
+    assert ok is True
+
+
+# ---------------------------------------------------------------------------
+# CHAIN_SCENARIOS: shape required by the acceptance criteria (#30)
+# ---------------------------------------------------------------------------
+
+def test_chain_scenarios_has_at_least_four_scenarios_of_length_3_to_5():
+    assert len(CHAIN_SCENARIOS) >= 4
+    for scenario in CHAIN_SCENARIOS:
+        assert 3 <= len(scenario.steps) <= 5
+
+
+def test_chain_scenarios_every_step_offers_at_least_one_decoy():
+    for scenario in CHAIN_SCENARIOS:
+        for step in scenario.steps:
+            assert len(step.decoys) >= 1
+            decoy_names = {d['function']['name'] for d in step.decoys}
+            assert step.tool['function']['name'] not in decoy_names
+
+
+def test_chain_scenarios_first_step_has_no_dependency_later_steps_do():
+    for scenario in CHAIN_SCENARIOS:
+        assert scenario.steps[0].dependency is None
+        for step in scenario.steps[1:]:
+            assert step.dependency
+
+
+# ---------------------------------------------------------------------------
+# run_short_chains / _run_chain: wiring, no network -- chat() monkeypatched.
+# A generic fake plays along with WHATEVER chain it's handed: it always
+# calls the first (correct) tool offered, threading forward every value any
+# prior `role: tool` message in the transcript handed back, matched by key
+# name -- possible only because every chain step names its dependency
+# argument identically to the result key that carries it.
+# ---------------------------------------------------------------------------
+
+_TYPE_DUMMIES = {'string': 'x', 'number': 1, 'integer': 1, 'boolean': True, 'array': [], 'object': {}}
+
+
+def _cooperative_chain_fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+    target = tools[0]
+    fn = target['function']
+    props = fn['parameters'].get('properties') or {}
+    required = fn['parameters'].get('required') or []
+    combined = {}
+    for m in messages:
+        if m.get('role') == 'tool':
+            combined.update(json.loads(m['content']))
+    args = {k: combined.get(k, _TYPE_DUMMIES.get(props.get(k, {}).get('type'), 'x')) for k in required}
+    return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+        {'id': 'c1', 'type': 'function', 'function': {'name': fn['name'], 'arguments': json.dumps(args)}}]}}]}
+
+
+def test_run_short_chains_full_completion_reaches_full_depth(monkeypatch):
+    monkeypatch.setattr(toolbattery, 'chat', _cooperative_chain_fake)
+    errors = []
+    summary = run_short_chains(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors)
+    assert errors == []
+    assert summary['passed'] == summary['total'] == len(CHAIN_SCENARIOS)
+    for case in summary['cases']:
+        assert case['depthReached'] == case['chainLength']
+        assert case['brokenAtStep'] is None
+        assert case['brokenAtLevel'] is None
+    assert summary['depth']['score'] == 1.0
+
+
+def test_run_chain_breaks_at_a_decoy_and_reports_the_classification_level(monkeypatch):
+    # Step 2 takes the first decoy instead of the correct next tool.
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        turn = sum(1 for m in messages if m.get('role') == 'tool')
+        chosen = tools[1] if turn == 1 else tools[0]
+        return _cooperative_chain_fake(base_url, model, messages, tools=[chosen] + tools, max_tokens=max_tokens,
+                                        timeout=timeout, api_key=api_key)
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    scenario = CHAIN_SCENARIOS[0]  # order-ship-track, length 3
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, scenario)
+    assert case['passed'] is False
+    assert case['depthReached'] == 1
+    assert case['brokenAtStep'] == 2
+    assert case['brokenAtLevel'] == CALL_LEVEL_SCHEMA_VALID  # right shape, wrong (decoy) tool
+
+
+def test_run_chain_guessing_the_final_tool_up_front_earns_zero_depth(monkeypatch):
+    # A model that tries to shortcut straight to the LAST tool in the chain,
+    # inventing a value it was never handed, must not get credit for any
+    # intermediate depth -- the whole point of #30's unguessable values.
+    scenario = CHAIN_SCENARIOS[0]
+    final_tool_name = scenario.steps[-1].tool['function']['name']
+
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+            {'id': 'g1', 'type': 'function',
+             'function': {'name': final_tool_name, 'arguments': json.dumps({'tracking_number': 'trk_guessed'})}}]}}]}
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, scenario)
+    assert case['depthReached'] == 0
+    assert case['brokenAtStep'] == 1
+    assert case['brokenAtLevel'] == CALL_LEVEL_SCHEMA_VALID  # named the wrong (not-yet-expected) tool
+
+
+def test_run_chain_skipping_a_step_silently_breaks_at_that_step(monkeypatch):
+    # Turn 1 behaves; turn 2 answers in plain text instead of calling anything.
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        turn = sum(1 for m in messages if m.get('role') == 'tool')
+        if turn == 1:
+            return {'choices': [{'finish_reason': 'stop', 'message': {'content': 'okay, done for now'}}]}
+        return _cooperative_chain_fake(base_url, model, messages, tools=tools, max_tokens=max_tokens,
+                                        timeout=timeout, api_key=api_key)
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, CHAIN_SCENARIOS[0])
+    assert case['depthReached'] == 1
+    assert case['brokenAtStep'] == 2
+    assert case['brokenAtLevel'] == CALL_LEVEL_NO_CALL
+
+
+def test_run_chain_parallel_calls_only_the_first_advances_the_chain(monkeypatch):
+    # One turn returns TWO tool_calls. Only the first should be judged/used
+    # to advance the chain; the second is recorded but tagged 'parallel'.
+    scenario = CHAIN_SCENARIOS[0]
+    step1_tool = scenario.steps[0].tool['function']['name']
+
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        turn = sum(1 for m in messages if m.get('role') == 'tool')
+        if turn == 0:
+            # First turn only: a parallel guess at step 2's tool, alongside
+            # the correct step-1 call.
+            return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+                {'id': 'p1', 'type': 'function',
+                 'function': {'name': step1_tool, 'arguments': json.dumps({'email': 'morgan@example.com'})}},
+                {'id': 'p2', 'type': 'function',
+                 'function': {'name': 'get_shipping_label', 'arguments': json.dumps({'order_id': 'ord_guessed'})}},
+            ]}}]}
+        return _cooperative_chain_fake(base_url, model, messages, tools=tools, max_tokens=max_tokens,
+                                        timeout=timeout, api_key=api_key)
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, scenario)
+    # Step 1's primary call succeeds (right tool, no dependency to check yet)
+    # and the chain advances to step 2 on ITS OWN terms -- the parallel
+    # get_shipping_label guess at turn 1 is not credited as reaching step 2,
+    # and step 2 proper (asked cooperatively on the next turn) still passes.
+    assert case['depthReached'] == len(scenario.steps)
+    parallel_flags = [c.get('parallel', False) for c in case['calls']]
+    assert parallel_flags.count(True) == 1  # the extra parallel call, recorded but not credited
+
+
+def test_chain_depth_summary_aggregates_across_cases():
+    cases = [
+        {'chainLength': 3, 'depthReached': 3, 'brokenAtLevel': None},
+        {'chainLength': 5, 'depthReached': 2, 'brokenAtLevel': CALL_LEVEL_SCHEMA_VALID},
+    ]
+    dep = _chain_depth_summary(cases)
+    assert dep == {'totalDepthReached': 5, 'totalPossibleDepth': 8, 'score': 0.625,
+                    'brokenAtLevel': {CALL_LEVEL_SCHEMA_VALID: 1}}
+
+
+def test_short_chains_is_wired_into_run_battery_dimensions(monkeypatch):
+    monkeypatch.setattr(toolbattery, 'chat', _cooperative_chain_fake)
+    report = run_battery(DEFAULT_BASE_URL, 'fake-model', max_tokens=300, timeout=30)
+    assert 'shortChains' in report['dimensions']
+    assert report['dimensions']['shortChains']['depth']['score'] == 1.0
+    # shortChains' calls feed the same overall callClassification rollup as
+    # every other dimension (#29), not a side channel of their own.
+    chain_depth_total = sum(c['depthReached'] for c in report['dimensions']['shortChains']['cases'])
+    assert report['callClassification']['counts'][CALL_LEVEL_RIGHT_ARGS] >= chain_depth_total
+
+
+# ---------------------------------------------------------------------------
 # Live-server tests -- skipped, not failed, when nothing answers
 # ---------------------------------------------------------------------------
 
@@ -673,6 +912,6 @@ def test_live_full_battery_runs_and_produces_the_expected_shape():
     report = run_battery(LIVE_BASE_URL, LIVE_MODEL, max_tokens=300, timeout=60)
     assert report['schemaVersion'] == SCHEMA_VERSION
     assert set(report['dimensions']) == {
-        'schemaAdherence', 'toolSelection', 'multiStepDependency', 'errorRecovery', 'refusal'}
+        'schemaAdherence', 'toolSelection', 'multiStepDependency', 'errorRecovery', 'refusal', 'shortChains'}
     assert report['overall']['total'] == sum(d['total'] for d in report['dimensions'].values())
     assert 'edit_file' in report['dimensions']['schemaAdherence']['byTool']
