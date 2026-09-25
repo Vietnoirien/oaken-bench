@@ -1,9 +1,9 @@
 # T4 spec handoff
 
 This directory completes the spec deliverable for [issue #43](https://github.com/Vietnoirien/oaken-bench/issues/43).
-It contains no T4 implementation or held-out tests. Compatibility with the reference
-engine has not been tested here. [Issue #44](https://github.com/Vietnoirien/oaken-bench/issues/44)
-assigns the sealed oracle and end-to-end T4 run to a different author.
+The frozen spec contains no implementation. [Issue #44](https://github.com/Vietnoirien/oaken-bench/issues/44)
+adds the independently authored sealed oracle, workspace assembly and separate
+version scoring described below.
 
 The starting commit is `56a5820`, on `issue-37-refengine`. The three draft files
 were recovered from the stopped Claude worktree `agent-a866a1f49ac4d5151`.
@@ -41,8 +41,8 @@ No GPU, network access, reference-engine decryption or held-out suite is needed.
 For the later T4 workspace, keep v1.0 as `SPEC.md`, add this document as
 `SPEC-v1.1.md`, and put both new JSON files beside `data/items.json`. The starting
 implementation comes from the reference engine. The repository's `seed/` files
-and root `FROZEN.sha256` stay unchanged. Workspace assembly and scoring belong
-to issue #44, which reports the v1.0 and v1.1 results separately.
+and root `FROZEN.sha256` stay unchanged. Workspace assembly and scoring from issue #44 report the v1.0 and v1.1
+results separately.
 
 The new item is excluded from shop rolls to preserve the v1.0 RNG sequence.
 Epic and Legendary multicast overlap the next primary trigger while retaining
@@ -115,3 +115,29 @@ The new Python machinery has public fixture tests in `scripts/tests/test_t4.py`.
 They check tier dispatch, separate version counts, fixed denominators, archive
 path rejection, frozen-input checks, candidate-test/config exclusion, offline
 Docker arguments and cleanup. Those fixtures contain no held-out cases.
+
+### Offline runner handoff check
+
+To exercise `run.sh` and the actual Pi startup without a model or GPU:
+
+```bash
+OAKEN_T4_OFFLINE_SMOKE=1 OAKEN_SERVER_PORT=49199 \
+  OAKEN_ARCHIVE=/tmp/t4-smoke-archive \
+  ./run.sh pi gemma-4-12B-it-qat-UD-Q4_K_XL.gguf t4-pi-smoke-new 5
+# A timeout/failure is expected. Score the archived workspace afterwards.
+python3 scripts/score.py /tmp/t4-smoke-archive/t4-pi-smoke-new --no-detail
+```
+
+This opt-in mode requires T4, Pi, an explicit isolated port, and no URL
+override. It disables container networking and skips readiness, inference and
+host-GPU provenance probes. The normal endpoint validation and fail-closed
+configuration step still run. Ordinary trials retain their existing preflight.
+The archive records `runKind=offline-smoke`, and its score carries that marker.
+
+The review run `t4-pi-offline-smoke` used port 49199 and the command above.
+Pi made no tool calls, reached the five-second limit, and returned 124 through
+both the container entrypoint and `run.sh`. The outer progress loop made the
+wall time 30 seconds. Its archived source and file list matched the assembled
+reference workspace byte for byte. Both public specs matched their frozen
+inputs. No oracle or private-draft paths appeared, and `diff.stat` was empty.
+The archived workspace was then scored through `scripts/score.py`.

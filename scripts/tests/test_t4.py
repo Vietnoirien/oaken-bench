@@ -153,3 +153,16 @@ def test_scorer_ignores_candidate_tests_and_configuration(tmp_path, monkeypatch)
     assert (result / 'src/engine.ts').read_text() == 'candidate module'
     assert (result / 'vitest.config.ts').read_text() == 'trusted config'
     assert not (result / 'test.test.ts').exists()
+
+
+@pytest.mark.parametrize('port,harness,url', [('', 'pi', ''), ('8080', 'pi', ''),
+                                             ('8081', 'pi', ''), ('49199', 'dsh', ''),
+                                             ('49199', 'pi', 'http://example.test/v1')])
+def test_offline_smoke_requires_pi_and_an_isolated_explicit_port(port, harness, url):
+    env = {**os.environ, 'OAKEN_T4_OFFLINE_SMOKE': '1', 'OAKEN_SERVER_PORT': port,
+           'OAKEN_SERVER_URL': url}
+    result = subprocess.run(['bash', str(t4.ROOT / 'run.sh'), harness, 'fixture',
+                             't4-rejected-offline-fixture', '1'], env=env, capture_output=True, text=True)
+    assert result.returncode == 64
+    assert 'isolated port' in result.stderr
+    assert not (t4.ROOT / 'results/t4-rejected-offline-fixture').exists()

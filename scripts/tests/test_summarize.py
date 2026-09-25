@@ -402,7 +402,7 @@ def test_rows_by_tier_keeps_t5_apart_from_t2():
     assert len(grouped) == 3
     tier_id, trows = grouped[0]
     assert tier_id == 't2'
-    assert len(trows) == len(rows) - 2
+    assert len(trows) == len(rows) - 3
     assert grouped[1][0] == 't4'
     assert grouped[2][0] == 't5'
     assert [row['label'] for row in grouped[2][1]] == ['t5-cheapest-01']

@@ -129,7 +129,10 @@ def score_run(result_dir, detail=True):
     tampered = raw['tamperedFrozenFiles']
     if not isinstance(tampered, list) or any(p not in allowed_frozen for p in tampered):
         raise ValueError('invalid frozen-file report')
-    report = {'schemaVersion': 1, 'tier': 't4', 'label': result_dir.name,
+    meta_path = result_dir / 'run.meta'
+    tokens = meta_path.read_text().split() if meta_path.is_file() else []
+    kind = next((k for k in ('reference-sanity', 'offline-smoke') if 'runKind=' + k in tokens), 'implementation')
+    report = {'schemaVersion': 1, 'tier': 't4', 'label': result_dir.name, 'runKind': kind,
               'suites': suites, 'typecheckClean': raw['typecheckClean'] is True,
               'tamperedFrozenFiles': tampered,
               'oracle': {'bundle': 't4oracle', 'sha256': (ROOT / 't4oracle.sha256').read_text().strip(),

@@ -15,7 +15,7 @@ mkdir -p "$OUT"
 rm -rf /work
 if [ "${OAKEN_TIER:-}" = t4 ]; then
   [ -f /t4-input/workspace.tgz ] || { echo "missing T4 workspace mount" >&2; exit 64; }
-  tar xzf /t4-input/workspace.tgz -C / || exit 64
+  tar xzf /t4-input/workspace.tgz --no-same-owner -C / || exit 64
   cp -a /opt/seed/node_modules /work/node_modules || exit 64
 else
   cp -r /opt/seed /work
@@ -50,6 +50,13 @@ sed -i "s#^  provider: .*#  provider: ${PROVIDER}#" /root/.dsh/settings.yaml
 sed -i "s#^  model: .*#  model: ${MODEL}#" /root/.dsh/settings.yaml
 
 echo "harness=$HARNESS model=$MODEL timeout=$TIMEOUT tier=${OAKEN_TIER:-t2}" > "$OUT/run.meta"
+if [ "${OAKEN_TIER:-}" = t4 ]; then
+  if [ "${OAKEN_T4_OFFLINE_SMOKE:-0}" = 1 ]; then
+    echo "runKind=offline-smoke" >> "$OUT/run.meta"
+  else
+    echo "runKind=implementation" >> "$OUT/run.meta"
+  fi
+fi
 date -u +%s > "$OUT/start.epoch"
 
 PROMPT="$(cat /opt/PROMPT.txt)"

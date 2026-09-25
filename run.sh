@@ -21,8 +21,8 @@ B="$(cd "$(dirname "$0")" && pwd)"
 # `t3-bugfarm-01`) to land the run under that tier, or an un-prefixed one
 # for T2 (the original task; every existing label is un-prefixed and stays
 # that way). scripts/tiers.py is what actually reads the prefix back off
-# this directory name at scoring time -- run.sh itself does no tier
-# validation, so a typo'd prefix is only caught later, by score.py.
+# this directory name at scoring time. Resolve it before assembly too,
+# so an unknown tier cannot accidentally receive the T2 starting workspace.
 OUT="$B/results/$LABEL"
 
 TIER_ARGS=()
@@ -40,6 +40,15 @@ esac
 
 if [ -e "$OUT" ]; then echo "refusing to overwrite existing result: $OUT" >&2; exit 1; fi
 TIER="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); from tiers import resolve_tier; print(resolve_tier(sys.argv[2]).id)' "$B/scripts" "$LABEL")"
+OFFLINE_SMOKE="${OAKEN_T4_OFFLINE_SMOKE:-0}"
+if [ "$OFFLINE_SMOKE" = 1 ]; then
+  if [ "$TIER" != t4 ] || [ "$HARNESS" != pi ] ||
+     [ -n "${OAKEN_SERVER_URL:-}" ] || [ -z "${OAKEN_SERVER_PORT:-}" ] ||
+     [ "$OAKEN_SERVER_PORT" = 8080 ] || [ "$OAKEN_SERVER_PORT" = 8081 ]; then
+    echo "T4 offline smoke requires Pi, an explicit isolated port, and no URL override" >&2
+    exit 64
+  fi
+fi
 T4_DOCKER_ARGS=()
 T4_ENTRY_ARGS=()
 T4_TMP=""
@@ -52,6 +61,9 @@ if [ "$TIER" = t4 ]; then
                   -v "$B/docker/configure_server.py:/usr/local/bin/configure_server.py:ro"
                   -v "$B/t4/PROMPT.txt:/opt/PROMPT.txt:ro" --entrypoint /bin/bash)
   T4_ENTRY_ARGS=(/t4-entrypoint.sh)
+  if [ "$OFFLINE_SMOKE" = 1 ]; then
+    T4_DOCKER_ARGS+=(--network none --cpus 2 --memory 2g -e OAKEN_T4_OFFLINE_SMOKE=1)
+  fi
 fi
 mkdir -p "$OUT"
 if [ "$LABEL" != "${LABEL#t3-}" ]; then
@@ -70,7 +82,7 @@ if [[ "$SERVER_URL" != http://*/v1 && "$SERVER_URL" != https://*/v1 ]]; then
   exit 64
 fi
 SERVER_ROOT="${SERVER_URL%/v1}"
-if ! curl -s -m 5 "$SERVER_URL/models" >/dev/null; then
+if [ "$OFFLINE_SMOKE" != 1 ] && ! curl -s -m 5 "$SERVER_URL/models" >/dev/null; then
   echo "llama-server not reachable at $SERVER_URL" >&2
   exit 1
 fi
@@ -85,9 +97,14 @@ fi
 # function; a failed capture must not block the trial, hence `|| true` --
 # a run is worth more than its provenance sidecar.
 OAKEN_IMAGE="${OAKEN_IMAGE:-oaken-bench:1.0}"
-python3 "$B/scripts/server_config.py" "$SERVER_ROOT" --image "$OAKEN_IMAGE" --model "$MODEL" \
-  > "$OUT/run-context.json" 2>"$OUT/run-context.log" || \
-  echo "warning: run-context.json capture failed -- see run-context.log" >&2
+if [ "$OFFLINE_SMOKE" = 1 ]; then
+  # No readiness, inference or host-GPU probes in this explicit no-model run.
+  echo '{"runKind":"offline-smoke","network":"none","serverProbeSkipped":true,"hostProbeSkipped":true}' > "$OUT/run-context.json"
+else
+  python3 "$B/scripts/server_config.py" "$SERVER_ROOT" --image "$OAKEN_IMAGE" --model "$MODEL" \
+    > "$OUT/run-context.json" 2>"$OUT/run-context.log" || \
+    echo "warning: run-context.json capture failed -- see run-context.log" >&2
+fi
 
 echo "=== $LABEL : $HARNESS / $MODEL / timeout ${TIMEOUT}s ==="
 START=$(date -u +%s)
