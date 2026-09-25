@@ -243,7 +243,25 @@ results/           one directory per run; score.json and events-summary.json are
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
                    ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
-                   isn't lost to a git clean
+                   isn't lost to a git clean. score.py also writes
+                   hidden-detail.json (per-file counts plus one entry per
+                   test -- a digest, not a name, for the held-out suite;
+                   see docker/score_detail.py) next to score.json,
+                   gitignored, never published. It needs a runner image
+                   built after issue #16 (`scripts/bootstrap.sh`, or
+                   `docker build -t oaken-bench:1.0 docker/`), since
+                   scorer.sh and score_detail.py are baked into the image
+                   at build time. score.py reads <result_dir>/workspace.tgz,
+                   so re-scoring an archived run means pointing it at the
+                   archive directory directly, or copying workspace.tgz
+                   (and run.meta etc.) back into results/<label>/ first:
+                   `./scripts/score.py ~/.cache/oaken-bench/<label>` (or
+                   `$OAKEN_ARCHIVE/<label>`) works as-is if that directory
+                   still has workspace.tgz. Either way this REWRITES
+                   score.json (and events-summary.json, hidden-detail.json)
+                   in whichever directory you point it at -- a run whose
+                   workspace.tgz is gone cannot be re-scored at all
+                   (issue #7)
 FROZEN.sha256      hashes of every frozen input
 MODELS.md          how to add and tune a model  <- start here
 CANARY.md          contamination control
