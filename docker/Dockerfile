@@ -5,9 +5,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Harnesses pinned to the versions measured on the host.
-RUN npm install -g --no-audit --no-fund \
+# dsh@rc.2 uses caret ranges for its internal packages. rc.3 was published on
+# 2026-09-22 and breaks the rc.2 profile's local sandbox plugin discovery.
+RUN npm_config_before=2026-09-22T00:00:00Z npm install -g --no-audit --no-fund \
       @earendil-works/pi-coding-agent@0.86.0 \
-      @deepseek-ai/dsh@0.1.5-rc.2
+      @deepseek-ai/dsh@0.1.5-rc.2 \
+    && node -e 'for (const name of ["dsh-base", "dsh-headless", "dsh-sandbox-local"]) { const pkg = require(`/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/${name}/package.json`); if (pkg.version !== "0.1.5-rc.2") throw new Error(`${name}: ${pkg.version}`) }'
 
 # Harness configuration (endpoints repointed at the host gateway alias "llama").
 COPY config/pi  /root/.pi/agent
