@@ -46,6 +46,7 @@ harness documents its own. Read it before touching anything under `harnessMetric
 scripts/bootstrap.sh                      # one-time: vendor deps, unlock oracle, build image
 ./run.sh <pi|dsh> <model-id> <label>      # one trial (needs llama-server on 172.17.0.1:8080)
 ./scripts/score.py results/<label>        # score it
+./bench.sh <pi|dsh> <model-id> <label>    # run.sh + score.py in one step
 python3 -m pytest scripts/tests -q        # the harness's own tests
 ```
 

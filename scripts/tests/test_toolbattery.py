@@ -18,10 +18,17 @@ import sys
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import toolbattery  # noqa: E402
 from toolbattery import (  # noqa: E402
-    DEFAULT_BASE_URL, REFUSAL_TOOLS, SCHEMA_VERSION, TOOL_BOOK_ROOM,
-    TOOL_CREATE_REMINDER, TOOL_GET_WEATHER, _slug, _to_call, chat,
-    parse_message, run_battery, score_dependency, score_error_recovery,
+    CALL_LEVEL_NO_CALL, CALL_LEVEL_NOT_WELL_FORMED, CALL_LEVEL_RIGHT_ARGS,
+    CALL_LEVEL_RIGHT_TOOL, CALL_LEVEL_SCHEMA_VALID, CALL_LEVEL_WELL_FORMED,
+    CHAIN_SCENARIOS, DEFAULT_BASE_URL, REFUSAL_TOOLS, SCHEMA_VERSION,
+    TOOL_BOOK_ROOM, TOOL_CREATE_REMINDER, TOOL_EDIT_FILE, TOOL_GET_WEATHER,
+    TOOLS_BY_NAME, _by_tool_classification, _call_level_counts,
+    _chain_depth_summary, _pseudo_calls_extra, _run_chain,
+    _schema_adherence_by_tool, _seeded_id, _slug, _to_call, chat, classify_call,
+    detect_pseudo_tool_calls, parse_message, run_battery, run_schema_adherence,
+    run_short_chains, score_chain_step, score_dependency, score_error_recovery,
     score_refusal, score_schema_adherence, score_tool_selection,
     server_reachable, strip_reasoning,
 )
@@ -144,6 +151,39 @@ def test_schema_adherence_fails_when_wrong_tool_called():
 def test_schema_adherence_fails_when_no_call_made():
     passed, reasons = score_schema_adherence(TOOL_BOOK_ROOM, None)
     assert passed is False
+
+
+# ---------------------------------------------------------------------------
+# Compound-schema probes (#15): a required top-level scalar (`path`) plus a
+# required nested array-of-objects (`edits[]`), shaped like pi's real `edit`
+# tool -- exactly the shape that let a live Gemma run score schemaAdherence
+# 3/3 while failing 17/17 real `edit` calls, all by omitting `path` while
+# filling in the nested array correctly.
+# ---------------------------------------------------------------------------
+
+def test_schema_adherence_passes_on_well_formed_compound_call():
+    c = call('edit_file', {'path': 'runbook.md',
+                            'edits': [{'oldText': 'Owner: TBD', 'newText': 'Owner: SRE'}]})
+    passed, reasons = score_schema_adherence(TOOL_EDIT_FILE, c)
+    assert passed is True
+    assert reasons == []
+
+
+def test_schema_adherence_catches_the_exact_15_failure_mode():
+    # The nested edits[] is filled in correctly; only the sibling top-level
+    # scalar `path` is missing. A flat probe cannot construct this case at
+    # all -- there is no sibling to drop.
+    c = call('edit_file', {'edits': [{'oldText': 'Owner: TBD', 'newText': 'Owner: SRE'}]})
+    passed, reasons = score_schema_adherence(TOOL_EDIT_FILE, c)
+    assert passed is False
+    assert any('missing required' in r and 'path' in r for r in reasons)
+
+
+def test_schema_adherence_compound_still_checks_the_nested_arrays_type():
+    c = call('edit_file', {'path': 'runbook.md', 'edits': 'Owner: SRE'})  # not an array
+    passed, reasons = score_schema_adherence(TOOL_EDIT_FILE, c)
+    assert passed is False
+    assert any('type mismatch' in r for r in reasons)
 
 
 def test_schema_adherence_boolean_not_mistaken_for_integer():
@@ -296,6 +336,48 @@ def test_refusal_fails_when_a_tool_is_called_anyway():
 # misc
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# _schema_adherence_by_tool: per-tool breakdown (#15)
+# ---------------------------------------------------------------------------
+
+def test_schema_adherence_by_tool_hides_nothing_behind_the_aggregate():
+    # The scenario the issue is named for: three flat probes pass, the one
+    # compound-schema probe fails. The aggregate (3/4, 75%) reads fine; the
+    # breakdown must still show book_meeting_room clean and edit_file at 0%.
+    cases = [
+        {'case': 'room-basic', 'passed': True, 'reasons': [], 'expectedTool': 'book_meeting_room'},
+        {'case': 'room-recurring', 'passed': True, 'reasons': [], 'expectedTool': 'book_meeting_room'},
+        {'case': 'weather-units', 'passed': True, 'reasons': [], 'expectedTool': 'get_weather'},
+        {'case': 'edit-single', 'passed': False, 'reasons': ['missing required params'],
+         'expectedTool': 'edit_file'},
+    ]
+    by_tool = _schema_adherence_by_tool(cases)
+    assert by_tool['book_meeting_room'] == {'passed': 2, 'total': 2, 'notAttempted': 0, 'score': 1.0}
+    assert by_tool['edit_file'] == {'passed': 0, 'total': 1, 'notAttempted': 0, 'score': 0.0}
+    assert by_tool['get_weather']['score'] == 1.0
+
+
+def test_schema_adherence_by_tool_excludes_not_attempted_from_its_own_denominator():
+    cases = [
+        {'case': 'edit-single', 'passed': None, 'reasons': [], 'expectedTool': 'edit_file'},
+    ]
+    by_tool = _schema_adherence_by_tool(cases)
+    assert by_tool['edit_file'] == {'passed': 0, 'total': 0, 'notAttempted': 1, 'score': None}
+
+
+def test_schema_adherence_by_tool_skips_cases_with_no_expected_tool():
+    cases = [{'case': 'x', 'passed': True, 'reasons': []}]  # no 'expectedTool' key
+    assert _schema_adherence_by_tool(cases) == {}
+
+
+def test_run_schema_adherence_cases_now_include_the_compound_probes():
+    from toolbattery import SCHEMA_CASES
+    tool_names = {tool['function']['name'] for _, _, tool in SCHEMA_CASES}
+    assert 'edit_file' in tool_names
+    edit_cases = [c for c in SCHEMA_CASES if c[2]['function']['name'] == 'edit_file']
+    assert len(edit_cases) >= 2  # at least one is not enough to rule out passing by chance
+
+
 def test_slug_is_filesystem_safe():
     assert _slug('gemma-4-12B-it-qat-UD-Q4_K_XL.gguf') == 'gemma-4-12B-it-qat-UD-Q4_K_XL.gguf'
     assert '/' not in _slug('weird/model:name?')
@@ -303,6 +385,499 @@ def test_slug_is_filesystem_safe():
 
 def test_schema_version_is_an_int():
     assert isinstance(SCHEMA_VERSION, int)
+
+
+def test_schema_version_is_2_for_issue_29():
+    # v1 committed artefacts (toolbattery-results/*.json, predating this
+    # change) are NOT rescored -- see the module docstring's "v1 vs v2".
+    # This pins the bump itself so a future edit can't silently drift it
+    # back without a reviewer noticing.
+    assert SCHEMA_VERSION == 2
+
+
+# ---------------------------------------------------------------------------
+# classify_call: well-formed / schema-valid / right tool / right args (#29)
+# ---------------------------------------------------------------------------
+
+def test_classify_call_no_call_made():
+    assert classify_call(TOOLS_BY_NAME, 'get_weather', None) == CALL_LEVEL_NO_CALL
+
+
+def test_classify_call_not_well_formed_on_unparsed_arguments():
+    c = {'id': 'c1', 'name': 'get_weather', 'args': None,
+         'args_raw': '{city: Paris}', 'parse_error': 'bad json'}
+    assert classify_call(TOOLS_BY_NAME, 'get_weather', c) == CALL_LEVEL_NOT_WELL_FORMED
+
+
+def test_classify_call_well_formed_but_schema_invalid_missing_required():
+    c = call('get_weather', {})  # missing required "city"
+    assert classify_call(TOOLS_BY_NAME, 'get_weather', c) == CALL_LEVEL_WELL_FORMED
+
+
+def test_classify_call_well_formed_when_tool_name_unknown():
+    # A well-formed call to a tool this module has no schema for at all --
+    # nothing to check it against, so it cannot be judged past well-formed.
+    c = call('delete_universe', {'confirm': True})
+    assert classify_call(TOOLS_BY_NAME, 'get_weather', c) == CALL_LEVEL_WELL_FORMED
+
+
+def test_classify_call_schema_valid_but_wrong_tool_decoy_taken():
+    c = call('get_weather_alerts', {'region': 'Gulf Coast'})  # valid for the tool it named
+    assert classify_call(TOOLS_BY_NAME, 'get_weather', c) == CALL_LEVEL_SCHEMA_VALID
+
+
+def test_classify_call_right_tool_when_right_args_ok_is_false():
+    c = call('get_order_status', {'customer_id': 'made-up-id'})
+    level = classify_call(TOOLS_BY_NAME, 'get_order_status', c, right_args_ok=False)
+    assert level == CALL_LEVEL_RIGHT_TOOL
+
+
+def test_classify_call_right_args_when_right_args_ok_is_true():
+    c = call('get_order_status', {'customer_id': 'cus_48291'})
+    level = classify_call(TOOLS_BY_NAME, 'get_order_status', c, right_args_ok=True)
+    assert level == CALL_LEVEL_RIGHT_ARGS
+
+
+def test_classify_call_right_args_collapses_when_right_args_ok_is_none():
+    # schemaAdherence/toolSelection: no expected VALUE exists, only an
+    # expected shape -- right_args_ok=None means "same as schema-valid",
+    # so right-tool and right-args collapse into one reachable ceiling.
+    c = call('get_weather', {'city': 'Lisbon'})
+    assert classify_call(TOOLS_BY_NAME, 'get_weather', c) == CALL_LEVEL_RIGHT_ARGS
+
+
+def test_classify_call_refusal_case_caps_at_schema_valid():
+    # expected_tool_name=None: no tool is ever "right" in a refusal case.
+    c = call('get_weather', {'city': 'Paris'})
+    assert classify_call(TOOLS_BY_NAME, None, c) == CALL_LEVEL_SCHEMA_VALID
+
+
+def test_classify_call_compound_schema_missing_sibling_scalar_is_well_formed():
+    # The exact #15 failure mode: edits[] filled in correctly, path dropped.
+    c = call('edit_file', {'edits': [{'oldText': 'a', 'newText': 'b'}]})
+    assert classify_call(TOOLS_BY_NAME, 'edit_file', c) == CALL_LEVEL_WELL_FORMED
+
+
+# ---------------------------------------------------------------------------
+# detect_pseudo_tool_calls: six formats, one test per format, plus the
+# negative case (bare prose mentioning a tool name is NOT a pseudo-call)
+# ---------------------------------------------------------------------------
+
+KNOWN = {'get_weather', 'book_meeting_room', 'lookup_customer'}
+
+
+def test_pseudo_detects_bare_json_object_naming_a_known_tool():
+    text = 'Sure, here is the call: {"name": "get_weather", "arguments": {"city": "Paris"}} done.'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'jsonObject'
+    assert found[0].tool == 'get_weather'
+
+
+def test_pseudo_ignores_json_object_naming_an_unknown_tool():
+    text = 'Example: {"name": "not_a_real_tool", "arguments": {}}'
+    assert detect_pseudo_tool_calls(text, KNOWN) == []
+
+
+def test_pseudo_detects_tool_call_xml_tag():
+    text = ('<tool_call>\n{"name": "get_weather", "arguments": {"city": "Paris"}}\n'
+            '</tool_call>')
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'toolCallTag'
+    assert found[0].tool == 'get_weather'
+
+
+def test_pseudo_detects_sentinel_tool_call_token():
+    text = '<|tool_call|>{"name": "book_meeting_room", "arguments": {"room_name": "Falcon"}}<|/tool_call|>'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'sentinelTag'
+    assert found[0].tool == 'book_meeting_room'
+
+
+def test_pseudo_detects_hermes_qwen_function_xml():
+    text = '<function=lookup_customer>{"email": "dana@example.com"}</function>'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'functionXml'
+    assert found[0].tool == 'lookup_customer'
+
+
+def test_pseudo_detects_mistral_tool_calls_marker():
+    text = '[TOOL_CALLS] [{"name": "get_weather", "arguments": {"city": "Paris"}}]'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'mistralToolCalls'
+    assert found[0].tool == 'get_weather'
+
+
+def test_pseudo_detects_gpt_oss_harmony_to_functions_leak():
+    text = 'to=functions.get_weather<|constrain|>json{"city": "Paris"}'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'harmonyLeak'
+    assert found[0].tool == 'get_weather'
+
+
+def test_pseudo_detects_fenced_json_code_block():
+    text = 'Here:\n```json\n{"name": "get_weather", "arguments": {"city": "Paris"}}\n```\n'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'fencedCode'
+    assert found[0].tool == 'get_weather'
+
+
+def test_pseudo_detects_fenced_call_syntax_block():
+    text = '```python\nget_weather(city="Paris")\n```'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+    assert found[0].format == 'fencedCode'
+    assert found[0].tool == 'get_weather'
+
+
+def test_pseudo_prose_merely_mentioning_a_tool_name_is_not_counted():
+    text = ('You could call get_weather here, but I do not have enough information -- '
+            'ask the user which city they mean.')
+    assert detect_pseudo_tool_calls(text, KNOWN) == []
+
+
+def test_pseudo_no_double_count_across_formats():
+    # The JSON inside a <tool_call> tag must not ALSO be picked up by the
+    # generic bare-jsonObject scan.
+    text = '<tool_call>\n{"name": "get_weather", "arguments": {"city": "Paris"}}\n</tool_call>'
+    found = detect_pseudo_tool_calls(text, KNOWN)
+    assert len(found) == 1
+
+
+def test_pseudo_empty_or_non_string_text_returns_empty():
+    assert detect_pseudo_tool_calls(None, KNOWN) == []
+    assert detect_pseudo_tool_calls('', KNOWN) == []
+
+
+def test_pseudo_calls_extra_tags_each_finding_with_its_turn():
+    turn1 = 'no leak here'
+    turn2 = '{"name": "get_weather", "arguments": {"city": "Paris"}}'
+    found = _pseudo_calls_extra(KNOWN, (1, turn1), (2, turn2))
+    assert len(found) == 1
+    assert found[0]['turn'] == 2
+    assert found[0]['tool'] == 'get_weather'
+
+
+# ---------------------------------------------------------------------------
+# _call_level_counts / _by_tool_classification: the generalised byTool (#29)
+# ---------------------------------------------------------------------------
+
+def test_call_level_counts_tallies_every_level():
+    calls = [
+        {'turn': 1, 'tool': None, 'expectedTool': 'get_weather', 'level': CALL_LEVEL_NO_CALL},
+        {'turn': 1, 'tool': 'get_weather', 'expectedTool': 'get_weather', 'level': CALL_LEVEL_RIGHT_ARGS},
+        {'turn': 1, 'tool': 'edit_file', 'expectedTool': 'edit_file', 'level': CALL_LEVEL_WELL_FORMED},
+    ]
+    counts = _call_level_counts(calls)
+    assert counts[CALL_LEVEL_NO_CALL] == 1
+    assert counts[CALL_LEVEL_RIGHT_ARGS] == 1
+    assert counts[CALL_LEVEL_WELL_FORMED] == 1
+    assert counts[CALL_LEVEL_SCHEMA_VALID] == 0
+
+
+def test_by_tool_classification_spans_multiple_dimensions():
+    # The scenario the ticket is named for: one tool (edit_file) fails
+    # badly, but split across dimensions no single dimension's own byTool
+    # would show more than a couple of failures.
+    calls = [
+        {'turn': 1, 'tool': 'edit_file', 'expectedTool': 'edit_file', 'level': CALL_LEVEL_WELL_FORMED},
+        {'turn': 1, 'tool': 'edit_file', 'expectedTool': 'edit_file', 'level': CALL_LEVEL_WELL_FORMED},
+        {'turn': 1, 'tool': 'get_weather', 'expectedTool': 'get_weather', 'level': CALL_LEVEL_RIGHT_ARGS},
+        {'turn': 1, 'tool': None, 'expectedTool': None, 'level': CALL_LEVEL_NO_CALL},
+    ]
+    by_tool = _by_tool_classification(calls)
+    assert by_tool['edit_file'][CALL_LEVEL_WELL_FORMED] == 2
+    assert by_tool['edit_file'][CALL_LEVEL_RIGHT_ARGS] == 0
+    assert by_tool['get_weather'][CALL_LEVEL_RIGHT_ARGS] == 1
+    assert CALL_LEVEL_NO_CALL not in by_tool['edit_file']  # not a per-tool bucket
+    assert None not in by_tool
+
+
+# ---------------------------------------------------------------------------
+# Wiring: run_schema_adherence() attaches calls + pseudoToolCalls per case,
+# without hitting a real network -- chat() is monkeypatched.
+# ---------------------------------------------------------------------------
+
+def test_run_schema_adherence_attaches_call_classification(monkeypatch):
+    def fake_chat(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        tool_name = tools[0]['function']['name']
+        if tool_name == 'book_meeting_room':
+            args = {'room_name': 'Falcon', 'start_time': '2026-10-01T14:00:00',
+                     'duration_minutes': 30, 'attendees': ['alice@example.com']}
+        elif tool_name == 'get_weather':
+            args = {'city': 'Tokyo', 'units': 'fahrenheit'}
+        else:
+            args = {'path': 'ops.yaml', 'edits': [{'oldText': 'a', 'newText': 'b'}]}
+        return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+            {'id': 'c1', 'type': 'function',
+             'function': {'name': tool_name, 'arguments': json.dumps(args)}}]}}]}
+
+    monkeypatch.setattr(toolbattery, 'chat', fake_chat)
+    errors = []
+    summary = run_schema_adherence(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors)
+    assert errors == []
+    for case in summary['cases']:
+        assert case['calls'][0]['level'] == CALL_LEVEL_RIGHT_ARGS
+        assert case['pseudoToolCalls'] == []
+
+
+def test_run_schema_adherence_pseudo_detection_on_text_only_reply(monkeypatch):
+    def fake_chat(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        tool_name = tools[0]['function']['name']
+        text = f'I would call {{"name": "{tool_name}", "arguments": {{}}}} but let me just answer.'
+        return {'choices': [{'finish_reason': 'stop', 'message': {'content': text}}]}
+
+    monkeypatch.setattr(toolbattery, 'chat', fake_chat)
+    errors = []
+    summary = run_schema_adherence(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors)
+    assert errors == []
+    for case in summary['cases']:
+        assert case['calls'][0]['level'] == CALL_LEVEL_NO_CALL
+        assert len(case['pseudoToolCalls']) == 1
+        assert case['pseudoToolCalls'][0]['format'] == 'jsonObject'
+
+
+# ---------------------------------------------------------------------------
+# _seeded_id: deterministic-but-unguessable chain values (#30)
+# ---------------------------------------------------------------------------
+
+def test_seeded_id_is_deterministic_across_calls():
+    assert _seeded_id('shipping/order_id', 'ord') == _seeded_id('shipping/order_id', 'ord')
+
+
+def test_seeded_id_differs_by_qualifier():
+    assert _seeded_id('shipping/order_id', 'ord') != _seeded_id('shipping/tracking_number', 'ord')
+
+
+def test_seeded_id_has_prefix_and_hex_tail():
+    v = _seeded_id('shipping/order_id', 'ord')
+    assert v.startswith('ord_')
+    tail = v.split('_', 1)[1]
+    assert len(tail) == 12
+    assert all(c in '0123456789abcdef' for c in tail)
+
+
+# ---------------------------------------------------------------------------
+# score_chain_step: multi-key dependency check (#30)
+# ---------------------------------------------------------------------------
+
+def test_chain_step_first_step_has_no_dependency_and_always_passes():
+    passed, reasons = score_chain_step(call('lookup_order_by_email', {'email': 'a@example.com'}), None)
+    assert passed is True
+    assert reasons == []
+
+
+def test_chain_step_passes_when_single_key_matches():
+    passed, _ = score_chain_step(call('get_shipping_label', {'order_id': 'ord_abc'}),
+                                  {'order_id': 'ord_abc'})
+    assert passed is True
+
+
+def test_chain_step_fails_when_value_invented():
+    passed, reasons = score_chain_step(call('get_shipping_label', {'order_id': 'ord_guessed'}),
+                                        {'order_id': 'ord_abc'})
+    assert passed is False
+    assert 'mismatch' in reasons[0]
+
+
+def test_chain_step_fails_when_key_missing():
+    passed, reasons = score_chain_step(call('get_shipping_label', {}), {'order_id': 'ord_abc'})
+    assert passed is False
+    assert 'missing dependency keys' in reasons[0]
+
+
+def test_chain_step_fails_on_no_call():
+    passed, reasons = score_chain_step(None, {'order_id': 'ord_abc'})
+    assert passed is False
+
+
+def test_chain_step_requires_every_key_of_a_multi_key_dependency():
+    # activate_device's real case: device_id AND activation_code together.
+    dep = {'device_id': 'dev_1', 'activation_code': 'act_1'}
+    passed, reasons = score_chain_step(
+        call('activate_device', {'device_id': 'dev_1', 'activation_code': 'wrong'}), dep)
+    assert passed is False
+    assert 'activation_code' in reasons[0]
+    ok, _ = score_chain_step(call('activate_device', dict(dep)), dep)
+    assert ok is True
+
+
+# ---------------------------------------------------------------------------
+# CHAIN_SCENARIOS: shape required by the acceptance criteria (#30)
+# ---------------------------------------------------------------------------
+
+def test_chain_scenarios_has_at_least_four_scenarios_of_length_3_to_5():
+    assert len(CHAIN_SCENARIOS) >= 4
+    for scenario in CHAIN_SCENARIOS:
+        assert 3 <= len(scenario.steps) <= 5
+
+
+def test_chain_scenarios_every_step_offers_at_least_one_decoy():
+    for scenario in CHAIN_SCENARIOS:
+        for step in scenario.steps:
+            assert len(step.decoys) >= 1
+            decoy_names = {d['function']['name'] for d in step.decoys}
+            assert step.tool['function']['name'] not in decoy_names
+
+
+def test_chain_scenarios_first_step_has_no_dependency_later_steps_do():
+    for scenario in CHAIN_SCENARIOS:
+        assert scenario.steps[0].dependency is None
+        for step in scenario.steps[1:]:
+            assert step.dependency
+
+
+# ---------------------------------------------------------------------------
+# run_short_chains / _run_chain: wiring, no network -- chat() monkeypatched.
+# A generic fake plays along with WHATEVER chain it's handed: it always
+# calls the first (correct) tool offered, threading forward every value any
+# prior `role: tool` message in the transcript handed back, matched by key
+# name -- possible only because every chain step names its dependency
+# argument identically to the result key that carries it.
+# ---------------------------------------------------------------------------
+
+_TYPE_DUMMIES = {'string': 'x', 'number': 1, 'integer': 1, 'boolean': True, 'array': [], 'object': {}}
+
+
+def _cooperative_chain_fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+    target = tools[0]
+    fn = target['function']
+    props = fn['parameters'].get('properties') or {}
+    required = fn['parameters'].get('required') or []
+    combined = {}
+    for m in messages:
+        if m.get('role') == 'tool':
+            combined.update(json.loads(m['content']))
+    args = {k: combined.get(k, _TYPE_DUMMIES.get(props.get(k, {}).get('type'), 'x')) for k in required}
+    return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+        {'id': 'c1', 'type': 'function', 'function': {'name': fn['name'], 'arguments': json.dumps(args)}}]}}]}
+
+
+def test_run_short_chains_full_completion_reaches_full_depth(monkeypatch):
+    monkeypatch.setattr(toolbattery, 'chat', _cooperative_chain_fake)
+    errors = []
+    summary = run_short_chains(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors)
+    assert errors == []
+    assert summary['passed'] == summary['total'] == len(CHAIN_SCENARIOS)
+    for case in summary['cases']:
+        assert case['depthReached'] == case['chainLength']
+        assert case['brokenAtStep'] is None
+        assert case['brokenAtLevel'] is None
+    assert summary['depth']['score'] == 1.0
+
+
+def test_run_chain_breaks_at_a_decoy_and_reports_the_classification_level(monkeypatch):
+    # Step 2 takes the first decoy instead of the correct next tool.
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        turn = sum(1 for m in messages if m.get('role') == 'tool')
+        chosen = tools[1] if turn == 1 else tools[0]
+        return _cooperative_chain_fake(base_url, model, messages, tools=[chosen] + tools, max_tokens=max_tokens,
+                                        timeout=timeout, api_key=api_key)
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    scenario = CHAIN_SCENARIOS[0]  # order-ship-track, length 3
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, scenario)
+    assert case['passed'] is False
+    assert case['depthReached'] == 1
+    assert case['brokenAtStep'] == 2
+    assert case['brokenAtLevel'] == CALL_LEVEL_SCHEMA_VALID  # right shape, wrong (decoy) tool
+
+
+def test_run_chain_guessing_the_final_tool_up_front_earns_zero_depth(monkeypatch):
+    # A model that tries to shortcut straight to the LAST tool in the chain,
+    # inventing a value it was never handed, must not get credit for any
+    # intermediate depth -- the whole point of #30's unguessable values.
+    scenario = CHAIN_SCENARIOS[0]
+    final_tool_name = scenario.steps[-1].tool['function']['name']
+
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+            {'id': 'g1', 'type': 'function',
+             'function': {'name': final_tool_name, 'arguments': json.dumps({'tracking_number': 'trk_guessed'})}}]}}]}
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, scenario)
+    assert case['depthReached'] == 0
+    assert case['brokenAtStep'] == 1
+    assert case['brokenAtLevel'] == CALL_LEVEL_SCHEMA_VALID  # named the wrong (not-yet-expected) tool
+
+
+def test_run_chain_skipping_a_step_silently_breaks_at_that_step(monkeypatch):
+    # Turn 1 behaves; turn 2 answers in plain text instead of calling anything.
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        turn = sum(1 for m in messages if m.get('role') == 'tool')
+        if turn == 1:
+            return {'choices': [{'finish_reason': 'stop', 'message': {'content': 'okay, done for now'}}]}
+        return _cooperative_chain_fake(base_url, model, messages, tools=tools, max_tokens=max_tokens,
+                                        timeout=timeout, api_key=api_key)
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, CHAIN_SCENARIOS[0])
+    assert case['depthReached'] == 1
+    assert case['brokenAtStep'] == 2
+    assert case['brokenAtLevel'] == CALL_LEVEL_NO_CALL
+
+
+def test_run_chain_parallel_calls_only_the_first_advances_the_chain(monkeypatch):
+    # One turn returns TWO tool_calls. Only the first should be judged/used
+    # to advance the chain; the second is recorded but tagged 'parallel'.
+    scenario = CHAIN_SCENARIOS[0]
+    step1_tool = scenario.steps[0].tool['function']['name']
+
+    def fake(base_url, model, messages, tools=None, max_tokens=None, timeout=None, api_key=None):
+        turn = sum(1 for m in messages if m.get('role') == 'tool')
+        if turn == 0:
+            # First turn only: a parallel guess at step 2's tool, alongside
+            # the correct step-1 call.
+            return {'choices': [{'finish_reason': 'tool_calls', 'message': {'tool_calls': [
+                {'id': 'p1', 'type': 'function',
+                 'function': {'name': step1_tool, 'arguments': json.dumps({'email': 'morgan@example.com'})}},
+                {'id': 'p2', 'type': 'function',
+                 'function': {'name': 'get_shipping_label', 'arguments': json.dumps({'order_id': 'ord_guessed'})}},
+            ]}}]}
+        return _cooperative_chain_fake(base_url, model, messages, tools=tools, max_tokens=max_tokens,
+                                        timeout=timeout, api_key=api_key)
+
+    monkeypatch.setattr(toolbattery, 'chat', fake)
+    errors = []
+    case = _run_chain(DEFAULT_BASE_URL, 'fake-model', 300, 30, errors, scenario)
+    # Step 1's primary call succeeds (right tool, no dependency to check yet)
+    # and the chain advances to step 2 on ITS OWN terms -- the parallel
+    # get_shipping_label guess at turn 1 is not credited as reaching step 2,
+    # and step 2 proper (asked cooperatively on the next turn) still passes.
+    assert case['depthReached'] == len(scenario.steps)
+    parallel_flags = [c.get('parallel', False) for c in case['calls']]
+    assert parallel_flags.count(True) == 1  # the extra parallel call, recorded but not credited
+
+
+def test_chain_depth_summary_aggregates_across_cases():
+    cases = [
+        {'chainLength': 3, 'depthReached': 3, 'brokenAtLevel': None},
+        {'chainLength': 5, 'depthReached': 2, 'brokenAtLevel': CALL_LEVEL_SCHEMA_VALID},
+    ]
+    dep = _chain_depth_summary(cases)
+    assert dep == {'totalDepthReached': 5, 'totalPossibleDepth': 8, 'score': 0.625,
+                    'brokenAtLevel': {CALL_LEVEL_SCHEMA_VALID: 1}}
+
+
+def test_short_chains_is_wired_into_run_battery_dimensions(monkeypatch):
+    monkeypatch.setattr(toolbattery, 'chat', _cooperative_chain_fake)
+    report = run_battery(DEFAULT_BASE_URL, 'fake-model', max_tokens=300, timeout=30)
+    assert 'shortChains' in report['dimensions']
+    assert report['dimensions']['shortChains']['depth']['score'] == 1.0
+    # shortChains' calls feed the same overall callClassification rollup as
+    # every other dimension (#29), not a side channel of their own.
+    chain_depth_total = sum(c['depthReached'] for c in report['dimensions']['shortChains']['cases'])
+    assert report['callClassification']['counts'][CALL_LEVEL_RIGHT_ARGS] >= chain_depth_total
 
 
 # ---------------------------------------------------------------------------
@@ -337,5 +912,6 @@ def test_live_full_battery_runs_and_produces_the_expected_shape():
     report = run_battery(LIVE_BASE_URL, LIVE_MODEL, max_tokens=300, timeout=60)
     assert report['schemaVersion'] == SCHEMA_VERSION
     assert set(report['dimensions']) == {
-        'schemaAdherence', 'toolSelection', 'multiStepDependency', 'errorRecovery', 'refusal'}
+        'schemaAdherence', 'toolSelection', 'multiStepDependency', 'errorRecovery', 'refusal', 'shortChains'}
     assert report['overall']['total'] == sum(d['total'] for d in report['dimensions'].values())
+    assert 'edit_file' in report['dimensions']['schemaAdherence']['byTool']

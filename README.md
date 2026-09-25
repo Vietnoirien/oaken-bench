@@ -146,9 +146,17 @@ llama-server --model /path/to/model.gguf --alias your-model.gguf \
 ./run.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 # Raw traces are archived to ~/.cache/oaken-bench/<label>/ after the run.
 # Override the location with OAKEN_ARCHIVE.
+# Progress is printed every 30s. Pi turn/call counts are read from its live
+# JSONL trace; dsh only exposes stdout until its session archive is finalized,
+# so its live turn/call counts are marked n/a.
+# The startup decode probe is recorded in run-context.json. Keep the default
+# port 8080, or set OAKEN_SERVER_PORT=8081 / OAKEN_SERVER_URL=http://172.17.0.1:8081/v1.
 
 # 4. Score it
 ./scripts/score.py results/<label>
+
+# 3+4 in one step, so scoring isn't a step you can forget:
+./bench.sh <pi|dsh> <model-id> <label> [timeout-seconds]
 ```
 
 **Read [MODELS.md](MODELS.md) before your first run.** It covers registering a
@@ -174,7 +182,7 @@ mean the model cannot call tools, cannot hold the spec in context, cannot
 write TypeScript, or just ran out of clock, and the harness's own
 retry/compaction logic sits between the model and the failure. `scripts/toolbattery.py`
 is a minutes-per-model battery that talks to the model's OpenAI-compatible
-endpoint DIRECTLY (no pi, no dsh) and scores five tool-calling dimensions
+endpoint DIRECTLY (no pi, no dsh) and scores six tool-calling dimensions
 independently, so a bad result says *what* broke instead of just *that*
 something did:
 
@@ -197,6 +205,19 @@ something did:
   bound by the token budget rather than by tool-calling capability -- the exact failure mode this
   battery exists to distinguish, one more time.
 - **refusal** -- no supplied tool applies; does the model call one anyway (the false-positive direction)
+- **shortChains** (issue #30) -- four fictional workflows of 3-5 dependent calls each (ship-and-track,
+  open-a-ticket, register-a-device, submit-an-expense); call N+1 needs a value only call N's simulated
+  result carries. Every threaded value is a 12-hex-digit id/token built by `_seeded_id()` from a fixed
+  seed -- deterministic run to run, but not a small guessable example like multiStepDependency's
+  `cus_48291`, so a correct downstream call is evidence the model actually carried the result forward.
+  Scored as **depth reached**, not only pass/fail: each case records `depthReached`/`chainLength` and,
+  when it broke, `brokenAtStep` plus the `classify_call()` level (below) the breaking call actually
+  reached -- `schemaValid` for a decoy taken, `notWellFormed` for truncated JSON, and so on. A model
+  that skips straight to a later step's tool, guessing at a value it was never handed, is judged
+  against the step it's ACTUALLY on and caps at `schemaValid` at best, so it earns zero depth rather
+  than credit for a lucky-looking guess; a turn with more than one tool call only counts its first call
+  toward the chain; any others are recorded but never advance or break it. See
+  `run_short_chains()`'s and `CHAIN_SCENARIOS`'s docstrings for the full reasoning.
 
 A case that never exercised its dimension is reported as **not attempted** and left out of that
 dimension's denominator -- it is not scored as a pass. This matters more than it sounds: a model
@@ -212,12 +233,97 @@ are, however, a new contaminable asset in their own right, committed in plaintex
 held-out suite's protections; see [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
 for why, and for the recommendation on how much confidence to put in a score from it.
 
+**Per-call classification and pseudo-tool-calls (issue #29, `schemaVersion` 2).** A pass/fail bit
+per case cannot say WHERE a call went wrong -- a model that emits `<tool_call>` XML instead of a
+structured call, one that calls the right tool with a truncated argument string, and one that
+calls the wrong tool outright all used to land on the same `passed: false`. Every call each case
+produces is now additionally classified into four CUMULATIVE levels (a call can only reach level N
+having cleared every level below it): **well-formed** (`arguments` decoded as JSON) ->
+**schema-valid** (satisfies its own tool's schema) -> **right tool** (matches the tool the case
+expected) -> **right args** (dimension-specific: for `multiStepDependency`, the value the simulated
+first result returned; for `errorRecovery`'s retry, adapted rather than repeated verbatim; for
+`schemaAdherence`/`toolSelection`, no further check beyond the schema itself). See
+`classify_call()`'s docstring in `scripts/toolbattery.py` for the exact per-dimension definitions.
+`report['callClassification']` folds every call from every dimension into one table, `byTool`
+included -- generalising #15's `schemaAdherence.byTool` past a single dimension, so one
+catastrophic tool used in several places is visible even if no single dimension's own numbers show
+it. `detect_pseudo_tool_calls()` separately scans each case's free-text answer for a tool call
+written as TEXT instead of landing in the structured `tool_calls` array -- JSON objects naming a
+known tool, `<tool_call>...</tool_call>`, a `<|tool_call|>` sentinel or `<function=...>` XML,
+Mistral's `[TOOL_CALLS]` marker, gpt-oss's Harmony `to=functions.x` leak, and fenced code blocks --
+reported per case and rolled up in `report['pseudoToolCalls']`.
+
+**v1 vs v2.** The four artefacts already committed under `toolbattery-results/` predate this change
+(`schemaVersion` 1) and were **not rescored** -- they carry per-dimension pass/fail and (for the
+GLM/gpt-oss/Qwen3.6 runs, after #15) `schemaAdherence.byTool`, but no per-call classification and no
+pseudo-tool-call detection. Per AGENTS.md's rule on published fields, that is documented here rather
+than silently redefined: read a `schemaVersion: 1` artefact as "passed the v1 battery", a
+`schemaVersion: 2` one as "passed the v1 battery AND has per-call classification and
+pseudo-tool-call counts".
+
 The artefact is a JSON file with a `schemaVersion`, one block per dimension, and a `cases` list per
 block -- shaped after `events-summary.json`'s conventions, not embedded in `results/*/score.json`
 (this script never touches `results/`). It stores the actual tool-call arguments the model produced,
 not just digests: unlike `edit`/`write` arguments in a real harness trace, these are short generic
 values answering fixed public prompts, not agent-written solution code against a held-out spec, so
 there is no CANARY.md-style asset at risk in keeping them legible.
+
+## Recall at context depth, and abstention
+
+`ctxprobe.sh` finds the context size that actually *loads*. It says nothing about
+whether the model can find anything inside it once loaded, or whether it knows the
+difference between "found" and "not there". `scripts/recall.py` (issue #31's recall pass,
+issue #32's abstention pass, together T0.5 of the ladder in #26) is the direct-mode
+battery for both: `scripts/haystack.py` builds a seeded, fictional "operations ledger"
+document at each of a few context depths and plants a handful of facts in it at
+controlled positions; `scripts/abstain.py` builds a handful of guaranteed-absent
+`(entity, attribute)` pairs against that SAME haystack (an entity that never appears; an
+entity that appears with a DIFFERENT attribute; an attribute that appears on a DIFFERENT
+entity). One tool call per depth asks about both kinds of pair together, sharing the
+haystack and the cold-prefill cost between the two probes.
+
+```bash
+./scripts/recall.py --model your-model.gguf \
+  --base-url http://172.17.0.1:8080/v1     # your llama-server, same as the main task
+# writes recall-results/recall-<model>-<timestamp>.json
+```
+
+- **Fictional facts only.** Entities, attribute names and values are all invented, seeded
+  from `--seed` (default fixed, override for a fresh set) -- a model cannot answer from
+  training-time exposure to `SPEC.md` or anything else in this repo, only from what is
+  actually in its context window.
+- **Depths stop at the served context.** `--depths` defaults to `4096,16384,32768,65536,131072`
+  (accepts a `k` suffix: `4k,16k,...`); any depth that would not fit inside the server's own
+  `/props`-reported `n_ctx` (minus headroom for the question and the response) is skipped, not
+  attempted, and the skip and its reason are in the artefact.
+- **Token sizing** uses the server's `/tokenize` endpoint when available (llama.cpp has it) to
+  size each haystack to its target depth; falls back to a documented ~4 chars/token estimate
+  otherwise. Which one was used is recorded per depth (`haystack.tokenCountSource`).
+- **Prefill/decode tok/s per depth**, each labelled with its source. llama.cpp's own `timings`
+  object is used when the response carries one; wall-clock is the fallback, per metric. Getting
+  an honest wall-clock split at all means deliberately exploiting llama.cpp's prompt cache within
+  a depth (`measure_depth()`'s two-call pair) while deliberately avoiding it across depths (every
+  depth gets its own, differently-seeded haystack) -- see `recall.py`'s module docstring, "the
+  cache trap", before touching that code.
+- **Abstention, five-way classified.** For every planted fact, an answer is `correct_answer`,
+  `wrong_answer`, or `false_abstention` (the model claimed the fact was absent when it wasn't --
+  over-abstaining, made visible so a model that always says "not in context" cannot score a
+  clean recall failure indistinguishable from genuinely not finding anything). For every
+  guaranteed-absent pair, an answer is `correct_abstention` or `invented_answer`. The model is
+  told in the system prompt to answer exactly `"not in context"` when a pair is absent, but
+  scoring accepts a documented, unit-tested list of paraphrases leniently -- see `abstain.py`'s
+  module docstring for the accepted phrasings and why each is (or is deliberately not) on the
+  list. Counts are reported per depth (`depths[i].presentQuestionCounts` /
+  `depths[i].abstention.counts`, the latter also broken down `byKind`) and rolled up once more
+  into `overall.presentQuestionCounts` / `overall.abstentionCounts`.
+
+Same plaintext-probe caveat as `toolbattery.py`, with one difference worth knowing: unlike
+`toolbattery.py`'s fixed prompts and answers, `recall.py`'s planted facts (and abstain.py's
+absent pairs) are regenerated fresh every seed, so a leaked run's answers do not transfer to a
+different seed's. The probe SHAPE (question template, tool schema, `haystack.py`'s fixed
+vocabulary) is still constant across runs, the same lower-but-nonzero contamination risk
+`toolbattery.py` carries. See
+[CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
 
 ## Layout
 
@@ -241,10 +347,18 @@ scripts/
   summarize.py     aggregate across runs
   gen_items.py     item-data provenance
   toolbattery.py   short tool-calling screening battery, talks to the model directly (issue #8)
+  server_config.py llama-server /props + process/image/GPU provenance capture (issue #14);
+                   run.sh writes its output to <label>/run-context.json before every run
+  direct.py        shared OpenAI-compatible HTTP client for direct-mode batteries (issue #27)
+  direct_env.py    direct-mode run-environment capture: GPU, backend, peak VRAM (issue #28)
+  haystack.py      seeded fictional-fact haystack generator for recall/abstention batteries (issue #31)
+  abstain.py       guaranteed-absent (entity, attribute) questions + abstention-phrase scoring (issue #32)
+  recall.py        recall-at-context-depth AND abstention battery, talks to the model directly (issues #31, #32)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
+recall-results/       JSON artefacts from scripts/recall.py, one per run; same conventions as toolbattery-results/
 results/           one directory per run; score.json and events-summary.json are
                    committed (issue #7 -- the derived metrics outlive the trace). The rest
-                   (pi-events.jsonl, session tarballs, stderr.log, ...) is
+                   (pi-events.jsonl, session tarballs, stderr.log, run-context.json, ...) is
                    gitignored, since it's agent-written solution code and
                    would undercut CANARY.md -- but run.sh archives it to
                    ~/.cache/oaken-bench/<label>/ (or $OAKEN_ARCHIVE) so it
