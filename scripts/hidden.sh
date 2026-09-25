@@ -56,6 +56,7 @@ ITER=200000
 declare -A BUNDLE_DEFAULT_PASS=(
   [hidden]="oaken-bench-held-out"
   [refengine]="oaken-bench-refengine-v1"
+  [t4oracle]="oaken-bench-t4-v1.1"
   # One working bundle for whatever T3 (issue #42) instance is currently
   # generated locally (scripts/planted_bugs.py `generate --seal`). It holds
   # one instance at a time -- a per-instance manifest that "points at the
@@ -72,6 +73,7 @@ declare -A BUNDLE_DEFAULT_PASS=(
 declare -A BUNDLE_GLOB=(
   [hidden]="*.test.ts"
   [refengine]="*.ts"
+  [t4oracle]="*.ts"
   [t3instance]="*.ts"
   [t5oracle]="*.json"
 )

@@ -21,3 +21,6 @@ node_modules/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Independent T4 v1.1 oracle, issue #44.
+/t4oracle/

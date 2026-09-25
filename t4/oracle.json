@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "bundle": "t4oracle",
+  "specCommit": "2e0fe3d750a3c0b91bc2817440046f8ffc0eb8a2",
+  "totals": {
+    "v1.0": 132,
+    "v1.1": 137
+  },
+  "canarySha256": "388b8a305966a25c42bb25fb640e9a6aa36a22cfdbd2523e3ce810103cdb4a43",
+  "author": {
+    "model": "GPT-6 (Codex)",
+    "instance": "db9822a8-4abd-4052-aafe-26bf25ca0cbc",
+    "date": "2026-09-25",
+    "role": "independent issue #44 oracle author"
+  }
+}

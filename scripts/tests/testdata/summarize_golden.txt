@@ -83,5 +83,9 @@ cmp '~'  counted by the version-1 extractor (pre-#10): overstated, and by a diff
 
 bar = 80% hidden.  runs clearing it: ['ceiling-claude', 'dsh-gemma192k-03', 'dsh-qwen35kvq4-262k-01', 'dsh-qwen35kvq4-262k-03', 'dsh-qwen35q4ks-02', 'dsh-qwen35q4ks-b10751-01', 'dsh-qwen35q4ks-b10751-02', 'dsh-qwen35q4ks-b10751-03', 'pi-oss20b-02', 'pi-qwen35kvq4-262k-01', 'pi-qwen35kvq4-262k-02', 'pi-qwen35q4ks-b10751-01', 'pi-qwen35q4ks-b10751-02', 'pi-qwen35q4ks-b10751-03']
 
+=== T4 -- v1.1 extension and v1.0 regressions ===
+t4-pi-offline-smoke: v1.0 132/132; v1.1 2/137; scored
+t4-reference-sanity: v1.0 132/132; v1.1 2/137; scored
+
 T5 -- sealed snapshot-pool strategy
 t5-cheapest-01: baseline:cheapest  0.8750 95% CI [0.7917, 0.9444] n=144 oracle=892b2efaf3f7

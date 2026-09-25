@@ -87,6 +87,21 @@ def _t3_score(result_dir, detail=True):
     return score_run(result_dir, detail=detail)
 
 
+def _t4_score(result_dir, detail=True):
+    from t4 import score_run
+    return score_run(result_dir, detail=detail)
+
+
+def _t4_build_row(data, label, tier):
+    from t4 import summary_row
+    return summary_row(data, label, tier)
+
+
+def _t4_print_rows(label, rows):
+    from t4 import print_summary
+    return print_summary(label, rows)
+
+
 def _t5_score(result_dir, detail=True):
     from t5_oracle import score_run
     return score_run(result_dir, detail=detail)
@@ -111,11 +126,14 @@ TIERS = (
          label='T3 -- planted bugs (fix a buggy reference engine, issue #42)',
          dir_prefix='t3-',
          score=_t3_score),
+    Tier(id='t4', label='T4 -- v1.1 extension and v1.0 regressions',
+         dir_prefix='t4-', score=_t4_score,
+         build_row=_t4_build_row, print_rows=_t4_print_rows),
     Tier(id='t5', label='T5 -- sealed snapshot-pool strategy',
          dir_prefix='t5-', score=_t5_score,
          build_row=_t5_build_row, print_rows=_t5_print_rows),
-    # T1 (#46), T4 (#44): add a Tier(...) here, each
-    # with its own dir_prefix ('t1-', 't4-') and its own
+    # T1 (#46): add a Tier(...) here, with its own
+    # dir_prefix ('t1-') and its own
     # score callable. Nothing else in this file, or in score.py /
     # summarize.py, needs to change.
 )
