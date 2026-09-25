@@ -13,6 +13,11 @@ OUT=/out
 
 mkdir -p "$OUT"
 rm -rf /work && cp -r /opt/seed /work && cd /work
+if [ "${OAKEN_TIER:-}" = t3 ]; then
+  [ -d /t3-src ] || { echo "missing T3 source mount" >&2; exit 64; }
+  rm -rf /work/src && mkdir -p /work/src
+  cp -a /t3-src/. /work/src/
+fi
 
 # The host-side port/URL override must also reach both harnesses' copied
 # configs. The default stays llama:8080 for existing model registrations.
@@ -36,10 +41,13 @@ esac
 sed -i "s#^  provider: .*#  provider: ${PROVIDER}#" /root/.dsh/settings.yaml
 sed -i "s#^  model: .*#  model: ${MODEL}#" /root/.dsh/settings.yaml
 
-echo "harness=$HARNESS model=$MODEL timeout=$TIMEOUT" > "$OUT/run.meta"
+echo "harness=$HARNESS model=$MODEL timeout=$TIMEOUT tier=${OAKEN_TIER:-t2}" > "$OUT/run.meta"
 date -u +%s > "$OUT/start.epoch"
 
 PROMPT="$(cat /opt/PROMPT.txt)"
+if [ "${OAKEN_TIER:-}" = t3 ]; then
+  PROMPT="$(cat /opt/T3_PROMPT.txt)"
+fi
 set +e
 case "$HARNESS" in
   pi)
