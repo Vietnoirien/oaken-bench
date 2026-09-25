@@ -28,9 +28,13 @@ def test_unprefixed_label_resolves_to_t2():
         assert resolve_tier(label).id == 't2'
 
 
-def test_t2_t4_and_t5_are_registered():
-    """T4 and T5 are explicit; T1/T3 still reject their reserved prefixes."""
-    assert [t.id for t in TIERS] == ['t2', 't4', 't5']
+def test_registered_tiers_today():
+    """Issue #36 registered T2; issue #42 adds T3 and #40 adds T5.
+    T1/T99 still register later. A test
+    pinning this list isn't asserting a permanent fact -- it's a tripwire
+    so the day a new Tier() lands, whoever adds it notices this test and
+    updates it deliberately, rather than the registry silently growing."""
+    assert [t.id for t in TIERS] == ['t2', 't3', 't4', 't5']
 
 
 def test_only_one_tier_may_claim_the_unprefixed_fallback():
@@ -44,12 +48,14 @@ def test_only_one_tier_may_claim_the_unprefixed_fallback():
 # ---------------------------------------------------------------------------
 
 def test_tier_prefixed_label_for_an_unregistered_tier_raises():
-    """A t3-foo label exists in the world (issue #36's own acceptance
-    criterion asks for one) before T3 (#42) registers a Tier for it. That
-    must fail loudly, not silently score as T2 -- a t3- run scored by T2's
-    scorer would produce a score.json that LOOKS like a T2 result."""
-    with pytest.raises(ValueError, match='t3-'):
-        resolve_tier('t3-foo')
+    """A t99-foo label exists in the world (T99/#44 has not registered a
+    Tier for it yet). That must fail loudly, not silently score as T2 --
+    a t99- run scored by T2's scorer would produce a score.json that LOOKS
+    like a T2 result. (t3- itself is no longer a good fixture for "not yet
+    registered" -- issue #42 registered it for real; see
+    test_t3_resolves_to_the_real_planted_bugs_tier below.)"""
+    with pytest.raises(ValueError, match='t99-'):
+        resolve_tier('t99-foo')
 
 
 def test_error_names_the_missing_registration_not_just_the_label():
@@ -71,46 +77,76 @@ def test_tier_by_id_unknown_raises_keyerror():
 
 
 # ---------------------------------------------------------------------------
-# score.py's CLI dispatches through the registry, not through score_run()
-# directly -- issue #36's second acceptance criterion: a results/t3-foo/
-# directory is scored by ITS tier's scorer.
+# T3 (issue #42): registered for real, not a fixture.
 # ---------------------------------------------------------------------------
 
-def test_score_cli_dispatches_a_t3_label_to_its_registered_scorer(tmp_path, monkeypatch):
+def test_t3_resolves_to_the_real_planted_bugs_tier():
+    tier = resolve_tier('t3-bugfarm-01')
+    assert tier.id == 't3'
+    assert tier.dir_prefix == 't3-'
+    assert tier is tier_by_id('t3')
+
+
+def test_t3_scorer_delegates_to_score_run_like_t2_does(monkeypatch):
+    """T3 plants bugs but does not re-score them differently -- issue #26's
+    plan reuses the existing held-out suite as T3's oracle, so its Tier's
+    `score` callable must reach score.score_run() exactly the way T2's
+    does, not a second implementation that could drift from it. Proven by
+    substituting score_run and checking both wrappers call the substitute
+    with the same arguments, rather than by comparing source text."""
+    import score as score_module
+    calls = []
+    monkeypatch.setattr(score_module, 'score_run',
+                        lambda result_dir, detail=True: calls.append((result_dir, detail)))
+    tier_by_id('t2').score('some/dir', detail=False)
+    tier_by_id('t3').score('some/dir', detail=False)
+    assert calls == [('some/dir', False), ('some/dir', False)]
+
+
+# ---------------------------------------------------------------------------
+# score.py's CLI dispatches through the registry, not through score_run()
+# directly -- issue #36's second acceptance criterion: a results/<prefix>foo/
+# directory is scored by ITS tier's scorer. Uses a throwaway 't99-' fixture
+# tier rather than the real t3 (registered for real by issue #42 above), so
+# this stays a test of the DISPATCH MECHANISM and does not depend on T3's
+# own scorer implementation.
+# ---------------------------------------------------------------------------
+
+def test_score_cli_dispatches_a_prefixed_label_to_its_registered_scorer(tmp_path, monkeypatch):
     import tiers as tiers_module
     import score as score_module
 
     calls = []
     fake_tier = tiers_module.Tier(
-        id='t3', label='T3 -- fixture', dir_prefix='t3-',
+        id='t99', label='T99 -- fixture', dir_prefix='t99-',
         score=lambda result_dir, detail=True: calls.append((result_dir, detail)))
     original_tiers = tiers_module.TIERS
     tiers_module.TIERS = original_tiers + (fake_tier,)
-    tiers_module._BY_PREFIX['t3-'] = fake_tier
-    tiers_module._BY_ID['t3'] = fake_tier
+    tiers_module._BY_PREFIX['t99-'] = fake_tier
+    tiers_module._BY_ID['t99'] = fake_tier
 
-    result_dir = tmp_path / 't3-foo'
+    result_dir = tmp_path / 't99-foo'
     result_dir.mkdir()
 
     monkeypatch.setattr(sys, 'argv', ['score.py', str(result_dir)])
 
-    # score_run must NOT be called for a t3- label -- if it were, this
-    # would score the run as T2 despite the t3- prefix. Poisoning it turns
+    # score_run must NOT be called for a t99- label -- if it were, this
+    # would score the run as T2 despite the t99- prefix. Poisoning it turns
     # that mistake into a hard failure instead of a silent misclassification.
     def _must_not_be_called(*a, **kw):
-        raise AssertionError('score_run (T2) was called for a t3- label')
+        raise AssertionError('score_run (T2) was called for a t99- label')
     monkeypatch.setattr(score_module, 'score_run', _must_not_be_called)
 
     try:
         score_module.main()
     finally:
         tiers_module.TIERS = original_tiers
-        tiers_module._BY_PREFIX.pop('t3-', None)
-        tiers_module._BY_ID.pop('t3', None)
+        tiers_module._BY_PREFIX.pop('t99-', None)
+        tiers_module._BY_ID.pop('t99', None)
 
     assert len(calls) == 1
     called_dir, called_detail = calls[0]
-    assert os.path.basename(called_dir) == 't3-foo'
+    assert os.path.basename(called_dir) == 't99-foo'
     assert called_detail is True  # --detail is the default
 
 
@@ -140,7 +176,7 @@ def test_score_cli_dispatches_an_unprefixed_label_to_t2(tmp_path, monkeypatch):
 
 def test_no_cross_tier_total_exists_in_summarize(tmp_path):
     """Build score.json fixtures for two 'tiers' -- T2 (unprefixed) and a
-    synthetic registered tier standing in for a future T3/T4/T5 -- and
+    synthetic registered tier standing in for a future T3/T99/T5 -- and
     prove summarize.py's own grouping keeps them apart: no aggregate
     group's rows span both tiers, and rows_by_tier() never merges them
     into one bucket. This is what "tiers are never combined into one
@@ -151,7 +187,7 @@ def test_no_cross_tier_total_exists_in_summarize(tmp_path):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from summarize import aggregate_groups, build_row, rows_by_tier
 
-    # Register a throwaway tier the way T3/T4/T5 eventually will, without
+    # Register a throwaway tier the way T3/T99/T5 eventually will, without
     # touching the real TIERS tuple other tests depend on.
     fake_tier = tiers_module.Tier(
         id='t9', label='T9 -- fixture-only tier', dir_prefix='t9-',

@@ -71,6 +71,22 @@ def _t2_score(result_dir, detail=True):
     return score_run(result_dir, detail=detail)
 
 
+def _t3_score(result_dir, detail=True):
+    """T3 (planted bugs, issue #42) reuses T2's scorer outright. The
+    workspace format (a workspace.tgz whose `work/` restores exactly the
+    way score.restore_workspace() expects), the frozen-file check, and the
+    oracle are all identical to T2 -- issue #26's plan is explicit that T3
+    reuses the existing held-out suite rather than getting a new one. Only
+    what the agent STARTS from differs (a buggy `scripts/planted_bugs.py`
+    instance instead of seed/src's stubs), and that is entirely a fact
+    about how the run was prepared, not about how it is scored. Lazily
+    imported for the same reason tiers._t2_score imports score lazily:
+    `import tiers` alone must not drag in score.py's subprocess/docker
+    machinery."""
+    from score import score_run
+    return score_run(result_dir, detail=detail)
+
+
 def _t4_score(result_dir, detail=True):
     from t4 import score_run
     return score_run(result_dir, detail=detail)
@@ -106,14 +122,18 @@ TIERS = (
          label='T2 -- long-horizon greenfield (the original task)',
          dir_prefix=None,
          score=_t2_score),
+    Tier(id='t3',
+         label='T3 -- planted bugs (fix a buggy reference engine, issue #42)',
+         dir_prefix='t3-',
+         score=_t3_score),
     Tier(id='t4', label='T4 -- v1.1 extension and v1.0 regressions',
          dir_prefix='t4-', score=_t4_score,
          build_row=_t4_build_row, print_rows=_t4_print_rows),
     Tier(id='t5', label='T5 -- sealed snapshot-pool strategy',
          dir_prefix='t5-', score=_t5_score,
          build_row=_t5_build_row, print_rows=_t5_print_rows),
-    # T1 (#46), T3 (#42), T4 (#44): add a Tier(...) here, each
-    # with its own dir_prefix ('t1-', 't3-', 't4-') and its own
+    # T1 (#46), T4 (#44): add a Tier(...) here, each
+    # with its own dir_prefix ('t1-', 't4-') and its own
     # score callable. Nothing else in this file, or in score.py /
     # summarize.py, needs to change.
 )

@@ -16,6 +16,7 @@ COPY config/dsh /root/.dsh
 # The seed repository, node_modules already vendored.
 COPY seed /opt/seed
 COPY PROMPT.txt /opt/PROMPT.txt
+COPY T3_PROMPT.txt /opt/T3_PROMPT.txt
 
 # No dependency installation is possible during a run.
 ENV npm_config_offline=true \
