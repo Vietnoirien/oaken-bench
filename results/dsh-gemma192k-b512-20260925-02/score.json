@@ -1,0 +1,202 @@
+{
+  "label": "dsh-gemma192k-b512-20260925-02",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "exitCode": 1,
+  "wallclockSeconds": 270,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": false,
+  "suiteHung": false,
+  "visible": {
+    "passed": 36,
+    "failed": 16,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 0.6923
+  },
+  "hidden": {
+    "passed": 36,
+    "failed": 96,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.2727
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "permission/preset": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 21,
+      "system/message": 1,
+      "user/message": 2,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session/title-llm-request": 1,
+      "assistant/message": 21,
+      "tool/call": 20,
+      "tool/result": 20,
+      "step/end": 21,
+      "turn/end": 1
+    },
+    "steps": 21,
+    "toolCalls": 20,
+    "usage": {
+      "inputTokens": 52710,
+      "outputTokens": 24002,
+      "cacheReadTokens": 637088
+    },
+    "compactions": 0,
+    "prunedToolResults": {
+      "count": 0,
+      "shadowedTokenCount": 0
+    },
+    "generationOutputTokens": 15810,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 19,
+      "error": 1,
+      "unknown": 0
+    },
+    "errorRate": 0.05,
+    "errorsByTool": {
+      "write": 1
+    },
+    "toolHistogram": {
+      "read": 12,
+      "glob": 1,
+      "write": 7
+    },
+    "unknownTools": [],
+    "mutatingCalls": 7,
+    "repeatedCalls": 2,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 0.9,
+    "callSequence": [
+      [
+        "read",
+        "6f1985105c4491a0",
+        1
+      ],
+      [
+        "glob",
+        "70a9d51f7cfa4192",
+        1
+      ],
+      [
+        "read",
+        "919ec7776ab69441",
+        1
+      ],
+      [
+        "read",
+        "47f1d1cc51b7a457",
+        1
+      ],
+      [
+        "read",
+        "87daa12fa0625f9e",
+        1
+      ],
+      [
+        "write",
+        "7e481657f46b6e7c",
+        1
+      ],
+      [
+        "read",
+        "a5ab70e6fdc04b9b",
+        1
+      ],
+      [
+        "read",
+        "5c2510b2942091e6",
+        1
+      ],
+      [
+        "write",
+        "1ca5ad4daf271fdf",
+        1
+      ],
+      [
+        "read",
+        "ef6ba856d7c37c07",
+        1
+      ],
+      [
+        "write",
+        "5fc4e183d8444676",
+        1
+      ],
+      [
+        "read",
+        "01044a1110757fad",
+        1
+      ],
+      [
+        "write",
+        "9adc81eeb05346d6",
+        1
+      ],
+      [
+        "read",
+        "1badadaa0eba704d",
+        1
+      ],
+      [
+        "read",
+        "919ec7776ab69441",
+        1
+      ],
+      [
+        "read",
+        "d023c899f9d35147",
+        1
+      ],
+      [
+        "read",
+        "87daa12fa0625f9e",
+        1
+      ],
+      [
+        "write",
+        "7e2c5f27291ff67c",
+        1
+      ],
+      [
+        "write",
+        "e55dd656ffda8fbf",
+        1
+      ],
+      [
+        "write",
+        "41a7a0ba77b3e8f6",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 4.798,
+    "toolCallIntervals": {
+      "n": 19,
+      "p50Seconds": 4.218,
+      "p95Seconds": 29.068
+    },
+    "generationSeconds": 181.267,
+    "toolExecutionSeconds": 0.335,
+    "derivedDecodeTokensPerSecond": 87.22,
+    "parseErrors": 0
+  },
+  "outcome": "crash",
+  "overfitGap": 0.4196
+}
