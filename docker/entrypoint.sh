@@ -17,7 +17,10 @@ rm -rf /work && cp -r /opt/seed /work && cd /work
 # The host-side port/URL override must also reach both harnesses' copied
 # configs. The default stays llama:8080 for existing model registrations.
 OAKEN_SERVER_URL="${OAKEN_SERVER_URL:-http://llama:8080/v1}" \
-  python3 /usr/local/bin/configure_server.py /root
+  python3 /usr/local/bin/configure_server.py /root || {
+    echo "server endpoint configuration failed; refusing to start the harness" >&2
+    exit 78
+  }
 
 # Baseline commit so the run's diff is recoverable at scoring time.
 git init -q . && git add -A && git -c user.email=b@x -c user.name=bench commit -qm baseline
