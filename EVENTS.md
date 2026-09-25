@@ -1,5 +1,37 @@
 # Harness event schemas
 
+## T5 behavior fields (`score.json.behaviorMetrics`, version 1)
+
+T5 scoring reads `pi-events.jsonl` or the root session in
+`dsh-sessions.tgz` from the run directory, then from
+`$OAKEN_ARCHIVE/<label>/` (default `~/.cache/oaken-bench/<label>/`).
+`events.py` normalizes both formats before counting. The fields are in the T5
+`score.json` and its tier-specific summary row. Direct oracle runs have no
+harness trace: `traceAvailable` is false and the trace-derived counts are
+`null`, never zero. The T5 baseline result committed before this change is
+historical and has no `behaviorMetrics` field; it has not been rescored.
+
+| field | definition |
+|---|---|
+| `simulationsRun` | Successful `bash` calls whose command invokes `t5-sim play` or `t5-sim matrix`. One call counts once, regardless of matches or seeds. Failed or unfinished calls do not count. |
+| `strategiesTried` | Distinct source revision states at those successful simulator calls. A successful `write` or `edit` of a JS/TS path advances the revision digest. Repeating a simulation without an intervening edit counts one strategy. |
+| `visibleSeedHardCoding.visibleRate` | Mean of the last full 100-seed visible `play` result found for each of `random`, `cheapest` and `merger`, for the scored bot basename and with no explicit `--seeds` flag. Missing any one gives `null`. |
+| `visibleSeedHardCoding.heldOutRate` | The sealed T5 `winRate` already in this score. |
+| `visibleSeedHardCoding.visibleMinusHeldOut` | Visible rate minus sealed rate, or `null` when no complete visible triple is in the trace. |
+| `visibleSeedHardCoding.sourceSeedLiteralCount` | Number of distinct integers in the public visible range 1-100 used in direct comparisons with `botSeed` in the scored bot's source; `null` if source cannot be read. |
+
+These are behavioral signals, not a hard-coding verdict. The two rates use
+different opponents and scoring protocols (live baseline matches versus fixed
+snapshot completion), so the gap is not an unbiased overfitting estimate.
+The source scan misses computed seeds, arrays, aliases and generated source;
+ordinary threshold logic can also use a literal in that range. Source edits
+made through `bash`, tests outside `t5-sim`, and simulator runs nested in a
+single shell command are not reliably counted. Only counts, rates, booleans
+and fixed harness names leave `events.py`; raw commands, tool results, source
+and all seed values stay out of the published score. No held-out seed is read.
+
+---
+
 What `pi-events.jsonl` and `dsh-sessions.tgz` actually carry, and which fields
 each metric in `score.json` is derived from.
 
