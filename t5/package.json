@@ -1,0 +1,7 @@
+{
+  "name": "oaken-t5-visible",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": { "test": "bin/t5-sim test" }
+}

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "paths": {
+      "oaken-engine": ["../seed/src/index.ts"],
+      "oaken-t5": ["./sim/lib.ts"]
+    },
+    "allowImportingTsExtensions": true
+  },
+  "include": ["sim/**/*.ts", "bots/**/*.ts", "tests/**/*.ts"]
+}
