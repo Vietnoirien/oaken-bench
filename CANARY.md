@@ -296,16 +296,17 @@ carries the same new canary. Only its digest appears in the table above.
 `t4oracle.sha256` identifies the deterministic plaintext archive, as for the
 other named bundles. `t4/oracle.json` pins its denominator and frozen spec commit.
 
-Oracle author: GPT-6, running as Codex, 2026-09-25. The runtime did not supply
-a more specific model alias. The supervisor explicitly assigned this invocation
-as a new author, distinct from both #43 spec authors and the reference author.
-Author instance: `db9822a8-4abd-4052-aafe-26bf25ca0cbc`.
+Oracle author: a separately spawned Codex agent, 2026-09-25, agent ID
+`01a0d80f-36d4-7980-af26-e58cda62a2f8` (assigned `gpt-6-astra` by the
+supervisor). Its runtime instance is
+`db9822a8-4abd-4052-aafe-26bf25ca0cbc`. It is distinct from both #43 spec
+authors and the reference author.
 
 The desktop task ID is `01a0d7fe-c4bb-75b0-990c-c17667872cfb`. That ID also
-appears in the frozen spec's final-author record. It therefore cannot establish
-separation by itself. The independent-author claim relies on the supervisor's
-new-author handoff and this invocation's reading history, not on a claim that
-the desktop task IDs differ. Review that provenance before accepting the suite.
+appears in the frozen spec's final-author record because the oracle agent was
+spawned from the same supervisor task. The distinct agent ID above, the
+new-author handoff, and that agent's reading history establish the separation;
+the desktop task ID alone does not.
 
 This author designed assertions from `t4/SPEC-v1.1.md`, `t4/data/*.json`,
 `seed/SPEC.md`, and the public source stubs at frozen commit

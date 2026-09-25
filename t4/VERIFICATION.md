@@ -59,6 +59,6 @@ The local fake HTTP server tests needed sandbox permission to bind sockets.
 No test source or per-test oracle diagnostics were returned from the v1.0 run.
 
 These are negative-control and runner checks. No positive v1.1 implementation
-or live agent completion was evaluated. The author/task-ID provenance caveat
-in `CANARY.md` needs supervisor review before accepting the independence claim.
-Nothing was pushed and no pull request was opened.
+or live agent completion was evaluated. The supervisor checked the distinct
+oracle-agent ID against the spec's final author and recorded the shared desktop
+task-ID limitation in `CANARY.md`.
