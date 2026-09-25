@@ -25,8 +25,24 @@ B="$(cd "$(dirname "$0")" && pwd)"
 # validation, so a typo'd prefix is only caught later, by score.py.
 OUT="$B/results/$LABEL"
 
+TIER_ARGS=()
+case "$LABEL" in
+  t3-*)
+    # Only the source reaches the agent. The manifest names each fix and
+    # stays on the host in the sealed bundle.
+    if [ ! -d "$B/t3instance/src" ]; then
+      "$B/scripts/hidden.sh" unlock t3instance || exit 1
+    fi
+    "$B/scripts/hidden.sh" verify t3instance >/dev/null || exit 1
+    TIER_ARGS=(-e OAKEN_TIER=t3 -v "$B/t3instance/src:/t3-src:ro")
+    ;;
+esac
+
 if [ -e "$OUT" ]; then echo "refusing to overwrite existing result: $OUT" >&2; exit 1; fi
 mkdir -p "$OUT"
+if [ "$LABEL" != "${LABEL#t3-}" ]; then
+  cp "$B/t3instance.sha256" "$OUT/instance.sha256"
+fi
 
 SERVER_PORT="${OAKEN_SERVER_PORT:-8080}"
 if ! [[ "$SERVER_PORT" =~ ^[0-9]+$ ]] || [ "$SERVER_PORT" -lt 1 ] || [ "$SERVER_PORT" -gt 65535 ]; then
@@ -75,6 +91,7 @@ docker run --rm \
   --dns 0.0.0.0 \
   -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
   -e OAKEN_SERVER_URL="$CONTAINER_SERVER_URL" \
+  "${TIER_ARGS[@]}" \
   -v "$OUT:/out" \
   "$OAKEN_IMAGE" "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" &
 RUN_PID=$!

@@ -56,6 +56,12 @@ ITER=200000
 declare -A BUNDLE_DEFAULT_PASS=(
   [hidden]="oaken-bench-held-out"
   [refengine]="oaken-bench-refengine-v1"
+  # One working bundle for whatever T3 (issue #42) instance is currently
+  # generated locally (scripts/planted_bugs.py `generate --seal`). It holds
+  # one instance at a time -- a per-instance manifest that "points at the
+  # fix" (CANARY.md section 5) is meant to be regenerated and re-sealed per
+  # seed, not accumulated into a growing multi-instance archive.
+  [t3instance]="oaken-bench-t3instance-v1"
   [t5oracle]="oaken-bench-t5oracle-v1"
 )
 
@@ -66,6 +72,7 @@ declare -A BUNDLE_DEFAULT_PASS=(
 declare -A BUNDLE_GLOB=(
   [hidden]="*.test.ts"
   [refengine]="*.ts"
+  [t3instance]="*.ts"
   [t5oracle]="*.json"
 )
 
@@ -156,8 +163,13 @@ cmd_status() {
   echo "bench      : $BENCH"
   if [ -d "$DIR" ]; then
     echo "$BUNDLE/    : present, $(find "$DIR" -name "$GLOB" | wc -l) files ($GLOB)"
-    echo "  canary   : $(grep -ho 'canary GUID [0-9a-f-]*' "$DIR"/$GLOB 2>/dev/null | sort -u | head -1 || echo 'MISSING')"
-    echo "  canaried : $(grep -lc 'canary GUID' "$DIR"/$GLOB 2>/dev/null | wc -l)/$(find "$DIR" -name "$GLOB" | wc -l) files"
+    # T3 keeps its source under src/, so the status check must search the
+    # same recursive file set that the bundle count and lock command use.
+    local canary canaried
+    canary=$(find "$DIR" -name "$GLOB" -type f -exec grep -ho 'canary GUID [0-9a-f-]*' {} + | sort -u | head -1 || true)
+    canaried=$(find "$DIR" -name "$GLOB" -type f -exec grep -l 'canary GUID' {} + | wc -l || true)
+    echo "  canary   : ${canary:-MISSING}"
+    echo "  canaried : $canaried/$(find "$DIR" -name "$GLOB" | wc -l) files"
   else
     echo "$BUNDLE/    : absent (run: scripts/hidden.sh unlock $BUNDLE)"
   fi

@@ -1,0 +1,1 @@
+The TypeScript engine in src/ is complete but has planted logic bugs. Fix it to satisfy SPEC.md. The visible tests are in tests/; run them and typecheck as needed. Do not change SPEC.md, data/items.json, or other frozen inputs. Work only in this repository. When finished, summarize the fixes.
