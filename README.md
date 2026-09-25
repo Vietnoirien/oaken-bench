@@ -8,13 +8,13 @@ Harness comparison is T2.
 
 T0 and T0.5 are direct model probes. T1 and T3-T5 are planned task tiers whose
 implementations are in progress or deferred. Only T0, T0.5, and T2 have shipped
-commands. No T1 or T3-T5 measurements exist. The 23 published `results/*`
+commands. No T1 or T3-T5 measurements exist. The 53 committed `results/*`
 score files are T2 runs; their meaning and values are unchanged.
 
 | Tier | What it isolates | Status and command |
 |---|---|---|
-| T0 | Tool-call reliability over short chains, including schema use, tool choice, refusals, and recovery. Direct model call, no harness. | Shipped. `./scripts/toolbattery.py --model your-model.gguf --base-url http://172.17.0.1:8080/v1` |
-| T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8080/v1` |
+| T0 | Tool-call reliability over short chains, including schema use, tool choice, refusals, and recovery. Direct model call, no harness. | Shipped. `./scripts/toolbattery.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
+| T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
 | T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred until more archived Gemma plateau runs can be examined. No command. |
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
 | T3 | Find and fix planted bugs against the reference engine. | Implementation in progress. No command or measurements yet. |
