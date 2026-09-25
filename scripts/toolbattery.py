@@ -1575,9 +1575,11 @@ def _chain_depth_summary(cases):
             'brokenAtLevel': broken_at_level}
 
 
-def run_short_chains(base_url, model, max_tokens, timeout, errors, api_key=None):
+def run_short_chains(base_url, model, max_tokens, timeout, errors, api_key=None, scenarios=None):
+    if scenarios is None:
+        scenarios = CHAIN_SCENARIOS
     cases = [_run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=api_key)
-             for scenario in CHAIN_SCENARIOS]
+             for scenario in scenarios]
     summary = _summarize('shortChains', cases)
     summary['depth'] = _chain_depth_summary(cases)
     return summary

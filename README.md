@@ -320,6 +320,37 @@ vocabulary) is still constant across runs, the same lower-but-nonzero contaminat
 `toolbattery.py` carries. See
 [CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
 
+## Short T0 + T0.5 screen
+
+`scripts/screen.py` runs one command against a direct-mode server:
+
+```bash
+python3 scripts/screen.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1
+```
+
+T0 uses the existing five schema probes, five tool-selection probes, one
+three-call chain, and four refusal probes. T0.5 uses one 16k-token haystack
+with three planted facts and three absent pairs. Each run writes
+`screen-results/screen-<model>-<timestamp>.json`, including the raw battery
+records, six extracted scores, elapsed seconds, and the threshold revision.
+The default port is 8082 because port 8080 belongs to another project on
+this machine. The command never starts a server.
+
+The threshold file is [screen-thresholds.json](screen-thresholds.json).
+Its current revision is `pending-2026-09-25`: the six minimums are `null`,
+and the verdict is `unverified`. The four required models have not been
+rerun on this exact short protocol, and the GPU needed for that calibration
+was unavailable. Older `toolbattery-results/` files predate the short screen
+and contain no T0.5 scores. They cannot establish these thresholds. See
+[screen-calibration.md](screen-calibration.md) for the fixed run plan and the
+evidence required before changing the revision to `calibrated`.
+
+The under-15-minute wall-clock criterion is also unverified until a live
+12 GB-class run records `elapsedSeconds`. Per-request timeouts bound normal
+T0 and T0.5 requests, but they do not prove the full command meets that
+criterion. A skipped depth, transport error, or missing score cannot produce
+`go`. The plaintext-probe caveats in CANARY.md sections 3 and 3b apply.
+
 ## Layout
 
 ```
@@ -344,8 +375,10 @@ scripts/
   haystack.py      seeded fictional-fact haystack generator for recall/abstention batteries (issue #31)
   abstain.py       guaranteed-absent (entity, attribute) questions + abstention-phrase scoring (issue #32)
   recall.py        recall-at-context-depth AND abstention battery, talks to the model directly (issues #31, #32)
+  screen.py        short direct-mode T0 + T0.5 screen (issue #33)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
 recall-results/       JSON artefacts from scripts/recall.py, one per run; same conventions as toolbattery-results/
+screen-results/       JSON artefacts from scripts/screen.py; currently no calibrated verdicts
 results/           one directory per run; score.json and events-summary.json are
                    committed (issue #7 -- the derived metrics outlive the trace). The rest
                    (pi-events.jsonl, session tarballs, stderr.log, run-context.json, ...) is
