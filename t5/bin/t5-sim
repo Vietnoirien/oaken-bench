@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Plaintext exists only in a disposable engine workspace, never under t5/.
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+NODE="${OAKEN_T5_NODE:-node}"
+"$NODE" -e 'if (Number(process.versions.node.split(".")[0]) < 24 || !process.features.typescript) { console.error("t5-sim requires Node 24+ built with TypeScript support; set OAKEN_T5_NODE"); process.exit(2); }'
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+if [[ -z "${OAKEN_T5_ENGINE:-}" ]]; then
+  export _OAKEN_T5_PASS="${OAKEN_REFENGINE_PASS:-oaken-bench-refengine-v1}"
+  openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:_OAKEN_T5_PASS \
+    -in "$ROOT/refengine.tar.gz.enc" -out "$TMP/engine.tar.gz"
+  unset _OAKEN_T5_PASS
+  [[ "$(sha256sum "$TMP/engine.tar.gz" | cut -d' ' -f1)" == "$(cat "$ROOT/refengine.sha256")" ]] || {
+    echo 't5-sim: reference engine digest mismatch' >&2; exit 2;
+  }
+  tar -xzf "$TMP/engine.tar.gz" -C "$TMP"
+  mkdir -p "$TMP/engine/src" "$TMP/engine/data"
+  cp "$TMP"/refengine/*.ts "$TMP/engine/src/"
+  cp "$ROOT/seed/data/items.json" "$TMP/engine/data/"
+  cp "$ROOT/seed/package.json" "$TMP/engine/"
+  export OAKEN_T5_ENGINE="$TMP/engine"
+fi
+# Whole-process limit is a local fail-safe. A timed-out invocation has no score.
+if [[ "${1:-}" == test ]]; then
+  shift
+  timeout --kill-after=5s "${OAKEN_T5_TIMEOUT:-120}s" "$NODE" \
+    --experimental-strip-types --import "$ROOT/t5/sim/register.mjs" --test "$@" "$ROOT"/t5/tests/*.test.ts
+else
+  timeout --kill-after=5s "${OAKEN_T5_TIMEOUT:-120}s" "$NODE" \
+    --experimental-strip-types --import "$ROOT/t5/sim/register.mjs" "$ROOT/t5/sim/cli.ts" "$@"
+fi

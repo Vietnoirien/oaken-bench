@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "protocol": "t5-visible-head-to-head/1",
+  "contract": "t5/1",
+  "runtime": "v24.14.1",
+  "spec": {
+    "sha256": "856180cd08a8830195b2d13634bcc6ce8fdecfb7766693f0ed6934dfb3d66ba4"
+  },
+  "simulator": {
+    "sha256": "cc201d96798f7acbb2ad8bedfe4913423a8501c89352f5e0a0554b1723b05b21"
+  },
+  "engine": {
+    "sha256": "d5cdfe64a20f96498541ee290efdd12cde4028629ed9bea314fb752df8a3a50b"
+  },
+  "seeds": {
+    "source": "visible",
+    "count": 100,
+    "sha256": "f9e2dbde0ae4640704fb66ee02c101cf84abe35137363d62647622606df61279",
+    "allVisible": true
+  },
+  "bots": [
+    {
+      "name": "random",
+      "spec": "baseline:random",
+      "sha256": "46675703a672d829702f72e45d066865333333e751ddd858ef62867342869bec",
+      "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+    },
+    {
+      "name": "cheapest",
+      "spec": "baseline:cheapest",
+      "sha256": "8bd3037ec756099fa29e6e71cf433ddd7516d363e197179ab04c2cb46b60d992",
+      "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+    },
+    {
+      "name": "merger",
+      "spec": "baseline:merger",
+      "sha256": "688803ba1b9d3a52473d804543452e559bd1f383e5a652ad7a84f86f573a0450",
+      "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+    }
+  ],
+  "winRate": {
+    "random": {
+      "random": 0.5,
+      "cheapest": 0.0075,
+      "merger": 0.005
+    },
+    "cheapest": {
+      "random": 0.9925,
+      "cheapest": 0.5,
+      "merger": 0.57
+    },
+    "merger": {
+      "random": 0.995,
+      "cheapest": 0.43,
+      "merger": 0.5
+    }
+  },
+  "pairs": [
+    {
+      "a": "random",
+      "b": "random",
+      "matches": 200,
+      "wins": 55,
+      "draws": 90,
+      "losses": 55,
+      "points": 100,
+      "winRate": 0.5,
+      "meanDays": 4.04,
+      "meanTrophies": [
+        0.56,
+        0.56
+      ],
+      "runsWon": [
+        0,
+        0
+      ],
+      "invalidSnapshots": [
+        0,
+        0
+      ]
+    },
+    {
+      "a": "random",
+      "b": "cheapest",
+      "matches": 200,
+      "wins": 0,
+      "draws": 3,
+      "losses": 197,
+      "points": 1.5,
+      "winRate": 0.0075,
+      "meanDays": 4.02,
+      "meanTrophies": [
+        0.065,
+        3.13
+      ],
+      "runsWon": [
+        0,
+        0
+      ],
+      "invalidSnapshots": [
+        0,
+        0
+      ]
+    },
+    {
+      "a": "random",
+      "b": "merger",
+      "matches": 200,
+      "wins": 0,
+      "draws": 2,
+      "losses": 198,
+      "points": 1,
+      "winRate": 0.005,
+      "meanDays": 4.02,
+      "meanTrophies": [
+        0.065,
+        3.145
+      ],
+      "runsWon": [
+        0,
+        0
+      ],
+      "invalidSnapshots": [
+        0,
+        0
+      ]
+    },
+    {
+      "a": "cheapest",
+      "b": "cheapest",
+      "matches": 200,
+      "wins": 0,
+      "draws": 200,
+      "losses": 0,
+      "points": 100,
+      "winRate": 0.5,
+      "meanDays": 4.93,
+      "meanTrophies": [
+        1.16,
+        1.16
+      ],
+      "runsWon": [
+        0,
+        0
+      ],
+      "invalidSnapshots": [
+        0,
+        0
+      ]
+    },
+    {
+      "a": "cheapest",
+      "b": "merger",
+      "matches": 200,
+      "wins": 64,
+      "draws": 100,
+      "losses": 36,
+      "points": 114,
+      "winRate": 0.57,
+      "meanDays": 4.46,
+      "meanTrophies": [
+        1.14,
+        0.89
+      ],
+      "runsWon": [
+        0,
+        0
+      ],
+      "invalidSnapshots": [
+        0,
+        0
+      ]
+    },
+    {
+      "a": "merger",
+      "b": "merger",
+      "matches": 200,
+      "wins": 0,
+      "draws": 200,
+      "losses": 0,
+      "points": 100,
+      "winRate": 0.5,
+      "meanDays": 4.75,
+      "meanTrophies": [
+        0.98,
+        0.98
+      ],
+      "runsWon": [
+        0,
+        0
+      ],
+      "invalidSnapshots": [
+        0,
+        0
+      ]
+    }
+  ],
+  "counters": {
+    "random": {
+      "calls": 15530,
+      "actions": 12306,
+      "illegal": 0,
+      "malformed": 0,
+      "decideErrors": 0,
+      "dropped": 0,
+      "impure": 0
+    },
+    "cheapest": {
+      "calls": 11163,
+      "actions": 7495,
+      "illegal": 0,
+      "malformed": 0,
+      "decideErrors": 0,
+      "dropped": 0,
+      "impure": 0
+    },
+    "merger": {
+      "calls": 11210,
+      "actions": 7654,
+      "illegal": 0,
+      "malformed": 0,
+      "decideErrors": 0,
+      "dropped": 0,
+      "impure": 0
+    }
+  }
+}
