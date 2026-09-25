@@ -104,6 +104,43 @@ def fetch_props(base_url, timeout=5):
         return {'error': f'{url} did not return JSON: {e}'}
 
 
+def probe_decode_rate(base_url, model, timeout=15):
+    """Best-effort tiny completion probe. Keep its result separate from
+    benchmark metrics: this measures startup state and can perturb caches."""
+    url = base_url.rstrip('/') + '/v1/completions'
+    started = time.monotonic()
+    payload = json.dumps({'model': model, 'prompt': 'Reply with one word: ready',
+                          'max_tokens': 8, 'temperature': 0,
+                          'stream': False}).encode()
+    req = urllib.request.Request(url, data=payload, method='POST',
+                                 headers={'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            result = json.loads(resp.read())
+    except Exception as e:  # noqa: BLE001 -- probe must not block a run
+        return {'url': url, 'error': str(e)}
+    if not isinstance(result, dict):
+        return {'url': url, 'error': 'completion endpoint returned a non-object JSON value'}
+    elapsed = time.monotonic() - started
+    usage = result.get('usage') or {}
+    timings = result.get('timings') or {}
+    if not isinstance(usage, dict) or not isinstance(timings, dict):
+        return {'url': url, 'elapsedSeconds': round(elapsed, 3),
+                'error': 'completion endpoint returned malformed usage or timings'}
+    count = usage.get('completion_tokens')
+    predicted_ms = timings.get('predicted_ms')
+    if count is None:
+        count = timings.get('predicted_n')
+    rate = (round(timings['predicted_per_second'], 2)
+            if isinstance(timings.get('predicted_per_second'), (int, float))
+            else round(count * 1000 / predicted_ms, 2)
+            if isinstance(count, (int, float)) and isinstance(predicted_ms, (int, float))
+            and predicted_ms > 0 else None)
+    return {'url': url, 'elapsedSeconds': round(elapsed, 3),
+            'completionTokens': count, 'decodeTokensPerSecond': rate,
+            'serverTimings': timings or None}
+
+
 def find_server_cmdline(port=None):
     """Best-effort `ps` scan for a running `llama-server` process, for the
     flags `/props` does not surface (KV type, device, tensor-split).
@@ -234,7 +271,7 @@ def image_provenance(image_ref):
     return result
 
 
-def capture(base_url, *, image_ref=None, port=None,
+def capture(base_url, *, image_ref=None, port=None, model=None,
             hash_max_bytes=DEFAULT_HASH_MAX_BYTES, include_host_info=True):
     """Assemble the full provenance record. `include_host_info=False` skips
     the process/filesystem/GPU probes that only make sense on the machine
@@ -245,6 +282,8 @@ def capture(base_url, *, image_ref=None, port=None,
         'propsUrl': base_url.rstrip('/') + '/props',
     }
     ctx['props'] = fetch_props(base_url)
+    if model:
+        ctx['decodeRateProbe'] = probe_decode_rate(base_url, model)
     if include_host_info:
         cmdline = find_server_cmdline(port=port)
         ctx['processCmdline'] = cmdline
@@ -264,9 +303,12 @@ def main(argv):
         return 2
     base_url = argv[0]
     image_ref = None
+    model = None
     if '--image' in argv:
         image_ref = argv[argv.index('--image') + 1]
-    json.dump(capture(base_url, image_ref=image_ref), sys.stdout, indent=2)
+    if '--model' in argv:
+        model = argv[argv.index('--model') + 1]
+    json.dump(capture(base_url, image_ref=image_ref, model=model), sys.stdout, indent=2)
     sys.stdout.write('\n')
     return 0
 

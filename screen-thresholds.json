@@ -1,0 +1,13 @@
+{
+  "revision": "pending-2026-09-25",
+  "status": "pending_calibration",
+  "calibrationEvidence": null,
+  "minimums": {
+    "schemaAdherence": null,
+    "toolSelection": null,
+    "shortChainsDepth": null,
+    "refusal": null,
+    "recall": null,
+    "abstention": null
+  }
+}

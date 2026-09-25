@@ -1,0 +1,190 @@
+[
+  {
+    "id": "goblin_ambush",
+    "name": "Goblin Ambush",
+    "hp": 300,
+    "slots": [
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal"
+    ],
+    "entries": [
+      {
+        "slot": 0,
+        "itemId": "bone_club",
+        "rarity": 0
+      },
+      {
+        "slot": 1,
+        "itemId": "iron_sword",
+        "rarity": 0
+      }
+    ],
+    "reward": {
+      "gold": 20,
+      "perk": null,
+      "item": {
+        "itemId": "hummingbird_needle",
+        "rarity": 0
+      }
+    }
+  },
+  {
+    "id": "needle_swarm",
+    "name": "Needle Swarm",
+    "hp": 400,
+    "slots": [
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal"
+    ],
+    "entries": [
+      {
+        "slot": 0,
+        "itemId": "hummingbird_needle",
+        "rarity": 2
+      },
+      {
+        "slot": 1,
+        "itemId": "tower_shield",
+        "rarity": 0
+      }
+    ],
+    "reward": {
+      "gold": 30,
+      "perk": "quickdraw",
+      "item": null
+    }
+  },
+  {
+    "id": "iron_warden",
+    "name": "Iron Warden",
+    "hp": 1200,
+    "slots": [
+      "Damage",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal"
+    ],
+    "entries": [
+      {
+        "slot": 0,
+        "itemId": "war_axe",
+        "rarity": 1
+      },
+      {
+        "slot": 1,
+        "itemId": "glacier_shield",
+        "rarity": 1
+      },
+      {
+        "slot": 2,
+        "itemId": "bone_club",
+        "rarity": 1
+      }
+    ],
+    "reward": {
+      "gold": 40,
+      "perk": "bulwark",
+      "item": null
+    }
+  },
+  {
+    "id": "ember_court",
+    "name": "Ember Court",
+    "hp": 900,
+    "slots": [
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal"
+    ],
+    "entries": [
+      {
+        "slot": 0,
+        "itemId": "flame_brand",
+        "rarity": 1
+      },
+      {
+        "slot": 1,
+        "itemId": "pyre_staff",
+        "rarity": 1
+      },
+      {
+        "slot": 2,
+        "itemId": "ember_orb",
+        "rarity": 1
+      }
+    ],
+    "reward": {
+      "gold": 40,
+      "perk": "whetstone",
+      "item": null
+    }
+  },
+  {
+    "id": "gilded_hoard",
+    "name": "Gilded Hoard",
+    "hp": 1500,
+    "slots": [
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal",
+      "Normal"
+    ],
+    "entries": [
+      {
+        "slot": 0,
+        "itemId": "long_spear",
+        "rarity": 1
+      },
+      {
+        "slot": 1,
+        "itemId": "hunters_bow",
+        "rarity": 1
+      },
+      {
+        "slot": 2,
+        "itemId": "tower_shield",
+        "rarity": 1
+      }
+    ],
+    "reward": {
+      "gold": 60,
+      "perk": "fortune",
+      "item": null
+    }
+  }
+]
