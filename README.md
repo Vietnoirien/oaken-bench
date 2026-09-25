@@ -279,6 +279,28 @@ vocabulary) is still constant across runs, the same lower-but-nonzero contaminat
 `toolbattery.py` carries. See
 [CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
 
+### Comparing the T0.5 harness effect
+
+`scripts/harness_effect.py` runs the same seeded ledger and present/absent questions through
+direct mode, pi, and dsh, then reports per-mode recall and abstention counts plus the
+difference from direct mode. Its artefact contains counts, status, elapsed time, and a
+SHA-256 digest of the shared question set. It does not contain expected values or raw model
+answers.
+
+Every run requires an explicit `--base-url`; port 8080 is rejected. The pi and dsh adapters
+create temporary configs that point to this URL rather than using the checked-in endpoint.
+For example, with a separate test server:
+
+```bash
+./scripts/harness_effect.py --model your-model --base-url http://127.0.0.1:18081/v1 \
+  --depths 4k,16k --out harness-effect-results/run.json
+```
+
+`--pi-command` and `--dsh-command` can supply alternate CLI commands or fakes. The shared
+cases control the question set; each harness still applies its own prompting, context
+handling, and retries. Unit coverage uses fake subprocesses; this battery has not been run
+against live models or harnesses.
+
 ## Layout
 
 ```

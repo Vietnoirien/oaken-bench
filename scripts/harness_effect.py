@@ -1,0 +1,287 @@
+#!/usr/bin/env python3
+"""Compare direct, pi, and dsh on one seeded T0.5 question set.
+
+Each mode gets byte-identical ledger text and question wording. The artefact
+contains only aggregate counts and a digest of the case set: expected values
+and model answers stay in memory, where publishing either would turn this
+public screening probe into a reusable answer key.
+
+pi and dsh run in fresh temporary directories and are asked to return a JSON
+object as their final answer. Their command lines can be replaced for tests or
+alternate installs with `--pi-command` / `--dsh-command` (a shell-like argv
+string; `{prompt}` is replaced by the prompt as one argument). No shell is
+used to execute them.
+"""
+import argparse
+import hashlib
+import json
+import os
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from datetime import datetime, timezone
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import abstain  # noqa: E402
+import direct  # noqa: E402
+import haystack  # noqa: E402
+import recall  # noqa: E402
+
+SCHEMA_VERSION = 1
+DEFAULT_DEPTHS = (4096, 16384, 32768, 65536, 131072)
+
+
+def build_case_set(depth_tokens, seed, *, chars_per_token=None, count_tokens_fn=None,
+                   num_facts=3, num_abstention_each=2):
+    """Build the ground truth once; all modes consume this immutable case set."""
+    depth_seed = recall._depth_seed(seed, depth_tokens)
+    stack = haystack.generate_haystack(
+        seed=depth_seed, target_tokens=depth_tokens, num_facts=num_facts,
+        position_fractions=recall.POSITION_FRACTIONS[:num_facts],
+        chars_per_token=chars_per_token or haystack.DEFAULT_CHARS_PER_TOKEN,
+        count_tokens_fn=count_tokens_fn)
+    absent = abstain.build_abstention_questions(
+        stack, seed=depth_seed + 1, num_each=num_abstention_each)
+    all_pairs = [(f.entity, f.attribute) for f in stack.facts]
+    all_pairs.extend((q.entity, q.attribute) for q in absent)
+    canonical = json.dumps({
+        'seed': depth_seed, 'depthTokens': depth_tokens, 'text': stack.text,
+        'facts': [(f.entity, f.attribute, f.value, f.depth_position) for f in stack.facts],
+        'absent': [(q.entity, q.attribute, q.kind) for q in absent],
+    }, sort_keys=True, separators=(',', ':')).encode()
+    return {
+        'haystack': stack, 'absent': tuple(absent), 'pairs': tuple(all_pairs),
+        'digest': hashlib.sha256(canonical).hexdigest(),
+    }
+
+
+def build_prompt(case_set):
+    """Plain-text contract shared byte-for-byte by all three modes."""
+    stack = case_set['haystack']
+    pairs = [(f.entity, f.attribute) for f in stack.facts]
+    pairs.extend((q.entity, q.attribute) for q in case_set['absent'])
+    lines = [f'- entity {entity!r}, attribute {attribute!r}' for entity, attribute in pairs]
+    return (
+        'Use only the document below. For each listed entity and attribute, give the value '
+        'exactly as written. Do not guess or use outside knowledge. If a pair is not stated, '
+        f'answer exactly {abstain.INSTRUCTED_PHRASE!r}. Return one answer for every pair.\n\n'
+        'DOCUMENT\n' + stack.text + '\n\nPAIRS\n' + '\n'.join(lines) +
+        '\n\nReturn only one JSON object with this shape: '
+        '{"answers":[{"entity":"...","attribute":"...","value":"..."}, ...]}.'
+    )
+
+
+def parse_answers(text):
+    """Read a final JSON answer without retaining arbitrary prose in reports."""
+    if not isinstance(text, str):
+        return None
+    candidates = [text.strip()]
+    start, end = text.find('{'), text.rfind('}')
+    if start >= 0 and end > start:
+        candidates.append(text[start:end + 1])
+    for candidate in candidates:
+        try:
+            value = json.loads(candidate)
+        except (ValueError, TypeError):
+            continue
+        if isinstance(value, dict) and isinstance(value.get('answers'), list):
+            return value
+    return None
+
+
+def score_answers(case_set, answers):
+    """Return aggregate counts only; answer values and planted facts are dropped."""
+    present = recall._score_recall(case_set['haystack'].facts, answers)
+    absent = recall._score_abstention(case_set['absent'], answers)
+    pc = recall._present_question_counts(present)
+    ac = recall._abstention_counts(absent)
+    return {
+        'present': {k: pc[k] for k in (recall.CORRECT_ANSWER, recall.WRONG_ANSWER,
+                                      recall.FALSE_ABSTENTION, 'total')},
+        'absent': {k: ac['overall'][k] for k in
+                   (recall.CORRECT_ABSTENTION, recall.INVENTED_ANSWER, 'total')},
+        'abstentionByKind': {
+            kind: {k: v[k] for k in (recall.CORRECT_ABSTENTION,
+                                      recall.INVENTED_ANSWER, 'total')}
+            for kind, v in ac['byKind'].items()},
+    }
+
+
+def _run_command(command, prompt, timeout, cwd, env):
+    argv = [part.replace('{prompt}', prompt) for part in command]
+    if not any('{prompt}' in part for part in command):
+        argv.append(prompt)
+    start = time.monotonic()
+    completed = subprocess.run(argv, cwd=cwd, stdin=subprocess.DEVNULL,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True, timeout=timeout, check=False, env=env)
+    return completed, time.monotonic() - start
+
+
+def _checked_base_url(base_url):
+    from urllib.parse import urlsplit
+    if not base_url:
+        raise ValueError('an explicit --base-url is required for every mode')
+    parsed = urlsplit(base_url)
+    if parsed.port == 8080:
+        raise ValueError('port 8080 is reserved by another project; choose a separate endpoint')
+    if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+        raise ValueError('base URL must be an absolute http(s) URL')
+    return base_url.rstrip('/')
+
+
+def run_harness(mode, prompt, *, model, base_url, timeout, command=None):
+    base_url = _checked_base_url(base_url)
+    if mode == 'direct':
+        response = direct.chat(
+            base_url, model,
+            [{'role': 'system', 'content': 'Return the requested JSON only.'},
+             {'role': 'user', 'content': prompt}], max_tokens=1024,
+            timeout=timeout, api_key=direct.api_key_from_env())
+        choice = (response.get('choices') or [{}])[0]
+        message = choice.get('message') or {}
+        raw = message.get('content')
+        answers = parse_answers(raw)
+        # Some OpenAI-compatible servers return tool calls even when the prompt
+        # requests plain JSON. Accept the same schema used by recall.py.
+        if answers is None:
+            answers = recall._first_tool_call(message)
+        return answers, None
+
+    if mode not in ('pi', 'dsh'):
+        raise ValueError(f'unknown mode: {mode}')
+    if command is None:
+        if mode == 'pi':
+            provider = os.environ.get('OAKEN_PI_PROVIDER', 'local-llama')
+            command = ['pi', '--provider', provider, '--model', model,
+                       '--api-key', 'local', '-p', '--mode', 'text']
+        else:
+            command = ['dsh', '--profile', 'headless']
+    with tempfile.TemporaryDirectory(prefix=f'oaken-{mode}-') as cwd:
+        env = os.environ.copy()
+        env['HOME'] = cwd
+        if mode == 'pi':
+            config_dir = os.path.join(cwd, '.pi', 'agent')
+            os.makedirs(config_dir)
+            with open(os.path.join(config_dir, 'models.json'), 'w', encoding='utf-8') as f:
+                json.dump({'providers': {'local-llama': {
+                    'baseUrl': base_url, 'api': 'openai-completions', 'apiKey': 'local',
+                    'models': [{'id': model, 'name': model, 'contextWindow': 262144,
+                                'maxTokens': 32768, 'input': ['text']}],
+                }}}, f)
+        else:
+            source = os.path.join(os.path.dirname(__file__), '..', 'docker', 'config', 'dsh')
+            target = os.path.join(cwd, '.dsh')
+            shutil.copytree(source, target)
+            settings_path = os.path.join(target, 'settings.yaml')
+            with open(settings_path, encoding='utf-8') as f:
+                settings = f.read()
+            settings = settings.replace('http://llama:8080/v1', base_url)
+            settings = settings.replace('gemma-4-12B-it-qat-UD-Q4_K_XL.gguf', model)
+            with open(settings_path, 'w', encoding='utf-8') as f:
+                f.write(settings)
+            env['LOCAL_LLAMA_KEY'] = 'local'
+        completed, elapsed = _run_command(command, prompt, timeout, cwd, env)
+    if completed.returncode:
+        raise RuntimeError(f'{mode} exited {completed.returncode}')
+    return parse_answers(completed.stdout), elapsed
+
+
+def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct', 'pi', 'dsh'),
+                   pi_command=None, dsh_command=None):
+    base_url = _checked_base_url(base_url)
+    result_depths = []
+    for depth in depths:
+        case_set = build_case_set(depth, seed)
+        prompt = build_prompt(case_set)
+        mode_results = {}
+        for mode in modes:
+            command = (shlex.split(pi_command) if mode == 'pi' and pi_command else
+                       shlex.split(dsh_command) if mode == 'dsh' and dsh_command else None)
+            start = time.monotonic()
+            try:
+                answers, elapsed = run_harness(mode, prompt, model=model, base_url=base_url,
+                                               timeout=timeout, command=command)
+                mode_results[mode] = {
+                    'status': 'ok' if answers is not None else 'unparseable',
+                    'score': score_answers(case_set, answers),
+                    'elapsedSeconds': round(elapsed if elapsed is not None else
+                                             time.monotonic() - start, 3),
+                }
+            except Exception as exc:  # each adapter failure is an observed outcome
+                mode_results[mode] = {'status': 'error', 'errorType': type(exc).__name__}
+        result_depths.append({
+            'depthTokens': depth, 'questionSetDigest': case_set['digest'], 'modes': mode_results,
+        })
+    effects = {}
+    for mode in modes:
+        successful = [d['modes'][mode]['score'] for d in result_depths
+                      if d['modes'][mode].get('status') == 'ok']
+        effects[mode] = {
+            'presentCorrect': sum(s['present'][recall.CORRECT_ANSWER] for s in successful),
+            'presentTotal': sum(s['present']['total'] for s in successful),
+            'absentCorrect': sum(s['absent'][recall.CORRECT_ABSTENTION] for s in successful),
+            'absentTotal': sum(s['absent']['total'] for s in successful),
+            'depthsScored': len(successful),
+        }
+        effects[mode]['presentScore'] = _rate(effects[mode]['presentCorrect'],
+                                              effects[mode]['presentTotal'])
+        effects[mode]['absentScore'] = _rate(effects[mode]['absentCorrect'],
+                                             effects[mode]['absentTotal'])
+    return {
+        'schemaVersion': SCHEMA_VERSION, 'model': model, 'seed': seed,
+        'modes': list(modes), 'depths': result_depths, 'byMode': effects,
+        'harnessEffect': {
+            'piMinusDirectPresentPercentagePoints': _difference(effects, 'pi', 'direct', 'presentScore'),
+            'dshMinusDirectPresentPercentagePoints': _difference(effects, 'dsh', 'direct', 'presentScore'),
+            'piMinusDirectAbsentPercentagePoints': _difference(effects, 'pi', 'direct', 'absentScore'),
+            'dshMinusDirectAbsentPercentagePoints': _difference(effects, 'dsh', 'direct', 'absentScore'),
+            'note': 'score differences are percentage points; each score uses that mode’s successfully scored shared cases',
+        },
+    }
+
+
+def _difference(effects, left, right, key):
+    if left not in effects or right not in effects:
+        return None
+    a, b = effects[left][key], effects[right][key]
+    return round((a - b) * 100, 2) if a is not None and b is not None else None
+
+
+def _rate(correct, total):
+    return round(correct / total, 4) if total else None
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('--model', required=True)
+    parser.add_argument('--base-url', required=True,
+                        help='explicit model endpoint; port 8080 is rejected')
+    parser.add_argument('--depths', default='4k,16k,32k,64k,128k')
+    parser.add_argument('--seed', type=int, default=20260924)
+    parser.add_argument('--timeout', type=int, default=180)
+    parser.add_argument('--modes', default='direct,pi,dsh')
+    parser.add_argument('--pi-command')
+    parser.add_argument('--dsh-command')
+    parser.add_argument('--out', required=True, help='JSON output path')
+    args = parser.parse_args(argv)
+    depths = [recall.parse_depth(item) for item in args.depths.split(',')]
+    report = run_comparison(depths, args.seed, args.model, base_url=args.base_url,
+                            timeout=args.timeout,
+                            modes=tuple(args.modes.split(',')),
+                            pi_command=args.pi_command, dsh_command=args.dsh_command)
+    report['createdAt'] = datetime.now(timezone.utc).isoformat()
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+    with open(args.out, 'w', encoding='utf-8') as stream:
+        json.dump(report, stream, indent=2)
+        stream.write('\n')
+    print(json.dumps(report['byMode'], indent=2))
+    print(json.dumps(report['harnessEffect'], indent=2))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
