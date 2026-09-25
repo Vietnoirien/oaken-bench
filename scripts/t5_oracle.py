@@ -12,6 +12,8 @@ import sys
 import tarfile
 import tempfile
 
+from events import load_dsh_events, load_pi_events, normalize_calls, t5_behavior_metrics
+
 ROOT = Path(__file__).resolve().parent.parent
 ARCHIVE = ROOT / 't5oracle.tar.gz.enc'
 DIGEST = ROOT / 't5oracle.sha256'
@@ -107,15 +109,45 @@ def score_run(result_dir, detail=True):
         report = json.loads(output.read_text())
         if report.get('tier') != 't5' or report.get('matches') != 144:
             raise ValueError('invalid T5 score')
+        report['behaviorMetrics'] = behavior_for_run(result_dir, bot, report['winRate'])
         destination = result_dir / 'score.json'
         staged = result_dir / 'score.json.tmp'
-        staged.write_bytes(output.read_bytes())
+        staged.write_text(json.dumps(report, indent=2) + '\n')
         staged.replace(destination)
     print(f"{result_dir.name}: {report['wins']}/{report['matches']} "
           f"win rate {report['winRate']} "
           f"95% CI [{report['confidenceInterval']['lower']}, "
           f"{report['confidenceInterval']['upper']}]")
     return report
+
+
+def behavior_for_run(result_dir, bot, held_rate):
+    """Read a local or archived harness trace without copying its raw content
+    into a published result. A direct oracle run has no harness trace."""
+    source_path = ROOT / 't5' / 'bots' / f'{bot[9:]}.ts' if bot.startswith('baseline:') else Path(bot)
+    try:
+        source = source_path.read_text()
+    except (OSError, UnicodeError):
+        source = None
+    candidates = [result_dir, Path(os.environ.get('OAKEN_ARCHIVE',
+                                                Path.home() / '.cache/oaken-bench')) / result_dir.name]
+    for directory in candidates:
+        for filename, harness, loader in (
+                ('pi-events.jsonl', 'pi', load_pi_events),
+                ('dsh-sessions.tgz', 'dsh', load_dsh_events)):
+            trace = directory / filename
+            if not trace.is_file():
+                continue
+            events = loader(trace)
+            if events:
+                metrics = t5_behavior_metrics(normalize_calls(events, harness), source,
+                                              held_rate, bot_spec=bot)
+                return {'schemaVersion': 1, 'traceAvailable': True, 'harness': harness, **metrics}
+    return {'schemaVersion': 1, 'traceAvailable': False, 'harness': None,
+            'simulationsRun': None, 'strategiesTried': None,
+            'visibleSeedHardCoding': {'visibleRate': None, 'heldOutRate': held_rate,
+                                      'visibleMinusHeldOut': None,
+                                      'sourceSeedLiteralCount': None}}
 
 
 def summary_row(data, label, tier):
@@ -126,6 +158,7 @@ def summary_row(data, label, tier):
         'bot': data['bot']['spec'], 'matches': data['matches'],
         'winRate': data['winRate'], 'ci': data['confidenceInterval'],
         'oracle': data['oracle']['archiveSha256'],
+        'behaviorMetrics': data.get('behaviorMetrics'),
     }
 
 
@@ -136,6 +169,13 @@ def print_summary(label, rows):
         print(f"{row['label']}: {row['bot']}  {row['winRate']:.4f} "
               f"95% CI [{ci['lower']:.4f}, {ci['upper']:.4f}] "
               f"n={row['matches']} oracle={row['oracle'][:12]}")
+        behavior = row.get('behaviorMetrics') or {}
+        if behavior.get('traceAvailable'):
+            hard = behavior['visibleSeedHardCoding']
+            print(f"  simulations={behavior['simulationsRun']} "
+                  f"strategies={behavior['strategiesTried']} "
+                  f"visible-minus-held-out={hard['visibleMinusHeldOut']} "
+                  f"seed-literals={hard['sourceSeedLiteralCount']}")
 
 
 def main():

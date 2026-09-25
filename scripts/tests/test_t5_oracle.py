@@ -9,7 +9,7 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from t5_oracle import ARCHIVE, DIGEST, META, ROOT, open_pool, score_run  # noqa: E402
+from t5_oracle import ARCHIVE, DIGEST, META, ROOT, behavior_for_run, open_pool, score_run  # noqa: E402
 from tiers import resolve_tier  # noqa: E402
 
 NODE = os.environ.get('OAKEN_T5_NODE') or shutil.which('node')
@@ -29,6 +29,31 @@ def test_namespace():
     assert resolve_tier('t5-cheapest-01').id == 't5'
     assert resolve_tier('pi-01').id == 't2'
     assert resolve_tier('t5-cheapest-01').score is not resolve_tier('pi-01').score
+
+
+def test_behavior_reads_archived_pi_trace_without_publishing_arguments(tmp_path, monkeypatch):
+    result = tmp_path / 'results' / 't5-synthetic'
+    result.mkdir(parents=True)
+    archive = tmp_path / 'archive'
+    (archive / result.name).mkdir(parents=True)
+    bot = tmp_path / 'bot.ts'
+    bot.write_text('export function decide(state) { return state.botSeed === 7 ? [] : []; }')
+    events = [
+        {'type': 'tool_execution_start', 'toolCallId': 'a', 'toolName': 'bash',
+         'args': {'cmd': 't5-sim play --bot bot.ts --vs baseline:random; secret-tool-arg'}},
+        {'type': 'tool_execution_end', 'toolCallId': 'a', 'isError': False,
+         'result': {'content': [{'type': 'text', 'text': 'secret-result'}]}},
+    ]
+    (archive / result.name / 'pi-events.jsonl').write_text(
+        ''.join(json.dumps(e) + '\n' for e in events))
+    monkeypatch.setenv('OAKEN_ARCHIVE', str(archive))
+    metrics = behavior_for_run(result, str(bot), 0.5)
+    assert metrics['traceAvailable'] is True
+    assert metrics['simulationsRun'] == 1
+    assert metrics['strategiesTried'] == 1
+    assert metrics['visibleSeedHardCoding']['sourceSeedLiteralCount'] == 1
+    assert 'secret' not in json.dumps(metrics)
+    assert 'bot.ts' not in json.dumps(metrics)
 
 
 def test_seal_roundtrip(tmp_path):
