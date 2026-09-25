@@ -20,9 +20,9 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from toolbattery import (  # noqa: E402
     DEFAULT_BASE_URL, REFUSAL_TOOLS, SCHEMA_VERSION, TOOL_BOOK_ROOM,
-    TOOL_CREATE_REMINDER, TOOL_GET_WEATHER, _slug, _to_call, chat,
-    parse_message, run_battery, score_dependency, score_error_recovery,
-    score_refusal, score_schema_adherence, score_tool_selection,
+    TOOL_CREATE_REMINDER, TOOL_EDIT_FILE, TOOL_GET_WEATHER, _schema_adherence_by_tool,
+    _slug, _to_call, chat, parse_message, run_battery, score_dependency,
+    score_error_recovery, score_refusal, score_schema_adherence, score_tool_selection,
     server_reachable, strip_reasoning,
 )
 
@@ -144,6 +144,39 @@ def test_schema_adherence_fails_when_wrong_tool_called():
 def test_schema_adherence_fails_when_no_call_made():
     passed, reasons = score_schema_adherence(TOOL_BOOK_ROOM, None)
     assert passed is False
+
+
+# ---------------------------------------------------------------------------
+# Compound-schema probes (#15): a required top-level scalar (`path`) plus a
+# required nested array-of-objects (`edits[]`), shaped like pi's real `edit`
+# tool -- exactly the shape that let a live Gemma run score schemaAdherence
+# 3/3 while failing 17/17 real `edit` calls, all by omitting `path` while
+# filling in the nested array correctly.
+# ---------------------------------------------------------------------------
+
+def test_schema_adherence_passes_on_well_formed_compound_call():
+    c = call('edit_file', {'path': 'runbook.md',
+                            'edits': [{'oldText': 'Owner: TBD', 'newText': 'Owner: SRE'}]})
+    passed, reasons = score_schema_adherence(TOOL_EDIT_FILE, c)
+    assert passed is True
+    assert reasons == []
+
+
+def test_schema_adherence_catches_the_exact_15_failure_mode():
+    # The nested edits[] is filled in correctly; only the sibling top-level
+    # scalar `path` is missing. A flat probe cannot construct this case at
+    # all -- there is no sibling to drop.
+    c = call('edit_file', {'edits': [{'oldText': 'Owner: TBD', 'newText': 'Owner: SRE'}]})
+    passed, reasons = score_schema_adherence(TOOL_EDIT_FILE, c)
+    assert passed is False
+    assert any('missing required' in r and 'path' in r for r in reasons)
+
+
+def test_schema_adherence_compound_still_checks_the_nested_arrays_type():
+    c = call('edit_file', {'path': 'runbook.md', 'edits': 'Owner: SRE'})  # not an array
+    passed, reasons = score_schema_adherence(TOOL_EDIT_FILE, c)
+    assert passed is False
+    assert any('type mismatch' in r for r in reasons)
 
 
 def test_schema_adherence_boolean_not_mistaken_for_integer():
@@ -296,6 +329,48 @@ def test_refusal_fails_when_a_tool_is_called_anyway():
 # misc
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# _schema_adherence_by_tool: per-tool breakdown (#15)
+# ---------------------------------------------------------------------------
+
+def test_schema_adherence_by_tool_hides_nothing_behind_the_aggregate():
+    # The scenario the issue is named for: three flat probes pass, the one
+    # compound-schema probe fails. The aggregate (3/4, 75%) reads fine; the
+    # breakdown must still show book_meeting_room clean and edit_file at 0%.
+    cases = [
+        {'case': 'room-basic', 'passed': True, 'reasons': [], 'expectedTool': 'book_meeting_room'},
+        {'case': 'room-recurring', 'passed': True, 'reasons': [], 'expectedTool': 'book_meeting_room'},
+        {'case': 'weather-units', 'passed': True, 'reasons': [], 'expectedTool': 'get_weather'},
+        {'case': 'edit-single', 'passed': False, 'reasons': ['missing required params'],
+         'expectedTool': 'edit_file'},
+    ]
+    by_tool = _schema_adherence_by_tool(cases)
+    assert by_tool['book_meeting_room'] == {'passed': 2, 'total': 2, 'notAttempted': 0, 'score': 1.0}
+    assert by_tool['edit_file'] == {'passed': 0, 'total': 1, 'notAttempted': 0, 'score': 0.0}
+    assert by_tool['get_weather']['score'] == 1.0
+
+
+def test_schema_adherence_by_tool_excludes_not_attempted_from_its_own_denominator():
+    cases = [
+        {'case': 'edit-single', 'passed': None, 'reasons': [], 'expectedTool': 'edit_file'},
+    ]
+    by_tool = _schema_adherence_by_tool(cases)
+    assert by_tool['edit_file'] == {'passed': 0, 'total': 0, 'notAttempted': 1, 'score': None}
+
+
+def test_schema_adherence_by_tool_skips_cases_with_no_expected_tool():
+    cases = [{'case': 'x', 'passed': True, 'reasons': []}]  # no 'expectedTool' key
+    assert _schema_adherence_by_tool(cases) == {}
+
+
+def test_run_schema_adherence_cases_now_include_the_compound_probes():
+    from toolbattery import SCHEMA_CASES
+    tool_names = {tool['function']['name'] for _, _, tool in SCHEMA_CASES}
+    assert 'edit_file' in tool_names
+    edit_cases = [c for c in SCHEMA_CASES if c[2]['function']['name'] == 'edit_file']
+    assert len(edit_cases) >= 2  # at least one is not enough to rule out passing by chance
+
+
 def test_slug_is_filesystem_safe():
     assert _slug('gemma-4-12B-it-qat-UD-Q4_K_XL.gguf') == 'gemma-4-12B-it-qat-UD-Q4_K_XL.gguf'
     assert '/' not in _slug('weird/model:name?')
@@ -339,3 +414,4 @@ def test_live_full_battery_runs_and_produces_the_expected_shape():
     assert set(report['dimensions']) == {
         'schemaAdherence', 'toolSelection', 'multiStepDependency', 'errorRecovery', 'refusal'}
     assert report['overall']['total'] == sum(d['total'] for d in report['dimensions'].values())
+    assert 'edit_file' in report['dimensions']['schemaAdherence']['byTool']
