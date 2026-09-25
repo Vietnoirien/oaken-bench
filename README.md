@@ -6,9 +6,9 @@ Harness comparison is T2.
 
 ## Tiers
 
-T0 and T0.5 are direct model probes. T1 and T3-T5 are planned task tiers whose
-implementations are in progress or deferred. Only T0, T0.5, and T2 have shipped
-commands. No T1 or T3-T5 measurements exist. The 53 committed `results/*`
+T0 and T0.5 are direct model probes. T1, T4, and T5 are planned task tiers whose
+implementations are in progress or deferred. T3 has a generator and runner, but
+no model measurements yet. The 53 committed `results/*`
 score files are T2 runs; their meaning and values are unchanged.
 
 | Tier | What it isolates | Status and command |
@@ -17,7 +17,7 @@ score files are T2 runs; their meaning and values are unchanged.
 | T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
 | T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred until more archived Gemma plateau runs can be examined. No command. |
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
-| T3 | Find and fix planted bugs against the reference engine. | Implementation in progress. No command or measurements yet. |
+| T3 | Find and fix planted bugs against the reference engine. | Generator and runner shipped; no model measurements. See [T3 setup](docs/T3.md). |
 | T4 | Extend the existing engine and count regressions against the earlier suite. | Implementation in progress. No command or measurements yet. |
 | T5 | Write a bot that plays the game, scored over held-out seeds. | Implementation in progress. No command or measurements yet. |
 
@@ -412,6 +412,9 @@ criterion. A skipped depth, transport error, or missing score cannot produce
 
 ## Layout
 
+For the planted-bug tier, see [docs/T3.md](docs/T3.md). It covers instance
+generation, sealing, runner setup, and scoring under `results/t3-<label>/`.
+
 ```
 seed/              the repo each run starts from (SPEC.md, src stubs, visible tests, frozen item data)
 hidden.tar.gz.enc  held-out suite, encrypted. `scripts/hidden.sh unlock` -> hidden/
@@ -628,9 +631,10 @@ result; a probe result is not a T2 task score.
    compare direct mode with pi and dsh, but no live comparison has run. Its
    result format and implementation do not establish whether either harness
    changes recall or abstention scores.
-9. **T1 and T3-T5 have no measurements.** T1 is deferred pending review of
-   more archived Gemma plateau runs. T3, T4, and T5 implementations are in
-   progress. Do not infer their performance from T2 or from the probe tiers.
+9. **T1 and T3-T5 have no model measurements.** T1 is deferred pending review of
+   more archived Gemma plateau runs. T3 has a no-model runner smoke test;
+   T4 and T5 implementations are in progress. Do not infer their performance
+   from T2 or from the probe tiers.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than 12 GB consumer cards.

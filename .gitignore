@@ -5,6 +5,7 @@
 # scripts/tests/test_hidden_bundles.py fails the build if this drifts.
 /hidden/
 /refengine/
+/t3instance/
 
 # Vendored offline dependencies. Restore with scripts/bootstrap.sh.
 node_modules/
