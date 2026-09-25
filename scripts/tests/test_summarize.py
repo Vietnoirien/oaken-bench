@@ -362,12 +362,11 @@ def _run_summarize():
 
 
 def test_committed_results_output_matches_golden_fixture():
-    """Regenerate scripts/tests/testdata/summarize_golden.txt (via
-    `python3 scripts/summarize.py > scripts/tests/testdata/summarize_golden.txt`)
-    whenever a new run is legitimately committed to results/ -- that is the
-    one expected reason this test's fixture goes stale. Any OTHER diff
-    means summarize.py changed what an already-committed run's row says,
-    which issue #36 explicitly rules out.
+    """Regenerate both summarize golden files when runs are committed.
+
+    This fixture is the current CLI output. The pre-tiering-format fixture
+    below is the same output with only the T2 heading removed. A change to
+    an existing row still needs review before either fixture is refreshed.
     """
     actual = _run_summarize()
     expected = open(GOLDEN).read()
@@ -375,11 +374,10 @@ def test_committed_results_output_matches_golden_fixture():
 
 
 def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
-    """summarize_golden_pre_tiering.txt was captured from this same
-    results/ tree on the commit immediately before tiering landed. Tiering
-    must add exactly one line -- the T2 heading -- and change nothing else:
-    same rows, same aggregates, same excluded list, same legend, same bar
-    line.
+    """Tiering adds only the T2 heading to the current results tree.
+
+    Keep the pre-tiering-format fixture in sync when new runs are committed;
+    new runs legitimately change rows and aggregates in both snapshots.
     """
     # The T5 block is new; the original T2 block must still match exactly.
     actual_lines = _run_summarize().split('=== T4 --')[0].split('T5 -- sealed snapshot-pool strategy')[0].splitlines()

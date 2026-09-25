@@ -278,7 +278,8 @@ traces under `~/.cache/oaken-bench/`:
 
 They used the held-out suite identified by `hidden.sha256` digest
 `fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97`.
-No canary-recall check was run on this model, so these scores do not rule out
+A private direct canary-recall query returned no GUID-shaped candidate and no
+matching canary digest. This single negative check does not rule out
 training-data contamination.
 
 Only 7 held-out test digests passed in all three runs; 55 passed in at least

@@ -14,6 +14,9 @@ dsh-gemma131k-04           crash                        27/132  20.4%  26/52  50
 dsh-gemma192k-01           incomplete_hidden_below_bar   98/132  74.2%  52/52 100.0%  +25.8   X   687s     44     43      ?    0~
 dsh-gemma192k-02           crash                        23/132  17.4%  30/52  57.7%  +40.3   X   369s     28     27      ?    0~
 dsh-gemma192k-03           complete                    110/132  83.3%  52/52 100.0%  +16.7   X  1458s    107    106      ?    4~
+dsh-gemma192k-b512-20260925-01 declared_done_tests_red      16/132  12.1%  23/52  44.2%  +32.1   X   301s     22     21     11     0
+dsh-gemma192k-b512-20260925-02 crash                        36/132  27.3%  36/52  69.2%  +42.0   X   270s     21     20      7     0
+dsh-gemma192k-b512-20260925-03 crash                        41/132  31.1%  31/52  59.6%  +28.6   X   330s     21     20     10     0
 dsh-glm47flash-01          timeout                      86/132  65.1%  49/52  94.2%  +29.1   X  1801s    192    198     53     0
 dsh-glm47flash-02          declared_done_tests_red      31/132  23.5%  36/52  69.2%  +45.8   X   933s     90     96     36     0
 dsh-glm47flash-03          timeout                       1/132   0.8%  14/52  26.9%  +26.2   X  1802s     64     72     27     0
@@ -58,7 +61,7 @@ pi-qwen48k-04              declared_done_tests_red       0/132   0.0%   3/52   5
 
   pi [historical (pre-container pipeline)]: hidden mean  17.2%  spread 0.0-75.8  best 75.8%  tools 534  compactions 8~  outcomes: declared_done_tests_red, hang_nonterminating_code, incomplete_hidden_below_bar, timeout
  dsh [historical (pre-container pipeline)]: hidden mean  15.5%  spread 0.0-74.2  best 74.2%  tools 296  compactions 52~  outcomes: crash, declared_done_tests_red, timeout
- dsh [gemma 131k/192k (current pipeline)]: hidden mean  48.2%  spread 17.4-83.3  best 83.3%  tools 364  compactions 13~  outcomes: complete, crash, incomplete_hidden_below_bar
+ dsh [gemma 131k/192k (current pipeline)]: hidden mean  40.8%  spread 12.1-83.3  best 83.3%  tools 425  compactions 13~  outcomes: complete, crash, declared_done_tests_red, incomplete_hidden_below_bar
  dsh [glm-4.7-flash q4_k_xl 5070+3060, llama.cpp b10751]: hidden mean  29.8%  spread 0.8-65.1  best 65.1%  tools 366  compactions 0  outcomes: declared_done_tests_red, timeout
  dsh [gpt-oss-20b mxfp4 5070+3060, llama.cpp b10751]: hidden mean   0.0%  spread 0.0-0.0  best 0.0%  tools 32  compactions 0  outcomes: malformed_tool_calls
  dsh [qwen35 q4_k_s 5070+3060, b10751, 262k q4_0 kv]: hidden mean  60.4%  spread 0.0-93.2  best 93.2%  tools 217  compactions 0  outcomes: complete, incomplete_hidden_below_bar
