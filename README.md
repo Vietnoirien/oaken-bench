@@ -325,6 +325,34 @@ vocabulary) is still constant across runs, the same lower-but-nonzero contaminat
 `toolbattery.py` carries. See
 [CANARY.md §3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
 
+### Comparing the T0.5 harness effect
+
+`scripts/harness_effect.py` runs the same seeded ledger and present/absent questions through
+direct mode, pi, and dsh, then reports per-mode recall and abstention counts plus the
+difference from direct mode. Direct mode receives the ledger inline. pi and dsh run inside
+the existing `oaken-bench` container, with the ledger mounted as `/work/ledger.txt`; their
+prompt tells them to read that file. Each item has a stable SHA-256 ID made from its pair and
+depth. The artefact records each mode's status and classification per ID, plus per-depth
+present-recall and absent-abstention deltas. A delta is the harness score minus direct mode,
+in percentage points, over IDs both modes scored. It is null if either mode failed or returned
+unparseable output. Aggregate deltas also use only shared scored IDs. The artefact contains
+counts, statuses, elapsed time, and digests, never the pairs, expected values, or model answers.
+
+Every run requires an explicit `--base-url`; port 8080 is rejected. The pi and dsh adapters
+create temporary configs that point to this URL rather than using the checked-in endpoint.
+For example, with a separate model server reachable from the container:
+
+```bash
+./scripts/harness_effect.py --model your-model --base-url http://172.17.0.1:18081/v1 \
+  --depths 4k,16k --out harness-effect-results/run.json
+```
+
+`--pi-command` and `--dsh-command` replace the container invocation with host commands or
+fakes. The shared cases control the question set; each harness still applies its own
+prompting, context handling, and retries. Fake tests cover file visibility and config
+rewriting. Docker execution has not been exercised here, and no live model or harness run
+was made.
+
 ## Short T0 + T0.5 screen
 
 `scripts/screen.py` runs one command against a direct-mode server:
