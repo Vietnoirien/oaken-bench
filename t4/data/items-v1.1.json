@@ -1,0 +1,74 @@
+[
+  {
+    "id": "hummingbird_needle",
+    "name": "Hummingbird Needle",
+    "type": "Dagger",
+    "tag": "Neutral",
+    "tiers": [
+      {
+        "cost": 30,
+        "cooldown": 1.0,
+        "damage": 2,
+        "crit": 0,
+        "multicast": 3,
+        "shield": 0,
+        "heal": 0,
+        "lifesteal": 0,
+        "poison": 0,
+        "burn": 0,
+        "shock": 0,
+        "startOfCombat": null,
+        "stormBonus": 0,
+        "flameBonus": 0
+      },
+      {
+        "cost": 72,
+        "cooldown": 1.0,
+        "damage": 3,
+        "crit": 0,
+        "multicast": 6,
+        "shield": 0,
+        "heal": 0,
+        "lifesteal": 0,
+        "poison": 0,
+        "burn": 0,
+        "shock": 0,
+        "startOfCombat": null,
+        "stormBonus": 0,
+        "flameBonus": 0
+      },
+      {
+        "cost": 144,
+        "cooldown": 1.0,
+        "damage": 4,
+        "crit": 0,
+        "multicast": 10,
+        "shield": 0,
+        "heal": 0,
+        "lifesteal": 0,
+        "poison": 0,
+        "burn": 0,
+        "shock": 0,
+        "startOfCombat": null,
+        "stormBonus": 0,
+        "flameBonus": 0
+      },
+      {
+        "cost": 360,
+        "cooldown": 1.0,
+        "damage": 6,
+        "crit": 0,
+        "multicast": 15,
+        "shield": 0,
+        "heal": 0,
+        "lifesteal": 0,
+        "poison": 0,
+        "burn": 0,
+        "shock": 0,
+        "startOfCombat": null,
+        "stormBonus": 0,
+        "flameBonus": 0
+      }
+    ]
+  }
+]
