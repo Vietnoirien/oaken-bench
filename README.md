@@ -283,23 +283,26 @@ vocabulary) is still constant across runs, the same lower-but-nonzero contaminat
 
 `scripts/harness_effect.py` runs the same seeded ledger and present/absent questions through
 direct mode, pi, and dsh, then reports per-mode recall and abstention counts plus the
-difference from direct mode. Its artefact contains counts, status, elapsed time, and a
-SHA-256 digest of the shared question set. It does not contain expected values or raw model
+difference from direct mode. Direct mode receives the ledger inline. pi and dsh run inside
+the existing `oaken-bench` container, with the ledger mounted as `/work/ledger.txt`; their
+prompt tells them to read that file. Its artefact contains counts, status, elapsed time, and
+a SHA-256 digest of the shared question set. It does not contain expected values or raw model
 answers.
 
 Every run requires an explicit `--base-url`; port 8080 is rejected. The pi and dsh adapters
 create temporary configs that point to this URL rather than using the checked-in endpoint.
-For example, with a separate test server:
+For example, with a separate model server reachable from the container:
 
 ```bash
-./scripts/harness_effect.py --model your-model --base-url http://127.0.0.1:18081/v1 \
+./scripts/harness_effect.py --model your-model --base-url http://172.17.0.1:18081/v1 \
   --depths 4k,16k --out harness-effect-results/run.json
 ```
 
-`--pi-command` and `--dsh-command` can supply alternate CLI commands or fakes. The shared
-cases control the question set; each harness still applies its own prompting, context
-handling, and retries. Unit coverage uses fake subprocesses; this battery has not been run
-against live models or harnesses.
+`--pi-command` and `--dsh-command` replace the container invocation with host commands or
+fakes. The shared cases control the question set; each harness still applies its own
+prompting, context handling, and retries. Fake tests cover file visibility and config
+rewriting. Docker execution has not been exercised here, and no live model or harness run
+was made.
 
 ## Layout
 

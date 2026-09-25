@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Compare direct, pi, and dsh on one seeded T0.5 question set.
 
-Each mode gets byte-identical ledger text and question wording. The artefact
+Each mode gets the same seeded ledger and question wording. Direct mode gets
+the ledger inline; pi and dsh run in the pinned benchmark container and must
+read `ledger.txt` from their mounted workspace. The artefact
 contains only aggregate counts and a digest of the case set: expected values
 and model answers stay in memory, where publishing either would turn this
 public screening probe into a reusable answer key.
 
-pi and dsh run in fresh temporary directories and are asked to return a JSON
-object as their final answer. Their command lines can be replaced for tests or
-alternate installs with `--pi-command` / `--dsh-command` (a shell-like argv
-string; `{prompt}` is replaced by the prompt as one argument). No shell is
-used to execute them.
+pi and dsh are asked to return a JSON object as their final answer. Their
+container commands can be replaced by local fake commands for tests with
+`--pi-command` / `--dsh-command` (a shell-like argv string; `{prompt}` is
+replaced by the prompt as one argument). No shell is used to execute them.
 """
 import argparse
 import hashlib
@@ -58,17 +59,22 @@ def build_case_set(depth_tokens, seed, *, chars_per_token=None, count_tokens_fn=
     }
 
 
-def build_prompt(case_set):
-    """Plain-text contract shared byte-for-byte by all three modes."""
+def build_prompt(case_set, *, ledger_path=None):
+    """Build the common question contract; harness mode references its workspace file."""
     stack = case_set['haystack']
     pairs = [(f.entity, f.attribute) for f in stack.facts]
     pairs.extend((q.entity, q.attribute) for q in case_set['absent'])
     lines = [f'- entity {entity!r}, attribute {attribute!r}' for entity, attribute in pairs]
+    document_instruction = (
+        f'Read the document from the workspace file `{ledger_path}` and use only that document.'
+        if ledger_path else 'Use only the document below.'
+    )
+    document_section = (f'\n\nDOCUMENT\n{stack.text}' if ledger_path is None else '')
     return (
-        'Use only the document below. For each listed entity and attribute, give the value '
+        document_instruction + ' For each listed entity and attribute, give the value '
         'exactly as written. Do not guess or use outside knowledge. If a pair is not stated, '
-        f'answer exactly {abstain.INSTRUCTED_PHRASE!r}. Return one answer for every pair.\n\n'
-        'DOCUMENT\n' + stack.text + '\n\nPAIRS\n' + '\n'.join(lines) +
+        f'answer exactly {abstain.INSTRUCTED_PHRASE!r}. Return one answer for every pair.'
+        + document_section + '\n\nPAIRS\n' + '\n'.join(lines) +
         '\n\nReturn only one JSON object with this shape: '
         '{"answers":[{"entity":"...","attribute":"...","value":"..."}, ...]}.'
     )
@@ -121,6 +127,21 @@ def _run_command(command, prompt, timeout, cwd, env):
     return completed, time.monotonic() - start
 
 
+def _docker_command(mode, command, prompt, model, workspace, config_dir):
+    image = os.environ.get('OAKEN_IMAGE', 'oaken-bench:1.0')
+    if command is not None:
+        return command
+    executable = 'pi' if mode == 'pi' else 'dsh'
+    args = (['--provider', 'local-llama', '--model', model, '--api-key', 'local',
+             '-p', '--mode', 'text'] if mode == 'pi' else ['--profile', 'headless'])
+    return [
+        'docker', 'run', '--rm', '--add-host=llama:host-gateway',
+        '-e', 'LOCAL_LLAMA_KEY=local', '-v', f'{workspace}:/work',
+        '-v', f'{config_dir}:/root/{".pi/agent" if mode == "pi" else ".dsh"}',
+        '-w', '/work', '--entrypoint', executable, image, *args, prompt,
+    ]
+
+
 def _checked_base_url(base_url):
     from urllib.parse import urlsplit
     if not base_url:
@@ -133,7 +154,21 @@ def _checked_base_url(base_url):
     return base_url.rstrip('/')
 
 
-def run_harness(mode, prompt, *, model, base_url, timeout, command=None):
+def _container_base_url(base_url):
+    """Translate host loopback to Docker's host-gateway alias for pi/dsh."""
+    from urllib.parse import urlsplit, urlunsplit
+    parts = urlsplit(base_url)
+    if parts.hostname == 'localhost' or parts.hostname == '127.0.0.1' or (
+            parts.hostname and parts.hostname.startswith('127.')):
+        host = 'llama'
+        if parts.port:
+            host += f':{parts.port}'
+        return urlunsplit((parts.scheme, host, parts.path, parts.query, parts.fragment))
+    return base_url
+
+
+def run_harness(mode, prompt, *, model, base_url, timeout, command=None,
+                ledger_text=None):
     base_url = _checked_base_url(base_url)
     if mode == 'direct':
         response = direct.chat(
@@ -154,21 +189,25 @@ def run_harness(mode, prompt, *, model, base_url, timeout, command=None):
     if mode not in ('pi', 'dsh'):
         raise ValueError(f'unknown mode: {mode}')
     if command is None:
-        if mode == 'pi':
-            provider = os.environ.get('OAKEN_PI_PROVIDER', 'local-llama')
-            command = ['pi', '--provider', provider, '--model', model,
-                       '--api-key', 'local', '-p', '--mode', 'text']
-        else:
-            command = ['dsh', '--profile', 'headless']
+        command = None
+    if ledger_text is None:
+        raise ValueError('harness mode requires ledger text to write into its workspace')
     with tempfile.TemporaryDirectory(prefix=f'oaken-{mode}-') as cwd:
+        container_url = _container_base_url(base_url)
+        workspace = os.path.join(cwd, 'workspace')
+        os.makedirs(workspace)
+        ledger_file = os.path.join(workspace, 'ledger.txt')
+        with open(ledger_file, 'w', encoding='utf-8') as f:
+            f.write(ledger_text)
         env = os.environ.copy()
         env['HOME'] = cwd
+        config_dir = None
         if mode == 'pi':
             config_dir = os.path.join(cwd, '.pi', 'agent')
             os.makedirs(config_dir)
             with open(os.path.join(config_dir, 'models.json'), 'w', encoding='utf-8') as f:
                 json.dump({'providers': {'local-llama': {
-                    'baseUrl': base_url, 'api': 'openai-completions', 'apiKey': 'local',
+                    'baseUrl': container_url, 'api': 'openai-completions', 'apiKey': 'local',
                     'models': [{'id': model, 'name': model, 'contextWindow': 262144,
                                 'maxTokens': 32768, 'input': ['text']}],
                 }}}, f)
@@ -179,12 +218,17 @@ def run_harness(mode, prompt, *, model, base_url, timeout, command=None):
             settings_path = os.path.join(target, 'settings.yaml')
             with open(settings_path, encoding='utf-8') as f:
                 settings = f.read()
-            settings = settings.replace('http://llama:8080/v1', base_url)
+            settings = settings.replace('http://llama:8080/v1', container_url)
             settings = settings.replace('gemma-4-12B-it-qat-UD-Q4_K_XL.gguf', model)
             with open(settings_path, 'w', encoding='utf-8') as f:
                 f.write(settings)
             env['LOCAL_LLAMA_KEY'] = 'local'
-        completed, elapsed = _run_command(command, prompt, timeout, cwd, env)
+            config_dir = target
+        argv = _docker_command(mode, command, prompt, model, workspace, config_dir)
+        # Supplied fake commands run on the host in the same mounted-workspace
+        # path so tests exercise file visibility without needing Docker.
+        command_cwd = workspace if command is not None else cwd
+        completed, elapsed = _run_command(argv, prompt, timeout, command_cwd, env)
     if completed.returncode:
         raise RuntimeError(f'{mode} exited {completed.returncode}')
     return parse_answers(completed.stdout), elapsed
@@ -196,15 +240,19 @@ def run_comparison(depths, seed, model, *, base_url, timeout=180, modes=('direct
     result_depths = []
     for depth in depths:
         case_set = build_case_set(depth, seed)
-        prompt = build_prompt(case_set)
+        direct_prompt = build_prompt(case_set)
+        harness_prompt = build_prompt(case_set, ledger_path='/work/ledger.txt')
         mode_results = {}
         for mode in modes:
             command = (shlex.split(pi_command) if mode == 'pi' and pi_command else
                        shlex.split(dsh_command) if mode == 'dsh' and dsh_command else None)
             start = time.monotonic()
             try:
-                answers, elapsed = run_harness(mode, prompt, model=model, base_url=base_url,
-                                               timeout=timeout, command=command)
+                prompt = direct_prompt if mode == 'direct' else harness_prompt
+                answers, elapsed = run_harness(
+                    mode, prompt, model=model, base_url=base_url,
+                    timeout=timeout, command=command,
+                    ledger_text=case_set['haystack'].text if mode in ('pi', 'dsh') else None)
                 mode_results[mode] = {
                     'status': 'ok' if answers is not None else 'unparseable',
                     'score': score_answers(case_set, answers),

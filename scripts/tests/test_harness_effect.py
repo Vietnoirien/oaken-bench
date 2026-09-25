@@ -28,6 +28,16 @@ def test_parse_answers_accepts_fenced_or_surrounded_json():
     assert harness_effect.parse_answers('no structured answer') is None
 
 
+def test_prompt_inlines_document_only_for_direct_mode():
+    cases = harness_effect.build_case_set(4096, 5)
+    text = cases['haystack'].text
+    direct_prompt = harness_effect.build_prompt(cases)
+    harness_prompt = harness_effect.build_prompt(cases, ledger_path='/work/ledger.txt')
+    assert text in direct_prompt
+    assert text not in harness_prompt
+    assert '/work/ledger.txt' in harness_prompt
+
+
 def test_scoring_discards_answer_values():
     cases = harness_effect.build_case_set(4096, 2)
     facts = cases['haystack'].facts
@@ -56,11 +66,24 @@ def test_missing_endpoint_is_rejected():
         harness_effect._checked_base_url(None)
 
 
+@pytest.mark.parametrize('mode,entrypoint', [('pi', 'pi'), ('dsh', 'dsh')])
+def test_default_harness_command_uses_benchmark_container_and_host_gateway(
+        monkeypatch, mode, entrypoint):
+    monkeypatch.delenv('OAKEN_IMAGE', raising=False)
+    command = harness_effect._docker_command(
+        mode, None, 'read /work/ledger.txt', 'fake-model', '/tmp/workspace', '/tmp/config')
+    assert command[:3] == ['docker', 'run', '--rm']
+    assert '--add-host=llama:host-gateway' in command
+    assert command[command.index('--entrypoint') + 1] == entrypoint
+    assert 'oaken-bench:1.0' in command
+    assert command[-1] == 'read /work/ledger.txt'
+
+
 @pytest.mark.parametrize('mode,config_path', [
     ('pi', '.pi/agent/models.json'), ('dsh', '.dsh/settings.yaml'),
 ])
 def test_harness_adapter_rewrites_endpoint_in_temporary_config(monkeypatch, mode, config_path):
-    endpoint = 'http://127.0.0.1:18081/v1'
+    endpoint = 'http://172.17.0.1:18081/v1'
     observed = {}
 
     def fake_run(argv, **kwargs):
@@ -69,13 +92,16 @@ def test_harness_adapter_rewrites_endpoint_in_temporary_config(monkeypatch, mode
             contents = stream.read()
         observed['contents'] = contents
         observed['argv'] = argv
+        with open(os.path.join(kwargs['cwd'], 'ledger.txt'), encoding='utf-8') as stream:
+            observed['ledger'] = stream.read()
         return subprocess.CompletedProcess(argv, 0, '{"answers":[]}', '')
 
     monkeypatch.setattr(harness_effect.subprocess, 'run', fake_run)
     answers, elapsed = harness_effect.run_harness(
         mode, 'common prompt', model='fake-model', base_url=endpoint,
-        timeout=2, command=['fake-harness'])
+        timeout=2, command=['fake-harness'], ledger_text='private ledger text')
     assert answers == {'answers': []}
     assert elapsed >= 0
     assert endpoint in observed['contents']
     assert '8080' not in observed['contents']
+    assert observed['ledger'] == 'private ledger text'
