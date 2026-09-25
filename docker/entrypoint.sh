@@ -77,3 +77,4 @@ tar czf "$OUT/pi-sessions.tgz"  -C /root .pi/agent/sessions 2>/dev/null || true
 
 if [ -n "${HOST_UID:-}" ]; then chown -R "${HOST_UID}:${HOST_GID:-$HOST_UID}" "$OUT" || true; fi
 echo "exit=$RC"
+exit "$RC"
