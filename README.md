@@ -8,8 +8,10 @@ Harness comparison is T2.
 
 T0 and T0.5 are direct model probes. T1 is deferred. T3 has a generator,
 runner, and one Gemma model pilot. T4 has a sealed v1.1 oracle, a runner, and
-one exploratory Qwen model run. T5 has a sealed snapshot oracle and one CPU
-baseline measurement.
+one exploratory Qwen model run. T5 has a model-facing runner, one Qwen model
+pilot, and one CPU baseline measurement. The T5 pilot had no pre-run canary
+check, so its score is a runner observation rather than an interpretable model
+benchmark result.
 The 53 earlier `results/*` score files are T2 runs; their meaning and values
 are unchanged.
 
@@ -21,7 +23,7 @@ are unchanged.
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
 | T3 | Find and fix planted bugs against the reference engine. | Generator and runner shipped. One Gemma 4 12B Pi pilot scored 124/132 hidden after a 97/132 planted baseline; see [the pilot record](docs/t3-pilot-20260926.md) and [T3 setup](docs/T3.md). |
 | T4 | Extend the existing engine and count regressions against the earlier suite. | One exploratory Pi run: Qwen3.6-35B-A3B UD-Q4_K_S scored 132/132 v1.0 and 136/137 v1.1. This is n=1, not a variance estimate. `./run.sh pi <model-id> t4-<label>` then `python3 scripts/score.py results/t4-<label>`; see [T4 setup and result](t4/README.md). |
-| T5 | Write a bot that plays the game against fixed held-out baseline snapshots. | Shipped. `python3 scripts/t5_oracle.py run --bot baseline:cheapest --label cheapest-01`; see [T5 oracle](t5/oracle/README.md). |
+| T5 | Write a bot that plays the game against fixed held-out baseline snapshots. | Runner and sealed scorer shipped. One Qwen Pi pilot won 129/144 sealed cases; the missing pre-run canary check limits this to a runner observation. `./run.sh pi <model-id> t5-<label>` then `python3 scripts/score.py results/t5-<label>`; see [the pilot record](docs/t5-pilot-20260926.md) and [T5 runner](t5/README.md). |
 
 The short screening command combines T0 and T0.5. Its six thresholds are
 calibrated against four models, with known classification errors; see
@@ -650,8 +652,12 @@ result; a probe result is not a T2 task score.
    retests varied by work order and early exit. T4 has one exploratory Qwen Pi
    pilot, with 132/132 v1.0 and 136/137 v1.1 passes. Its unchanged reference
    engine passes 132/132 v1.0 and 2/137 v1.1; n=1 cannot establish T4
-   repeatability. T5 has one CPU baseline measurement under its own protocol.
-   Do not infer any tier's performance from T2 or the probe tiers.
+   repeatability. T5 has one Qwen Pi pilot: 129/144 sealed wins under its fixed
+   snapshot protocol. The model lacked a pre-run T5 canary check, so this is
+   a runner observation. Its three visible live-bot win rates use a different
+   protocol and must stay separate; one pilot cannot estimate repeatability.
+   See [the T5 record](docs/t5-pilot-20260926.md). Do not infer any tier's
+   performance from T2 or the probe tiers.
 
 Contributions that would help most: additional task instances, a task generator
 (see CANARY.md), and results on hardware other than 12 GB consumer cards.
