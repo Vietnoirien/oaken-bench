@@ -103,7 +103,7 @@ def _t4_print_rows(label, rows):
 
 
 def _t5_score(result_dir, detail=True):
-    from t5_oracle import score_run
+    from t5_runner import score_run
     return score_run(result_dir, detail=detail)
 
 

@@ -17,6 +17,9 @@ if [ "${OAKEN_TIER:-}" = t4 ]; then
   [ -f /t4-input/workspace.tgz ] || { echo "missing T4 workspace mount" >&2; exit 64; }
   tar xzf /t4-input/workspace.tgz --no-same-owner -C / || exit 64
   cp -a /opt/seed/node_modules /work/node_modules || exit 64
+elif [ "${OAKEN_TIER:-}" = t5 ]; then
+  [ -f /t5-input/workspace.tgz ] || { echo "missing T5 workspace mount" >&2; exit 64; }
+  tar xzf /t5-input/workspace.tgz --no-same-owner -C / || exit 64
 else
   cp -r /opt/seed /work
 fi
