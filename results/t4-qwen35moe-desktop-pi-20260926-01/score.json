@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "tier": "t4",
+  "label": "t4-qwen35moe-desktop-pi-20260926-01",
+  "runKind": "implementation",
+  "suites": {
+    "v1.0": {
+      "passed": 132,
+      "failed": 0,
+      "total": 132,
+      "collected": 132,
+      "uncollected": 0,
+      "rate": 1.0,
+      "hung": false,
+      "reportAvailable": true
+    },
+    "v1.1": {
+      "passed": 136,
+      "failed": 1,
+      "total": 137,
+      "collected": 137,
+      "uncollected": 0,
+      "rate": 0.992701,
+      "hung": false,
+      "reportAvailable": true
+    }
+  },
+  "typecheckClean": true,
+  "tamperedFrozenFiles": [],
+  "oracle": {
+    "bundle": "t4oracle",
+    "sha256": "7f8fbed573482c11342de45ed06a3762e08aacff655fff504280609b5a0a3d8b",
+    "v10Sha256": "fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97",
+    "specCommit": "2e0fe3d750a3c0b91bc2817440046f8ffc0eb8a2"
+  },
+  "image": "oaken-bench:1.0",
+  "outcome": "scored"
+}

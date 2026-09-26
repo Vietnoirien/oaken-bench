@@ -7,8 +7,9 @@ Harness comparison is T2.
 ## Tiers
 
 T0 and T0.5 are direct model probes. T1 is deferred. T3 has a generator,
-runner, and one Gemma model pilot. T4 has a sealed v1.1 oracle and runner but
-no model measurement. T5 has a sealed snapshot oracle and one CPU baseline measurement.
+runner, and one Gemma model pilot. T4 has a sealed v1.1 oracle, a runner, and
+one exploratory Qwen model run. T5 has a sealed snapshot oracle and one CPU
+baseline measurement.
 The 53 earlier `results/*` score files are T2 runs; their meaning and values
 are unchanged.
 
@@ -19,7 +20,7 @@ are unchanged.
 | T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred. Three new archived 192k runs varied with work order and early exits; see [the 192k retest](MODELS.md#192k-with-less-free-5070-memory-2026-09-25). No command. |
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
 | T3 | Find and fix planted bugs against the reference engine. | Generator and runner shipped. One Gemma 4 12B Pi pilot scored 124/132 hidden after a 97/132 planted baseline; see [the pilot record](docs/t3-pilot-20260926.md) and [T3 setup](docs/T3.md). |
-| T4 | Extend the existing engine and count regressions against the earlier suite. | Shipped. `./run.sh pi <model-id> t4-<label>` then `python3 scripts/score.py results/t4-<label>`; see [T4 setup](t4/README.md). Only reference and offline runner checks exist, with no model measurement. |
+| T4 | Extend the existing engine and count regressions against the earlier suite. | One exploratory Pi run: Qwen3.6-35B-A3B UD-Q4_K_S scored 132/132 v1.0 and 136/137 v1.1. This is n=1, not a variance estimate. `./run.sh pi <model-id> t4-<label>` then `python3 scripts/score.py results/t4-<label>`; see [T4 setup and result](t4/README.md). |
 | T5 | Write a bot that plays the game against fixed held-out baseline snapshots. | Shipped. `python3 scripts/t5_oracle.py run --bot baseline:cheapest --label cheapest-01`; see [T5 oracle](t5/oracle/README.md). |
 
 The short screening command combines T0 and T0.5. Its six thresholds are
