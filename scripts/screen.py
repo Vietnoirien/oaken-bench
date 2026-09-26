@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Run the short T0 + T0.5 screen against one direct-mode server.
-
-The committed thresholds are pending four-model calibration. Until that is
-done, the artefact records evidence but cannot issue a go/no-go verdict.
-"""
+"""Run the calibrated short T0 + T0.5 screen against one direct-mode server."""
 import argparse
 import json
 import os
@@ -21,6 +17,9 @@ import toolbattery  # noqa: E402
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_THRESHOLDS = ROOT / 'screen-thresholds.json'
 DEPTH_TOKENS = 16384
+PROTOCOL_VERSION = 4
+T0_OUTPUT_TOKENS = 8192
+T05_OUTPUT_TOKENS = 16384
 METRICS = ('schemaAdherence', 'toolSelection', 'shortChainsDepth',
            'refusal', 'recall', 'abstention')
 
@@ -82,28 +81,30 @@ def run_screen(base_url, model, thresholds, *, api_key=None, seed=20260924):
     errors = []
     with VramSampler() as sampler:
         dimensions = {
-            'schemaAdherence': toolbattery.run_schema_adherence(base_url, model, 768, 30, errors,
+            'schemaAdherence': toolbattery.run_schema_adherence(base_url, model, T0_OUTPUT_TOKENS, 180, errors,
                                                                   api_key=api_key),
-            'toolSelection': toolbattery.run_tool_selection(base_url, model, 768, 30, errors,
+            'toolSelection': toolbattery.run_tool_selection(base_url, model, T0_OUTPUT_TOKENS, 180, errors,
                                                              api_key=api_key),
             'shortChains': toolbattery.run_short_chains(
-                base_url, model, 768, 30, errors, api_key=api_key,
-                scenarios=toolbattery.CHAIN_SCENARIOS[:1]),
-            'refusal': toolbattery.run_refusal(base_url, model, 768, 30, errors, api_key=api_key),
+                base_url, model, T0_OUTPUT_TOKENS, 180, errors, api_key=api_key,
+                scenarios=toolbattery.CHAIN_SCENARIOS),
+            'refusal': toolbattery.run_refusal(base_url, model, T0_OUTPUT_TOKENS, 180, errors, api_key=api_key),
         }
         t0 = {'dimensions': dimensions, 'transportErrors': errors}
         t05 = recall.run_battery(base_url, model, [DEPTH_TOKENS], seed=seed,
-                                 max_tokens=1024, timeout=120, api_key=api_key,
+                                 max_tokens=T05_OUTPUT_TOKENS, timeout=360, api_key=api_key,
                                  num_abstention_each=1)
     environment = build_environment(base_url, vram_peak=sampler.peak_mib())
     elapsed = round(time.monotonic() - started, 3)
     metrics = extract_metrics(t0, t05)
     complete = (not errors and t05['overall']['depthsAttempted'] == 1
                 and t05['overall']['depthsSkipped'] == 0
+                and not any(c.get('outputTruncated') for c in dimensions['shortChains']['cases'])
                 and all(dim['notAttempted'] == 0 for dim in dimensions.values()))
     assessment = judge(metrics, thresholds, complete=complete)
     return {
         'schemaVersion': 1,
+        'protocolVersion': PROTOCOL_VERSION,
         'label': f"screen-{toolbattery._slug(model)}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
         'model': model, 'baseUrl': base_url,
         'generatedAt': datetime.now(timezone.utc).isoformat(),
@@ -112,7 +113,7 @@ def run_screen(base_url, model, thresholds, *, api_key=None, seed=20260924):
         'thresholdStatus': thresholds['status'],
         'protocol': {'t0Dimensions': list(dimensions), 't05DepthTokens': DEPTH_TOKENS,
                      't05Seed': seed, 't05AbstentionPerKind': 1,
-                     't0MaxTokens': 768, 't05MaxTokens': 1024},
+                     't0MaxTokens': T0_OUTPUT_TOKENS, 't05MaxTokens': T05_OUTPUT_TOKENS},
         'complete': complete, 'metrics': metrics, 'assessment': assessment,
         't0': t0, 't05': t05,
         'environment': environment,

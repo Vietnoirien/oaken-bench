@@ -1,0 +1,871 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 4,
+  "label": "screen-Qwen3.6-35B-A3B-UD-Q4_K_S.gguf-20260926T103843Z",
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+  "baseUrl": "http://172.17.0.1:8082/v1",
+  "generatedAt": "2026-09-26T10:38:43.672180+00:00",
+  "elapsedSeconds": 148.547,
+  "thresholdRevision": "screen-v4-2026-09-26",
+  "thresholdStatus": "calibrated",
+  "protocol": {
+    "t0Dimensions": [
+      "schemaAdherence",
+      "toolSelection",
+      "shortChains",
+      "refusal"
+    ],
+    "t05DepthTokens": 16384,
+    "t05Seed": 20260924,
+    "t05AbstentionPerKind": 1,
+    "t0MaxTokens": 8192,
+    "t05MaxTokens": 16384
+  },
+  "complete": true,
+  "metrics": {
+    "schemaAdherence": 1.0,
+    "toolSelection": 1.0,
+    "shortChainsDepth": 0.8,
+    "refusal": 1.0,
+    "recall": 1.0,
+    "abstention": 1.0
+  },
+  "assessment": {
+    "verdict": "go",
+    "checks": {
+      "schemaAdherence": {
+        "observed": 1.0,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "toolSelection": {
+        "observed": 1.0,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "shortChainsDepth": {
+        "observed": 0.8,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "refusal": {
+        "observed": 1.0,
+        "minimum": 0.75,
+        "passed": true
+      },
+      "recall": {
+        "observed": 1.0,
+        "minimum": 0.6667,
+        "passed": true
+      },
+      "abstention": {
+        "observed": 1.0,
+        "minimum": 0.6667,
+        "passed": true
+      }
+    }
+  },
+  "t0": {
+    "dimensions": {
+      "schemaAdherence": {
+        "dimension": "schemaAdherence",
+        "passed": 5,
+        "total": 5,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "room-basic",
+            "description": "Book Falcon for 30 minutes starting at 2026-10-01T14:00:00 for alice@example.com and bob@example.com.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "book_meeting_room",
+            "toolCalled": "book_meeting_room",
+            "arguments": {
+              "room_name": "Falcon",
+              "start_time": "2026-10-01T14:00:00",
+              "duration_minutes": 30,
+              "attendees": [
+                "alice@example.com",
+                "bob@example.com"
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "book_meeting_room",
+                "expectedTool": "book_meeting_room",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "room-recurring",
+            "description": "Set up a recurring 60 minute meeting in room Heron at 2026-10-02T09:30:00 with just carol@example.com.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "book_meeting_room",
+            "toolCalled": "book_meeting_room",
+            "arguments": {
+              "attendees": [
+                "carol@example.com"
+              ],
+              "duration_minutes": 60,
+              "room_name": "Heron",
+              "start_time": "2026-10-02T09:30:00",
+              "recurring": true
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "book_meeting_room",
+                "expectedTool": "book_meeting_room",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "weather-units",
+            "description": "What is the weather in Tokyo right now, in fahrenheit?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather",
+            "toolCalled": "get_weather",
+            "arguments": {
+              "city": "Tokyo",
+              "units": "fahrenheit"
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather",
+                "expectedTool": "get_weather",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "edit-single",
+            "description": "In config/ops.yaml, replace the line \"retries: 3\" with \"retries: 5\".",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "edit_file",
+            "toolCalled": "edit_file",
+            "arguments": {
+              "path": "config/ops.yaml",
+              "edits": [
+                {
+                  "oldText": "retries: 3",
+                  "newText": "retries: 5"
+                }
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "edit_file",
+                "expectedTool": "edit_file",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "edit-multi",
+            "description": "In runbook.md, replace \"Owner: TBD\" with \"Owner: SRE\" and replace \"Status: draft\" with \"Status: active\".",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "edit_file",
+            "toolCalled": "edit_file",
+            "arguments": {
+              "path": "runbook.md",
+              "edits": [
+                {
+                  "oldText": "Owner: TBD",
+                  "newText": "Owner: SRE"
+                },
+                {
+                  "oldText": "Status: draft",
+                  "newText": "Status: active"
+                }
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "edit_file",
+                "expectedTool": "edit_file",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0,
+        "byTool": {
+          "book_meeting_room": {
+            "passed": 2,
+            "total": 2,
+            "notAttempted": 0,
+            "score": 1.0
+          },
+          "get_weather": {
+            "passed": 1,
+            "total": 1,
+            "notAttempted": 0,
+            "score": 1.0
+          },
+          "edit_file": {
+            "passed": 2,
+            "total": 2,
+            "notAttempted": 0,
+            "score": 1.0
+          }
+        }
+      },
+      "toolSelection": {
+        "dimension": "toolSelection",
+        "passed": 5,
+        "total": 5,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "pick-weather",
+            "description": "How hot is it in Lisbon today?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather",
+            "toolCalled": "get_weather",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather",
+                "expectedTool": "get_weather",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-alerts",
+            "description": "Are there any severe weather alerts active for the Gulf Coast region right now?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather_alerts",
+            "toolCalled": "get_weather_alerts",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather_alerts",
+                "expectedTool": "get_weather_alerts",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-order-status",
+            "description": "What's the status of the most recent order for the customer with id cus_77120?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_order_status",
+            "toolCalled": "get_order_status",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_order_status",
+                "expectedTool": "get_order_status",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-cancel",
+            "description": "Please cancel the subscription belonging to customer cus_31004.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "cancel_subscription",
+            "toolCalled": "cancel_subscription",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "cancel_subscription",
+                "expectedTool": "cancel_subscription",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-rooms-list",
+            "description": "What meeting rooms are free right now in the Riverside building?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "list_available_rooms",
+            "toolCalled": "list_available_rooms",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "list_available_rooms",
+                "expectedTool": "list_available_rooms",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0
+      },
+      "shortChains": {
+        "dimension": "shortChains",
+        "passed": 3,
+        "total": 4,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "order-ship-track",
+            "description": "Ship the most recent order for the customer with email morgan@example.com, then tell me its current delivery status.",
+            "passed": false,
+            "reasons": [
+              "no call made on this turn -- step skipped, or the model answered in text"
+            ],
+            "chainLength": 3,
+            "depthReached": 0,
+            "brokenAtStep": 1,
+            "brokenAtLevel": "noCall",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": null,
+                "expectedTool": "lookup_order_by_email",
+                "level": "noCall"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "ticket-assign-contact",
+            "description": "Open a support ticket for \"VPN keeps disconnecting\", assign it to an agent, and give me that agent's contact email.",
+            "passed": true,
+            "reasons": [
+              "completed all 3 steps"
+            ],
+            "chainLength": 3,
+            "depthReached": 3,
+            "brokenAtStep": null,
+            "brokenAtLevel": null,
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "open_support_ticket",
+                "expectedTool": "open_support_ticket",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "assign_ticket_agent",
+                "expectedTool": "assign_ticket_agent",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "get_agent_contact",
+                "expectedTool": "get_agent_contact",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "device-register-activate",
+            "description": "Register a new device named \"kiosk-07\", activate it, and tell me its status.",
+            "passed": true,
+            "reasons": [
+              "completed all 4 steps"
+            ],
+            "chainLength": 4,
+            "depthReached": 4,
+            "brokenAtStep": null,
+            "brokenAtLevel": null,
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "register_device",
+                "expectedTool": "register_device",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "generate_activation_code",
+                "expectedTool": "generate_activation_code",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "activate_device",
+                "expectedTool": "activate_device",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 4,
+                "tool": "get_device_status",
+                "expectedTool": "get_device_status",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "expense-submit-release",
+            "description": "Submit a $42.50 expense for \"client dinner\", route it for approval, notify the approver, and release payment once it's approved.",
+            "passed": true,
+            "reasons": [
+              "completed all 5 steps"
+            ],
+            "chainLength": 5,
+            "depthReached": 5,
+            "brokenAtStep": null,
+            "brokenAtLevel": null,
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "submit_expense",
+                "expectedTool": "submit_expense",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "route_expense_for_approval",
+                "expectedTool": "route_expense_for_approval",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "notify_approver",
+                "expectedTool": "notify_approver",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 4,
+                "tool": "get_approval_status",
+                "expectedTool": "get_approval_status",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 5,
+                "tool": "release_payment",
+                "expectedTool": "release_payment",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          }
+        ],
+        "score": 0.75,
+        "depth": {
+          "totalDepthReached": 12,
+          "totalPossibleDepth": 15,
+          "score": 0.8,
+          "brokenAtLevel": {
+            "noCall": 1
+          }
+        }
+      },
+      "refusal": {
+        "dimension": "refusal",
+        "passed": 4,
+        "total": 4,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "trivia",
+            "description": "What is the capital of France?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "The capital of France is Paris.",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "arithmetic",
+            "description": "What's 17 times 23?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "17 times 23 is 391.",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "opinion",
+            "description": "What is a good name for a pet cat?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "Picking a cat name is a fun process! Here are a few popular and creative ideas, grouped by style:\n\n🐾 **Classic & Timeless:** Luna, Oliver, Bella, Milo, Charlie, Leo, Daisy, Lucy  \n🌿 **Nature-Inspired:** Willow, Hazel, River, Forest, Ivy, Bear, Willow  \n🍽️ **Food & Drink Names:** Mochi, Noodle, Bean, Cheddar, Olive, Miso, Pepper, Waffles  \n✨ **Mythological & regal:** Zeus, Athena, Cleo, Nala, Thor,...",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "unit-conversion-trap",
+            "description": "Convert 10 miles to kilometers.",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "I don't have a tool to convert distance units, but 10 miles is approximately 16.09 kilometers.",
+            "calls": [],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0
+      }
+    },
+    "transportErrors": []
+  },
+  "t05": {
+    "schemaVersion": 1,
+    "label": "recall-Qwen3.6-35B-A3B-UD-Q4_K_S.gguf-20260926T103843Z",
+    "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+    "baseUrl": "http://172.17.0.1:8082/v1",
+    "generatedAt": "2026-09-26T10:38:43.617174+00:00",
+    "seed": 20260924,
+    "servedContextTokens": 131072,
+    "servedContextSource": "props",
+    "servedContextUnknownReason": null,
+    "tokenizeAvailable": true,
+    "tokenizeUnavailableReason": null,
+    "depths": [
+      {
+        "depthTokens": 16384,
+        "haystack": {
+          "seed": 20260984799156,
+          "tokenCount": 21277,
+          "tokenCountSource": "server_tokenize",
+          "charsPerToken": 4.0,
+          "textChars": 65933
+        },
+        "finishReason": "tool_calls",
+        "timing": {
+          "prefillTokPerSec": 1149.3817529132862,
+          "prefillSource": "server_timings",
+          "decodeTokPerSec": 80.87723607652964,
+          "decodeSource": "server_timings",
+          "promptTokens": 21880,
+          "completionTokens": 2316
+        },
+        "rawAnswerPreview": "",
+        "facts": [
+          {
+            "entity": "Marrow-Annex-3742",
+            "attribute": "storage tier",
+            "expectedValue": "Umbral-549",
+            "recalledValue": "Umbral-549",
+            "correct": true,
+            "classification": "correct_answer",
+            "depthPositionFraction": 0.1014,
+            "charOffset": 6683,
+            "approxTokenOffset": 2157
+          },
+          {
+            "entity": "Petrel-Waypoint-5478",
+            "attribute": "serial designation",
+            "expectedValue": "Cobalt-730",
+            "recalledValue": "Cobalt-730",
+            "correct": true,
+            "classification": "correct_answer",
+            "depthPositionFraction": 0.5028,
+            "charOffset": 33154,
+            "approxTokenOffset": 10699
+          },
+          {
+            "entity": "Meridian-Reach-2579",
+            "attribute": "activation phrase",
+            "expectedValue": "Kestrel-114",
+            "recalledValue": "Kestrel-114",
+            "correct": true,
+            "classification": "correct_answer",
+            "depthPositionFraction": 0.8997,
+            "charOffset": 59320,
+            "approxTokenOffset": 19143
+          }
+        ],
+        "recallScore": 1.0,
+        "recalled": 3,
+        "total": 3,
+        "presentQuestionCounts": {
+          "correct_answer": 3,
+          "wrong_answer": 0,
+          "false_abstention": 0,
+          "total": 3
+        },
+        "abstention": {
+          "questions": [
+            {
+              "entity": "Dusk-Chamber-9922",
+              "attribute": "failsafe contact",
+              "kind": "guaranteed_absent",
+              "recalledValue": "not in context",
+              "classification": "correct_abstention"
+            },
+            {
+              "entity": "Elm-Bastion-3050",
+              "attribute": "access tier",
+              "kind": "near_miss_same_entity",
+              "recalledValue": "not in context",
+              "classification": "correct_abstention"
+            },
+            {
+              "entity": "Basalt-Silo-3911",
+              "attribute": "access tier",
+              "kind": "near_miss_same_attribute",
+              "recalledValue": "not in context",
+              "classification": "correct_abstention"
+            }
+          ],
+          "counts": {
+            "overall": {
+              "correct_abstention": 3,
+              "invented_answer": 0,
+              "total": 3
+            },
+            "byKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 1,
+                "invented_answer": 0,
+                "total": 1
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 1,
+                "invented_answer": 0,
+                "total": 1
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 1,
+                "invented_answer": 0,
+                "total": 1
+              }
+            }
+          }
+        }
+      }
+    ],
+    "depthsSkipped": [],
+    "overall": {
+      "recallScore": 1.0,
+      "depthsAttempted": 1,
+      "depthsRequested": 1,
+      "depthsSkipped": 0,
+      "depthsFailed": 0,
+      "presentQuestionCounts": {
+        "correct_answer": 3,
+        "wrong_answer": 0,
+        "false_abstention": 0,
+        "total": 3
+      },
+      "abstentionCounts": {
+        "correct_abstention": 3,
+        "invented_answer": 0,
+        "total": 3
+      }
+    },
+    "caveat": "This battery's prompts and haystack/abstention generators are committed in plaintext, like toolbattery.py -- see CANARY.md section 3 (extended in 3b for this module). Do not treat a rising score over time as proof of improving recall or abstention without ruling out this exact battery having been scraped; the fresh-seed-per-run design limits, but does not eliminate, that risk for the probe SHAPE even though the planted facts and absent pairs themselves change every run."
+  },
+  "environment": {
+    "baseUrl": "http://172.17.0.1:8082/v1",
+    "local": true,
+    "serverConfig": {
+      "capturedAtEpoch": 1790419123,
+      "propsUrl": "http://172.17.0.1:8082/props",
+      "props": {
+        "default_generation_settings": {
+          "params": {
+            "seed": 4294967295,
+            "temperature": 1.0,
+            "dynatemp_range": 0.0,
+            "dynatemp_exponent": 1.0,
+            "top_k": 20,
+            "top_p": 0.949999988079071,
+            "min_p": 0.05000000074505806,
+            "top_n_sigma": -1.0,
+            "xtc_probability": 0.0,
+            "xtc_threshold": 0.10000000149011612,
+            "typical_p": 1.0,
+            "repeat_last_n": 64,
+            "repeat_penalty": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "dry_multiplier": 0.0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": 64,
+            "mirostat": 0,
+            "mirostat_tau": 5.0,
+            "mirostat_eta": 0.10000000149011612,
+            "adaptive_target": -1.0,
+            "adaptive_decay": 0.8999999761581421,
+            "max_tokens": -1,
+            "n_predict": -1,
+            "n_keep": 0,
+            "n_discard": 0,
+            "ignore_eos": false,
+            "stream": false,
+            "n_probs": 0,
+            "min_keep": 0,
+            "chat_format": "Content-only",
+            "reasoning_format": "none",
+            "reasoning_in_content": false,
+            "generation_prompt": "",
+            "samplers": [
+              "penalties",
+              "dry",
+              "top_n_sigma",
+              "top_k",
+              "typ_p",
+              "top_p",
+              "min_p",
+              "xtc",
+              "temperature"
+            ],
+            "speculative.types": "none",
+            "timings_per_token": false,
+            "post_sampling_probs": false,
+            "backend_sampling": false,
+            "lora": []
+          },
+          "n_ctx": 131072
+        },
+        "total_slots": 1,
+        "model_alias": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+        "model_ftype": "Q4_K - Small",
+        "model_path": "/home/viet/IA/Qwen3.6-35B-A3B-Q4KS/Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+        "modalities": {
+          "vision": false,
+          "video": false,
+          "audio": false
+        },
+        "media_marker": "<__media_GPRx8EHydyR8lNhe8p9vFJEaX3XSpHzH__>",
+        "endpoint_slots": true,
+        "endpoint_props": false,
+        "endpoint_metrics": false,
+        "ui": true,
+        "ui_settings": {},
+        "chat_template": "{%- set image_count = namespace(value=0) %}\n{%- set video_count = namespace(value=0) %}\n{%- macro render_content(content, do_vision_count, is_system_content=false) %}\n    {%- if content is string %}\n        {{- content }}\n    {%- elif content is iterable and content is not mapping %}\n        {%- for item in content %}\n            {%- if 'image' in item or 'image_url' in item or item.type == 'image' %}\n                {%- if is_system_content %}\n                    {{- raise_exception('System message cannot contain images.') }}\n                {%- endif %}\n                {%- if do_vision_count %}\n                    {%- set image_count.value = image_count.value + 1 %}\n                {%- endif %}\n                {%- if add_vision_id %}\n                    {{- 'Picture ' ~ image_count.value ~ ': ' }}\n                {%- endif %}\n                {{- '<|vision_start|><|image_pad|><|vision_end|>' }}\n            {%- elif 'video' in item or item.type == 'video' %}\n                {%- if is_system_content %}\n                    {{- raise_exception('System message cannot contain videos.') }}\n                {%- endif %}\n                {%- if do_vision_count %}\n                    {%- set video_count.value = video_count.value + 1 %}\n                {%- endif %}\n                {%- if add_vision_id %}\n                    {{- 'Video ' ~ video_count.value ~ ': ' }}\n                {%- endif %}\n                {{- '<|vision_start|><|video_pad|><|vision_end|>' }}\n            {%- elif 'text' in item %}\n                {{- item.text }}\n            {%- else %}\n                {{- raise_exception('Unexpected item type in content.') }}\n            {%- endif %}\n        {%- endfor %}\n    {%- elif content is none or content is undefined %}\n        {{- '' }}\n    {%- else %}\n        {{- raise_exception('Unexpected content type.') }}\n    {%- endif %}\n{%- endmacro %}\n{%- if not messages %}\n    {{- raise_exception('No messages provided.') }}\n{%- endif %}\n{%- set num_sys = 0 %}\n{%- set merged_system = '' %}\n{%- if messages[0].role == 'system' or messages[0].role == 'developer' %}\n    {%- set first = render_content(messages[0].content, false, true)|trim %}\n    {%- if messages|length > 1 and (messages[1].role == 'system' or messages[1].role == 'developer') %}\n        {%- set second = render_content(messages[1].content, false, true)|trim %}\n        {%- set merged_system = first + '\\n' + second %}\n        {%- set num_sys = 2 %}\n    {%- else %}\n        {%- set merged_system = first %}\n        {%- set num_sys = 1 %}\n    {%- endif %}\n{%- endif %}\n{%- if tools and tools is iterable and tools is not mapping %}\n    {{- '<|im_start|>system\\n' }}\n    {{- \"# Tools\\n\\nYou have access to the following functions:\\n\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\" }}\n    {{- '\\n\\nIf you choose to call a function ONLY reply in the following format with NO suffix:\\n\\n<tool_call>\\n<function=example_function_name>\\n<parameter=example_parameter_1>\\nvalue_1\\n</parameter>\\n<parameter=example_parameter_2>\\nThis is the value for the second parameter\\nthat can span\\nmultiple lines\\n</parameter>\\n</function>\\n</tool_call>\\n\\n<IMPORTANT>\\nReminder:\\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\\n- Required parameters MUST be specified\\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\\n</IMPORTANT>' }}\n    {%- if merged_system %}\n        {{- '\\n\\n' + merged_system }}\n    {%- endif %}\n    {{- '<|im_end|>\\n' }}\n{%- else %}\n    {%- if merged_system %}\n        {{- '<|im_start|>system\\n' + merged_system + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" %}\n        {%- set content = render_content(message.content, false)|trim %}\n        {%- if not(content.startswith('<tool_response>') and content.endswith('</tool_response>')) %}\n            {%- set ns.multi_step_tool = false %}\n            {%- set ns.last_query_index = index %}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if loop.index0 >= num_sys and message.role != \"system\" and message.role != \"developer\" %}\n    {%- set content = render_content(message.content, true)|trim %}\n    {%- if message.role == \"user\" %}\n        {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is string %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in content %}\n                {%- set reasoning_content = content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n                {%- set content = content.split('</think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- set reasoning_content = reasoning_content|trim %}\n        {%- if (preserve_thinking is defined and preserve_thinking is true) or (loop.index0 > ns.last_query_index) %}\n            {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content + '\\n</think>\\n\\n' + content }}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls and message.tool_calls is iterable and message.tool_calls is not mapping %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if tool_call.function is defined %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {%- if loop.first %}\n                    {%- if content|trim %}\n                        {{- '\\n\\n<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                    {%- else %}\n                        {{- '<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                    {%- endif %}\n                {%- else %}\n                    {{- '\\n<tool_call>\\n<function=' + tool_call.name + '>\\n' }}\n                {%- endif %}\n                {%- if tool_call.arguments is mapping %}\n                    {%- for args_name in tool_call.arguments %}\n                        {%- set args_value = tool_call.arguments[args_name] %}\n                        {{- '<parameter=' + args_name + '>\\n' }}\n                        {%- set args_value = args_value | tojson | safe if args_value is mapping or (args_value is sequence and args_value is not string) else args_value | string %}\n                        {{- args_value }}\n                        {{- '\\n</parameter>\\n' }}\n                    {%- endfor %}\n                {%- endif %}\n                {{- '</function>\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.previtem and loop.previtem.role != \"tool\" %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- content }}\n        {{- '\\n</tool_response>' }}\n        {%- if not loop.last and loop.nextitem.role != \"tool\" %}\n            {{- '<|im_end|>\\n' }}\n        {%- elif loop.last %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- else %}\n        {{- '<think>\\n' }}\n    {%- endif %}\n{%- endif %}\n{#- Unsloth fixes - developer role, tool calling #}",
+        "chat_template_caps": {
+          "supports_object_arguments": true,
+          "supports_parallel_tool_calls": true,
+          "supports_preserve_reasoning": true,
+          "supports_reasoning_effort": false,
+          "supports_string_content": true,
+          "supports_system_role": true,
+          "supports_tool_calls": true,
+          "supports_tools": true,
+          "supports_typed_content": false
+        },
+        "bos_token": "<|endoftext|>",
+        "eos_token": "<|im_end|>",
+        "build_info": "b1-125c6d1",
+        "is_sleeping": false,
+        "cors_proxy_enabled": false
+      },
+      "processCmdline": [
+        "1843815 /bin/bash -lc env PATH=/home/viet/miniconda3/envs/llamacpp-b10751/bin:$PATH llama-server --model /home/viet/IA/Qwen3.6-35B-A3B-Q4KS/Qwen3.6-35B-A3B-UD-Q4_K_S.gguf --alias Qwen3.6-35B-A3B-UD-Q4_K_S.gguf --jinja --gpu-layers 99 --ctx-size 131072 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1 --tensor-split 1,0 -ot 'blk\\.(1[4-9]|[23][0-9])\\.ffn_.*_exps\\.=CUDA1' --ubatch-size 256 --batch-size 512 --cont-batching --no-context-shift --host 172.17.0.1 --port 8082 > /tmp/qwen35-protocol4-screen-8082.log 2>&1",
+        "1843829 llama-server --model /home/viet/IA/Qwen3.6-35B-A3B-Q4KS/Qwen3.6-35B-A3B-UD-Q4_K_S.gguf --alias Qwen3.6-35B-A3B-UD-Q4_K_S.gguf --jinja --gpu-layers 99 --ctx-size 131072 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1 --tensor-split 1,0 -ot blk\\.(1[4-9]|[23][0-9])\\.ffn_.*_exps\\.=CUDA1 --ubatch-size 256 --batch-size 512 --cont-batching --no-context-shift --host 172.17.0.1 --port 8082",
+        "3291662 /home/viet/miniconda3/envs/llamacpp-b10751/bin/llama-server -m /home/viet/IA/embeddinggemma-300M/embeddinggemma-300M-Q8_0.gguf --host 0.0.0.0 --port 8081 -ngl 0 --ctx-size 8192 --embedding -b 1024 -ub 1024 --device none",
+        "3291713 /home/viet/miniconda3/envs/llamacpp-b10751/bin/llama-server -m /home/viet/IA/bge-reranker-v2-m3/bge-reranker-v2-m3-Q8_0.gguf --host 0.0.0.0 --port 8083 --reranking --ctx-size 8192 -b 8192 -ub 8192 -ngl 0 --device none"
+      ],
+      "launchFlags": {},
+      "modelFile": {
+        "path": "/home/viet/IA/Qwen3.6-35B-A3B-Q4KS/Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+        "sizeBytes": 20893015008,
+        "mtimeEpoch": 1790194088,
+        "sha256": null,
+        "sha256Skipped": "20893015008 bytes > 4294967296 byte cap (OAKEN_HASH_MODEL_MAX_BYTES) -- hashing a multi-GiB GGUF on every run is not \"cheap\""
+      },
+      "hostGpus": [
+        {
+          "name": "NVIDIA GeForce RTX 5070",
+          "memoryTotal": "12227 MiB",
+          "driverVersion": "615.71.09"
+        },
+        {
+          "name": "NVIDIA GeForce RTX 3060",
+          "memoryTotal": "12288 MiB",
+          "driverVersion": "615.71.09"
+        }
+      ]
+    },
+    "backend": {
+      "name": "cuda",
+      "reason": "no --device/-ot flag seen, but nvidia-smi reported GPU(s); this repo's only tested hardware is NVIDIA (MODELS.md), so CUDA is the default inference -- this cannot rule out a Vulkan build running against the same NVIDIA card"
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 5070",
+        "memoryTotal": "12227 MiB",
+        "driverVersion": "615.71.09",
+        "peakVramUsedMiB": 11486
+      },
+      {
+        "name": "NVIDIA GeForce RTX 3060",
+        "memoryTotal": "12288 MiB",
+        "driverVersion": "615.71.09",
+        "peakVramUsedMiB": 11644
+      }
+    ]
+  },
+  "collectionAssessment": {
+    "thresholdRevision": "pending-2026-09-25",
+    "thresholdStatus": "pending_calibration",
+    "assessment": {
+      "verdict": "unverified",
+      "checks": {
+        "schemaAdherence": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "toolSelection": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "shortChainsDepth": {
+          "observed": 0.8,
+          "minimum": null,
+          "passed": null
+        },
+        "refusal": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "recall": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "abstention": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        }
+      }
+    }
+  }
+}

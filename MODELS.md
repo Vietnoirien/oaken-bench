@@ -352,6 +352,13 @@ zero parse errors. Check `llama-server --version` before blaming the model.
 room, and q4_0 KV cost ~9 points on pi and took the set from 6/6 to 4/6 above
 the bar (FINAL-REPORT §3.6.1). Keep q8_0 at 131072 unless a task needs the window.
 
+For a 5070 running Showtime, `qwen35moe-desktop` keeps the 131072-token q8_0
+layout but moves block 14's experts to the 3060. Its screen-calibration smoke
+test left 446 / 322 MiB free with 1.3 GiB of desktop use before loading.
+This is a separate preset from the T2-tested `qwen35moe`; do not combine
+their results as if the server layouts matched. See
+[screen-calibration.md](screen-calibration.md) for the run.
+
 **Two more models, same cards and build**, as presets of `examples/launch-dual.sh`:
 
 | preset | layout | short prompt | at ~99k filled | free at 131k |
