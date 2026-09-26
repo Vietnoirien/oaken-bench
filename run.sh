@@ -49,23 +49,36 @@ if [ "$OFFLINE_SMOKE" = 1 ]; then
     exit 64
   fi
 fi
-T4_DOCKER_ARGS=()
-T4_ENTRY_ARGS=()
-T4_TMP=""
+PREPARED_DOCKER_ARGS=()
+PREPARED_ENTRY_ARGS=()
+PREPARED_TMP=""
 if [ "$TIER" = t4 ]; then
-  T4_TMP=$(mktemp -d)
-  trap 'rm -rf "$T4_TMP"' EXIT
-  python3 "$B/scripts/t4.py" assemble "$T4_TMP/input"
-  T4_DOCKER_ARGS=(-e OAKEN_TIER=t4 -v "$T4_TMP/input:/t4-input:ro"
+  PREPARED_TMP=$(mktemp -d)
+  trap 'rm -rf "$PREPARED_TMP"' EXIT
+  python3 "$B/scripts/t4.py" assemble "$PREPARED_TMP/input"
+  PREPARED_DOCKER_ARGS=(-e OAKEN_TIER=t4 -v "$PREPARED_TMP/input:/t4-input:ro"
                   -v "$B/docker/entrypoint.sh:/t4-entrypoint.sh:ro"
                   -v "$B/docker/configure_server.py:/usr/local/bin/configure_server.py:ro"
                   -v "$B/t4/PROMPT.txt:/opt/PROMPT.txt:ro" --entrypoint /bin/bash)
-  T4_ENTRY_ARGS=(/t4-entrypoint.sh)
+  PREPARED_ENTRY_ARGS=(/t4-entrypoint.sh)
   if [ "$OFFLINE_SMOKE" = 1 ]; then
-    T4_DOCKER_ARGS+=(--network none --cpus 2 --memory 2g -e OAKEN_T4_OFFLINE_SMOKE=1)
+    PREPARED_DOCKER_ARGS+=(--network none --cpus 2 --memory 2g -e OAKEN_T4_OFFLINE_SMOKE=1)
   fi
 fi
+if [ "$TIER" = t5 ]; then
+  PREPARED_TMP=$(mktemp -d)
+  trap 'rm -rf "$PREPARED_TMP"' EXIT
+  python3 "$B/scripts/t5_runner.py" assemble "$PREPARED_TMP/input"
+  PREPARED_DOCKER_ARGS=(-e OAKEN_TIER=t5 -v "$PREPARED_TMP/input:/t5-input:ro"
+                  -v "$B/docker/entrypoint.sh:/t5-entrypoint.sh:ro"
+                  -v "$B/docker/configure_server.py:/usr/local/bin/configure_server.py:ro"
+                  -v "$B/t5/PROMPT.txt:/opt/PROMPT.txt:ro" --entrypoint /bin/bash)
+  PREPARED_ENTRY_ARGS=(/t5-entrypoint.sh)
+fi
 mkdir -p "$OUT"
+if [ "$TIER" = t5 ]; then
+  python3 "$B/scripts/t5_runner.py" provenance "$OUT/t5-run-context.json"
+fi
 if [ "$LABEL" != "${LABEL#t3-}" ]; then
   cp "$B/t3instance.sha256" "$OUT/instance.sha256"
 fi
@@ -124,7 +137,7 @@ docker run --rm \
   -e OAKEN_SERVER_URL="$CONTAINER_SERVER_URL" \
   "${TIER_ARGS[@]}" \
   -v "$OUT:/out" \
-  "${T4_DOCKER_ARGS[@]}" "$OAKEN_IMAGE" "${T4_ENTRY_ARGS[@]}" "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" &
+  "${PREPARED_DOCKER_ARGS[@]}" "$OAKEN_IMAGE" "${PREPARED_ENTRY_ARGS[@]}" "$HARNESS" "$MODEL" "$TIMEOUT" 2>&1 | tee "$OUT/docker.log" &
 RUN_PID=$!
 # Bash reports a pipeline job by its group leader, while $! is the last
 # process (tee). Match any running job here; this script starts only this one.

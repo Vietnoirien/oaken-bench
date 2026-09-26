@@ -17,6 +17,7 @@ node_modules/
 # metrics only, digests never argument text) are the published record.
 /results/*/*
 !/results/*/score.json
+!/results/t5-*/visible-score.json
 !/results/*/events-summary.json
 __pycache__/
 *.pyc

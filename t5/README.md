@@ -9,6 +9,47 @@ These are visible development scores. They do not estimate the held-out
 snapshot-pool score from issue #40. All original T2 assets and published
 results keep their existing meaning.
 
+## Run a model through pi or dsh
+
+The runner uses the same registered model IDs and server configuration as T2.
+A `t5-` label selects the bot task:
+
+```bash
+./run.sh pi <model-id> t5-<label> 1800
+OAKEN_T5_NODE=/path/to/node24 python3 scripts/score.py results/t5-<label>
+# Or use bench.sh to run and score in one command.
+```
+
+The model starts with the public contract, simulator, baseline bots, visible
+seeds, v1.0 interfaces/data, and encrypted reference engine. It writes
+`bot/bot.mjs` and any helpers under `bot/`. The model container has no T5
+oracle or held-out suite mount. The prompt is [PROMPT.txt](PROMPT.txt).
+
+`run.sh` archives the raw trace and workspace through `OAKEN_ARCHIVE`, as for
+T2. Scoring restores only regular module/JSON files from `work/bot/`, rejecting
+links and traversal paths. The submission limit is 10 MiB and 1000 files.
+Imports must stay inside `bot/` or use `oaken-engine` and `oaken-t5`.
+A missing bot or failed scoring step leaves the previous score pair unchanged,
+or produces no score files on a first evaluation. Both score files are prepared
+before publication, with rollback on ordinary write failures. This is not an
+atomic two-file update across a host crash.
+
+`score.json` retains the sealed snapshot protocol. `visible-score.json`
+separately records three visible live-bot comparisons, one against each public
+baseline, with 100 seeds and both seats per comparison. Both record model,
+harness, exit status, workspace digest and runner provenance. The held-out
+report also includes the existing trace-derived behavior metrics. A timeout
+can still yield a score for the bot left in the workspace; `modelRun.exitCode`
+and `timeoutSeconds` identify that run outcome. Measured wall-clock duration
+stays in the archived `wallclock.seconds`, outside scored JSON. The two protocols measure
+different outcomes, so their rates must not be pooled.
+
+Visible evaluations run without network or writable host paths inside Docker.
+Sealed evaluations use the existing Bubblewrap worker. Docker, Bubblewrap,
+`prlimit`, and Node 24 with TypeScript support are required on the scoring host.
+The Docker image's Node version and host Node version are recorded separately
+by the two protocols; compare matching runtimes when comparing scores.
+
 ## Run locally
 
 Use Node 24+ with TypeScript support, Bash, GNU coreutils, OpenSSL and tar.

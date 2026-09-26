@@ -1,0 +1,18 @@
+Write a game-playing bot in /work/bot/bot.mjs, exporting synchronous decide(state).
+Read t5/SPEC.md for the bot contract, then seed/SPEC.md and the public interfaces
+and item data under seed/. The frozen reference engine is available through
+'oaken-engine', and simulator helpers through 'oaken-t5'.
+
+Develop and test your strategy with t5/bin/t5-sim. Start with the three public
+baseline modules in t5/bots/ and improve your bot using visible simulations.
+For example: t5/bin/t5-sim play --bot ./bot/bot.mjs --vs baseline:cheapest --json
+Put every helper module or JSON asset your bot needs under bot/. During scoring,
+only bot/ is extracted from this workspace. Use only relative imports within
+bot/ or the public 'oaken-engine' and 'oaken-t5' modules. Do not add dependencies.
+Do not change supplied simulator, engine, specs, seeds, baselines or item data.
+Do not copy reference engine source into bot/ or specialize to visible seeds.
+
+The bot must obey the purity and time budgets in t5/SPEC.md. The final bot is
+scored separately against public live baselines and fixed held-out snapshots.
+There is no held-out feedback during this run. Complete your bot within the
+allotted time without asking for clarification.
