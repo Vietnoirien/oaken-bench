@@ -114,12 +114,12 @@ implementation. The first live pilot is recorded below.
 ### First live model pilot, 2026-09-26
 
 The exploratory Pi run [t4-qwen35moe-desktop-pi-20260926-01](../results/t4-qwen35moe-desktop-pi-20260926-01/score.json)
-scored 132/132 on v1.0 and 136/137 on v1.1. Typecheck passed, all 269
-assertions were collected, and no frozen inputs drifted. The unchanged
-reference engine scored 132/132 and 2/137 through this T4 scorer, so this
-run confirms that the model implemented most of the v1.1 extension without
-regressing on the earlier suite. One run does not establish reliability or
-separate model variance from harness variance.
+scored 132/132 on v1.0 and 136/137 on v1.1. Typecheck passed, with 132/132
+v1.0 assertions and 137/137 v1.1 assertions collected separately. No frozen
+inputs drifted. The unchanged reference engine scored 132/132 and 2/137
+through this T4 scorer. The pilot shows that the model implemented most of
+the v1.1 extension while preserving all earlier suite passes. One run does
+not establish reliability or separate model variance from harness variance.
 
 The model was `Qwen3.6-35B-A3B-UD-Q4_K_S.gguf` under Pi 0.86.0. The guarded
 `qwen35moe-desktop` preset served it with llama.cpp b10751 on an RTX 5070 and

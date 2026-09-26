@@ -647,9 +647,10 @@ result; a probe result is not a T2 task score.
    check covered the held-out suite once but not the reference-engine canary.
    See [the pilot record](docs/t3-pilot-20260926.md) for the sealed instance
    and suite revisions. T1 remains deferred after three archived 192k Gemma
-   retests varied by work order and early exit. T4 has only no-model runner
-   checks: its unchanged reference engine passes 132/132 v1.0 tests and 2/137
-   v1.1 tests. T5 has one CPU baseline measurement under its own protocol.
+   retests varied by work order and early exit. T4 has one exploratory Qwen Pi
+   pilot, with 132/132 v1.0 and 136/137 v1.1 passes. Its unchanged reference
+   engine passes 132/132 v1.0 and 2/137 v1.1; n=1 cannot establish T4
+   repeatability. T5 has one CPU baseline measurement under its own protocol.
    Do not infer any tier's performance from T2 or the probe tiers.
 
 Contributions that would help most: additional task instances, a task generator
