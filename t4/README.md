@@ -108,8 +108,48 @@ and their summary fields retain their meanings. T4 accepts the shared
 132/132 v1.0 and 2/137 v1.1, with a clean typecheck and no frozen-file drift.
 It ran through the tier namespace on the unchanged reference engine. This is
 an assembly/scoring smoke run, not a live agent implementation trial. No GPU
-or model endpoint was used. A positive v1.1 implementation has not been
-validated against this new suite; that remains a separate calibration step.
+or model endpoint was used. That smoke run did not validate a positive v1.1
+implementation. The first live pilot is recorded below.
+
+### First live model pilot, 2026-09-26
+
+The exploratory Pi run [t4-qwen35moe-desktop-pi-20260926-01](../results/t4-qwen35moe-desktop-pi-20260926-01/score.json)
+scored 132/132 on v1.0 and 136/137 on v1.1. Typecheck passed, with 132/132
+v1.0 assertions and 137/137 v1.1 assertions collected separately. No frozen
+inputs drifted. The unchanged reference engine scored 132/132 and 2/137
+through this T4 scorer. The pilot shows that the model implemented most of
+the v1.1 extension while preserving all earlier suite passes. One run does
+not establish reliability or separate model variance from harness variance.
+
+The model was `Qwen3.6-35B-A3B-UD-Q4_K_S.gguf` under Pi 0.86.0. The guarded
+`qwen35moe-desktop` preset served it with llama.cpp b10751 on an RTX 5070 and
+RTX 3060, 131072 context, q8_0 K/V, one slot, and expert blocks 14-39 on the
+3060. Its command used `--jinja --gpu-layers 99 --ctx-size 131072`,
+`--cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1`,
+`--tensor-split 1,0 -ot 'blk\.(1[4-9]|[23][0-9])\.ffn_.*_exps\.=CUDA1'`,
+`--batch-size 512 --ubatch-size 256 --cont-batching --no-context-shift`,
+and `--host 172.17.0.1 --port 8080`. Its smoke
+test returned a well-formed tool call at 96.5 tokens/s with 488/322 MiB free.
+The trial had a 3600-second cap and finished in 391 seconds with container
+exit 0, 39 turns, and 56 tool calls. The image ID was
+`sha256:db70dc755e2d68747eabb681ebcd89fd1d46ecc443f114b44cb6698277e874f6`.
+The run context identifies the model file by path, size (20,893,015,008
+bytes), and mtime; its hash was skipped by the configured 4 GiB cap.
+
+The score identifies the sealed v1.0 suite as
+`fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97`,
+the sealed T4 oracle as
+`7f8fbed573482c11342de45ed06a3762e08aacff655fff504280609b5a0a3d8b`,
+and the frozen v1.1 spec commit as
+`2e0fe3d750a3c0b91bc2817440046f8ffc0eb8a2`. The model received no
+repository context for separate canary prompts. Neither suite's canary digest
+matched its response. The v1.0 check needed a short-answer retry after an
+unqualified response hit its token limit; the retry completed. The raw trace,
+workspace archive, and full run context are preserved under
+`~/.cache/oaken-bench/t4-qwen35moe-desktop-pi-20260926-01/`. They are not
+published because the trace contains agent-written code. The archived
+`workspace.tgz` has SHA-256
+`e93a2c192a8487efe7108710705fc8a611ea5b1c33befe8e8f59ff9a77755545`.
 
 The new Python machinery has public fixture tests in `scripts/tests/test_t4.py`.
 They check tier dispatch, separate version counts, fixed denominators, archive
