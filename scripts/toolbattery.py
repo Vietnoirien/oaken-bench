@@ -1492,6 +1492,7 @@ def _run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=N
     broken_at_step = None
     broken_at_level = None
     break_reasons = None
+    output_truncated = False
 
     for i, step in enumerate(steps):
         step_no = i + 1
@@ -1504,6 +1505,13 @@ def _run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=N
             errors.append(f'shortChains/{chain_id}: {e}')
             broken_at_step = step_no
             break_reasons = [f'request failed: {e}']
+            break
+
+        if parsed['finish_reason'] == 'length':
+            output_truncated = True
+            broken_at_step = step_no
+            broken_at_level = 'outputTruncated'
+            break_reasons = ['output hit max_tokens before the chain step completed']
             break
 
         raw_calls = parsed['tool_calls']
@@ -1553,6 +1561,7 @@ def _run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=N
         'chainLength': chain_len, 'depthReached': depth_reached,
         'brokenAtStep': broken_at_step, 'brokenAtLevel': broken_at_level,
         'calls': calls_records, 'pseudoToolCalls': pseudo,
+        'outputTruncated': output_truncated,
     })
 
 

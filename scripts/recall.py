@@ -498,6 +498,16 @@ def run_depth(base_url, root_url, model, depth_tokens, seed, *, max_tokens, time
 
     choice = (resp.get('choices') or [{}])[0]
     message = choice.get('message') or {}
+    record['finishReason'] = choice.get('finish_reason')
+    record['timing'] = timing
+    record['rawAnswerPreview'] = _preview(message.get('content'))
+    # A reasoning model can spend the entire output budget before calling the
+    # reporting tool. Counting its empty response as six abstentions turns a
+    # budget limit into a model failure, and even a truncated tool call may
+    # omit answers. Leave this depth out of the score.
+    if record['finishReason'] == 'length':
+        record['outputTruncated'] = True
+        return record
     tool_args = _first_tool_call(message)
     results = _score_recall(haystack.facts, tool_args)
     correct = sum(1 for r in results if r['correct'])
@@ -512,8 +522,6 @@ def run_depth(base_url, root_url, model, depth_tokens, seed, *, max_tokens, time
         'questions': abstention_results,
         'counts': _abstention_counts(abstention_results),
     }
-    record['timing'] = timing
-    record['rawAnswerPreview'] = _preview(message.get('content'))
     return record
 
 
@@ -626,6 +634,9 @@ def print_report(report):
     for d in report['depths']:
         if 'transportError' in d:
             print(f"  depth {d['depthTokens']:>7}  ERROR: {d['transportError']}")
+            continue
+        if d.get('outputTruncated'):
+            print(f"  depth {d['depthTokens']:>7}  INCOMPLETE: output hit the token limit")
             continue
         pct = '  --' if d['recallScore'] is None else f"  ({d['recallScore'] * 100:.0f}%)"
         timing = d['timing']

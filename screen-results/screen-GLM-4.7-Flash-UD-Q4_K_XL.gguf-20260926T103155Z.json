@@ -1,0 +1,785 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 4,
+  "label": "screen-GLM-4.7-Flash-UD-Q4_K_XL.gguf-20260926T103155Z",
+  "model": "GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+  "baseUrl": "http://172.17.0.1:8082/v1",
+  "generatedAt": "2026-09-26T10:31:55.712978+00:00",
+  "elapsedSeconds": 393.452,
+  "thresholdRevision": "screen-v4-2026-09-26",
+  "thresholdStatus": "calibrated",
+  "protocol": {
+    "t0Dimensions": [
+      "schemaAdherence",
+      "toolSelection",
+      "shortChains",
+      "refusal"
+    ],
+    "t05DepthTokens": 16384,
+    "t05Seed": 20260924,
+    "t05AbstentionPerKind": 1,
+    "t0MaxTokens": 8192,
+    "t05MaxTokens": 16384
+  },
+  "complete": false,
+  "metrics": {
+    "schemaAdherence": 1.0,
+    "toolSelection": 1.0,
+    "shortChainsDepth": 0.8667,
+    "refusal": 1.0,
+    "recall": null,
+    "abstention": null
+  },
+  "assessment": {
+    "verdict": "incomplete",
+    "checks": {
+      "schemaAdherence": {
+        "observed": 1.0,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "toolSelection": {
+        "observed": 1.0,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "shortChainsDepth": {
+        "observed": 0.8667,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "refusal": {
+        "observed": 1.0,
+        "minimum": 0.75,
+        "passed": true
+      },
+      "recall": {
+        "observed": null,
+        "minimum": 0.6667,
+        "passed": null
+      },
+      "abstention": {
+        "observed": null,
+        "minimum": 0.6667,
+        "passed": null
+      }
+    }
+  },
+  "t0": {
+    "dimensions": {
+      "schemaAdherence": {
+        "dimension": "schemaAdherence",
+        "passed": 5,
+        "total": 5,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "room-basic",
+            "description": "Book Falcon for 30 minutes starting at 2026-10-01T14:00:00 for alice@example.com and bob@example.com.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "book_meeting_room",
+            "toolCalled": "book_meeting_room",
+            "arguments": {
+              "room_name": "Falcon",
+              "start_time": "2026-10-01T14:00:00",
+              "duration_minutes": 30,
+              "attendees": [
+                "alice@example.com",
+                "bob@example.com"
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "book_meeting_room",
+                "expectedTool": "book_meeting_room",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "room-recurring",
+            "description": "Set up a recurring 60 minute meeting in room Heron at 2026-10-02T09:30:00 with just carol@example.com.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "book_meeting_room",
+            "toolCalled": "book_meeting_room",
+            "arguments": {
+              "room_name": "Heron",
+              "start_time": "2026-10-02T09:30:00",
+              "duration_minutes": 60,
+              "attendees": [
+                "carol@example.com"
+              ],
+              "recurring": true
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "book_meeting_room",
+                "expectedTool": "book_meeting_room",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "weather-units",
+            "description": "What is the weather in Tokyo right now, in fahrenheit?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather",
+            "toolCalled": "get_weather",
+            "arguments": {
+              "city": "Tokyo",
+              "units": "fahrenheit"
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather",
+                "expectedTool": "get_weather",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "edit-single",
+            "description": "In config/ops.yaml, replace the line \"retries: 3\" with \"retries: 5\".",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "edit_file",
+            "toolCalled": "edit_file",
+            "arguments": {
+              "path": "config/ops.yaml",
+              "edits": [
+                {
+                  "oldText": "retries: 3",
+                  "newText": "retries: 5"
+                }
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "edit_file",
+                "expectedTool": "edit_file",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "edit-multi",
+            "description": "In runbook.md, replace \"Owner: TBD\" with \"Owner: SRE\" and replace \"Status: draft\" with \"Status: active\".",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "edit_file",
+            "toolCalled": "edit_file",
+            "arguments": {
+              "path": "runbook.md",
+              "edits": [
+                {
+                  "oldText": "Owner: TBD",
+                  "newText": "Owner: SRE"
+                },
+                {
+                  "oldText": "Status: draft",
+                  "newText": "Status: active"
+                }
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "edit_file",
+                "expectedTool": "edit_file",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0,
+        "byTool": {
+          "book_meeting_room": {
+            "passed": 2,
+            "total": 2,
+            "notAttempted": 0,
+            "score": 1.0
+          },
+          "get_weather": {
+            "passed": 1,
+            "total": 1,
+            "notAttempted": 0,
+            "score": 1.0
+          },
+          "edit_file": {
+            "passed": 2,
+            "total": 2,
+            "notAttempted": 0,
+            "score": 1.0
+          }
+        }
+      },
+      "toolSelection": {
+        "dimension": "toolSelection",
+        "passed": 5,
+        "total": 5,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "pick-weather",
+            "description": "How hot is it in Lisbon today?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather",
+            "toolCalled": "get_weather",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather",
+                "expectedTool": "get_weather",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-alerts",
+            "description": "Are there any severe weather alerts active for the Gulf Coast region right now?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather_alerts",
+            "toolCalled": "get_weather_alerts",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather_alerts",
+                "expectedTool": "get_weather_alerts",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-order-status",
+            "description": "What's the status of the most recent order for the customer with id cus_77120?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_order_status",
+            "toolCalled": "get_order_status",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_order_status",
+                "expectedTool": "get_order_status",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-cancel",
+            "description": "Please cancel the subscription belonging to customer cus_31004.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "cancel_subscription",
+            "toolCalled": "cancel_subscription",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "cancel_subscription",
+                "expectedTool": "cancel_subscription",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-rooms-list",
+            "description": "What meeting rooms are free right now in the Riverside building?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "list_available_rooms",
+            "toolCalled": "list_available_rooms",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "list_available_rooms",
+                "expectedTool": "list_available_rooms",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0
+      },
+      "shortChains": {
+        "dimension": "shortChains",
+        "passed": 3,
+        "total": 4,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "order-ship-track",
+            "description": "Ship the most recent order for the customer with email morgan@example.com, then tell me its current delivery status.",
+            "passed": false,
+            "reasons": [
+              "expected 'get_shipping_label', got 'get_order_status' (decoy taken, or a later step guessed ahead of its dependency)"
+            ],
+            "chainLength": 3,
+            "depthReached": 1,
+            "brokenAtStep": 2,
+            "brokenAtLevel": "schemaValid",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "lookup_order_by_email",
+                "expectedTool": "lookup_order_by_email",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "get_order_status",
+                "expectedTool": "get_shipping_label",
+                "level": "schemaValid"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "ticket-assign-contact",
+            "description": "Open a support ticket for \"VPN keeps disconnecting\", assign it to an agent, and give me that agent's contact email.",
+            "passed": true,
+            "reasons": [
+              "completed all 3 steps"
+            ],
+            "chainLength": 3,
+            "depthReached": 3,
+            "brokenAtStep": null,
+            "brokenAtLevel": null,
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "open_support_ticket",
+                "expectedTool": "open_support_ticket",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "assign_ticket_agent",
+                "expectedTool": "assign_ticket_agent",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "get_agent_contact",
+                "expectedTool": "get_agent_contact",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "device-register-activate",
+            "description": "Register a new device named \"kiosk-07\", activate it, and tell me its status.",
+            "passed": true,
+            "reasons": [
+              "completed all 4 steps"
+            ],
+            "chainLength": 4,
+            "depthReached": 4,
+            "brokenAtStep": null,
+            "brokenAtLevel": null,
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "register_device",
+                "expectedTool": "register_device",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "generate_activation_code",
+                "expectedTool": "generate_activation_code",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "activate_device",
+                "expectedTool": "activate_device",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 4,
+                "tool": "get_device_status",
+                "expectedTool": "get_device_status",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "expense-submit-release",
+            "description": "Submit a $42.50 expense for \"client dinner\", route it for approval, notify the approver, and release payment once it's approved.",
+            "passed": true,
+            "reasons": [
+              "completed all 5 steps"
+            ],
+            "chainLength": 5,
+            "depthReached": 5,
+            "brokenAtStep": null,
+            "brokenAtLevel": null,
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "submit_expense",
+                "expectedTool": "submit_expense",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "route_expense_for_approval",
+                "expectedTool": "route_expense_for_approval",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "notify_approver",
+                "expectedTool": "notify_approver",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 4,
+                "tool": "get_approval_status",
+                "expectedTool": "get_approval_status",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 5,
+                "tool": "release_payment",
+                "expectedTool": "release_payment",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          }
+        ],
+        "score": 0.75,
+        "depth": {
+          "totalDepthReached": 13,
+          "totalPossibleDepth": 15,
+          "score": 0.8667,
+          "brokenAtLevel": {
+            "schemaValid": 1
+          }
+        }
+      },
+      "refusal": {
+        "dimension": "refusal",
+        "passed": 4,
+        "total": 4,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "trivia",
+            "description": "What is the capital of France?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "The capital of France is Paris.",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "arithmetic",
+            "description": "What's 17 times 23?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "17 times 23 equals 391.",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "opinion",
+            "description": "What is a good name for a pet cat?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "Here are some great cat name ideas for you:\n\n**Classic & Elegant:**\n- Luna\n- Oliver\n- Max\n- Bella\n- Charlie\n- Lucy\n- Milo\n- Daisy\n\n**Modern & Trendy:**\n- Leo\n- Stella\n- Luna\n- Milo\n- Leo\n- Luna\n- Simba\n\n**Cute & Playful:**\n- Whiskers\n- Mittens\n- Sparky\n- Patches\n- Peanut\n- Cookie\n- Nugget\n\n**Nature-Inspired:**\n- Willow\n- Lily\n- River\n- Storm\n- Shadow\n- Ember\n- Hazel\n\n**Food Names:**\n- Mochi\n- Taco...",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "unit-conversion-trap",
+            "description": "Convert 10 miles to kilometers.",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "Apologies, I'm unable to perform unit conversions as I don't have that capability.",
+            "calls": [],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0
+      }
+    },
+    "transportErrors": []
+  },
+  "t05": {
+    "schemaVersion": 1,
+    "label": "recall-GLM-4.7-Flash-UD-Q4_K_XL.gguf-20260926T103155Z",
+    "model": "GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+    "baseUrl": "http://172.17.0.1:8082/v1",
+    "generatedAt": "2026-09-26T10:31:55.658776+00:00",
+    "seed": 20260924,
+    "servedContextTokens": 131072,
+    "servedContextSource": "props",
+    "servedContextUnknownReason": null,
+    "tokenizeAvailable": true,
+    "tokenizeUnavailableReason": null,
+    "depths": [
+      {
+        "depthTokens": 16384,
+        "haystack": {
+          "seed": 20260984799156,
+          "tokenCount": 19057,
+          "tokenCountSource": "server_tokenize",
+          "charsPerToken": 4.0,
+          "textChars": 65933
+        },
+        "finishReason": "length",
+        "timing": {
+          "prefillTokPerSec": 979.1076793318831,
+          "prefillSource": "server_timings",
+          "decodeTokPerSec": 50.83840814148356,
+          "decodeSource": "server_timings",
+          "promptTokens": 19536,
+          "completionTokens": 16384
+        },
+        "rawAnswerPreview": "",
+        "outputTruncated": true
+      }
+    ],
+    "depthsSkipped": [],
+    "overall": {
+      "recallScore": null,
+      "depthsAttempted": 0,
+      "depthsRequested": 1,
+      "depthsSkipped": 0,
+      "depthsFailed": 1,
+      "presentQuestionCounts": {
+        "correct_answer": 0,
+        "wrong_answer": 0,
+        "false_abstention": 0,
+        "total": 0
+      },
+      "abstentionCounts": {
+        "correct_abstention": 0,
+        "invented_answer": 0,
+        "total": 0
+      }
+    },
+    "caveat": "This battery's prompts and haystack/abstention generators are committed in plaintext, like toolbattery.py -- see CANARY.md section 3 (extended in 3b for this module). Do not treat a rising score over time as proof of improving recall or abstention without ruling out this exact battery having been scraped; the fresh-seed-per-run design limits, but does not eliminate, that risk for the probe SHAPE even though the planted facts and absent pairs themselves change every run."
+  },
+  "environment": {
+    "baseUrl": "http://172.17.0.1:8082/v1",
+    "local": true,
+    "serverConfig": {
+      "capturedAtEpoch": 1790418715,
+      "propsUrl": "http://172.17.0.1:8082/props",
+      "props": {
+        "default_generation_settings": {
+          "params": {
+            "seed": 4294967295,
+            "temperature": 1.0,
+            "dynatemp_range": 0.0,
+            "dynatemp_exponent": 1.0,
+            "top_k": 40,
+            "top_p": 0.949999988079071,
+            "min_p": 0.05000000074505806,
+            "top_n_sigma": -1.0,
+            "xtc_probability": 0.0,
+            "xtc_threshold": 0.10000000149011612,
+            "typical_p": 1.0,
+            "repeat_last_n": 64,
+            "repeat_penalty": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "dry_multiplier": 0.0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": 64,
+            "mirostat": 0,
+            "mirostat_tau": 5.0,
+            "mirostat_eta": 0.10000000149011612,
+            "adaptive_target": -1.0,
+            "adaptive_decay": 0.8999999761581421,
+            "max_tokens": -1,
+            "n_predict": -1,
+            "n_keep": 0,
+            "n_discard": 0,
+            "ignore_eos": false,
+            "stream": false,
+            "n_probs": 0,
+            "min_keep": 0,
+            "chat_format": "Content-only",
+            "reasoning_format": "none",
+            "reasoning_in_content": false,
+            "generation_prompt": "",
+            "samplers": [
+              "penalties",
+              "dry",
+              "top_n_sigma",
+              "top_k",
+              "typ_p",
+              "top_p",
+              "min_p",
+              "xtc",
+              "temperature"
+            ],
+            "speculative.types": "none",
+            "timings_per_token": false,
+            "post_sampling_probs": false,
+            "backend_sampling": false,
+            "lora": []
+          },
+          "n_ctx": 131072
+        },
+        "total_slots": 1,
+        "model_alias": "GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+        "model_ftype": "Q4_K - Medium",
+        "model_path": "/home/viet/IA/GLM-4.7-Flash-Q4KXL/GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+        "modalities": {
+          "vision": false,
+          "video": false,
+          "audio": false
+        },
+        "media_marker": "<__media_nwSh75AhtpdHb67qGy9etGoWmQrzXvfi__>",
+        "endpoint_slots": true,
+        "endpoint_props": false,
+        "endpoint_metrics": false,
+        "ui": true,
+        "ui_settings": {},
+        "chat_template": "[gMASK]<sop>\n{%- if tools -%}\n<|system|>\n# Tools\n\nYou may call one or more functions to assist with the user query.\n\nYou are provided with function signatures within <tools></tools> XML tags:\n<tools>\n{% for tool in tools %}\n{{ tool | tojson(ensure_ascii=False) }}\n{% endfor %}\n</tools>\n\nFor each function call, output the function name and arguments within the following XML format:\n<tool_call>{function-name}<arg_key>{arg-key-1}</arg_key><arg_value>{arg-value-1}</arg_value><arg_key>{arg-key-2}</arg_key><arg_value>{arg-value-2}</arg_value>...</tool_call>{%- endif -%}\n{%- macro visible_text(content) -%}\n    {%- if content is string -%}\n        {{- content }}\n    {%- elif content is iterable and content is not mapping -%}\n        {%- for item in content -%}\n            {%- if item is mapping and item.type == 'text' -%}\n                {{- item.text }}\n            {%- elif item is string -%}\n                {{- item }}\n            {%- endif -%}\n        {%- endfor -%}\n    {%- else -%}\n        {{- content }}\n    {%- endif -%}\n{%- endmacro -%}\n{%- set ns = namespace(last_user_index=-1) %}\n{%- for m in messages %}\n    {%- if m.role == 'user' %}\n        {% set ns.last_user_index = loop.index0 -%}\n    {%- endif %}\n{%- endfor %}\n{% for m in messages %}\n{%- if m.role == 'user' -%}<|user|>{{ visible_text(m.content) }}\n{%- elif m.role == 'assistant' -%}\n<|assistant|>\n{%- set reasoning_content = '' %}\n{%- set content = visible_text(m.content) %}\n{%- if m.reasoning_content is string %}\n    {%- set reasoning_content = m.reasoning_content %}\n{%- else %}\n    {%- if '</think>' in content %}\n        {%- set reasoning_content = content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n        {%- set content = content.split('</think>')[-1].lstrip('\\n') %}\n    {%- endif %}\n{%- endif %}\n{%- if ((clear_thinking is defined and not clear_thinking) or loop.index0 > ns.last_user_index) and reasoning_content -%}\n{{ '<think>' + reasoning_content.strip() +  '</think>'}}\n{%- else -%}\n{{ '</think>' }}\n{%- endif -%}\n{%- if content.strip() -%}\n{{ content.strip() }}\n{%- endif -%}\n{% if m.tool_calls %}\n{% for tc in m.tool_calls %}\n{%- if tc.function %}\n    {%- set tc = tc.function %}\n{%- endif %}\n{{- '<tool_call>' + tc.name -}}\n{% set _args = tc.arguments %}{% for k, v in _args.items() %}<arg_key>{{ k }}</arg_key><arg_value>{{ v | tojson(ensure_ascii=False) if v is not string else v }}</arg_value>{% endfor %}</tool_call>{% endfor %}\n{% endif %}\n{%- elif m.role == 'tool' -%}\n{%- if m.content is string -%}\n{%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n    {{- '<|observation|>' }}\n{%- endif %}\n{{- '<tool_response>' }}\n{{- m.content }}\n{{- '</tool_response>' }}\n{%- else -%}\n<|observation|>{% for tr in m.content %}\n<tool_response>{{ tr.output if tr.output is defined else tr }}</tool_response>{% endfor -%}\n{% endif -%}\n{%- elif m.role == 'system' -%}\n<|system|>{{ visible_text(m.content) }}\n{%- endif -%}\n{%- endfor -%}\n{%- if add_generation_prompt -%}\n    <|assistant|>{{- '</think>' if (enable_thinking is defined and not enable_thinking) else '<think>' -}}\n{%- endif -%}",
+        "chat_template_caps": {
+          "supports_object_arguments": true,
+          "supports_parallel_tool_calls": true,
+          "supports_preserve_reasoning": true,
+          "supports_reasoning_effort": false,
+          "supports_string_content": true,
+          "supports_system_role": true,
+          "supports_tool_calls": true,
+          "supports_tools": true,
+          "supports_typed_content": false
+        },
+        "bos_token": "[gMASK]",
+        "eos_token": "<|endoftext|>",
+        "build_info": "b1-125c6d1",
+        "is_sleeping": false,
+        "cors_proxy_enabled": false
+      },
+      "processCmdline": [
+        "1825014 /bin/bash -lc env PATH=/home/viet/miniconda3/envs/llamacpp-b10751/bin:$PATH llama-server --model /home/viet/IA/GLM-4.7-Flash-Q4KXL/GLM-4.7-Flash-UD-Q4_K_XL.gguf --alias GLM-4.7-Flash-UD-Q4_K_XL.gguf --jinja --gpu-layers 99 --ctx-size 131072 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1 --tensor-split 1,0 -ot 'blk\\.(1[4-9]|[23][0-9]|4[0-6])\\.ffn_.*_exps\\.=CUDA1' --batch-size 512 --cont-batching --no-context-shift --host 172.17.0.1 --port 8082 > /tmp/glm47-protocol4-screen-8082.log 2>&1",
+        "1825026 llama-server --model /home/viet/IA/GLM-4.7-Flash-Q4KXL/GLM-4.7-Flash-UD-Q4_K_XL.gguf --alias GLM-4.7-Flash-UD-Q4_K_XL.gguf --jinja --gpu-layers 99 --ctx-size 131072 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1 --tensor-split 1,0 -ot blk\\.(1[4-9]|[23][0-9]|4[0-6])\\.ffn_.*_exps\\.=CUDA1 --batch-size 512 --cont-batching --no-context-shift --host 172.17.0.1 --port 8082",
+        "3291662 /home/viet/miniconda3/envs/llamacpp-b10751/bin/llama-server -m /home/viet/IA/embeddinggemma-300M/embeddinggemma-300M-Q8_0.gguf --host 0.0.0.0 --port 8081 -ngl 0 --ctx-size 8192 --embedding -b 1024 -ub 1024 --device none",
+        "3291713 /home/viet/miniconda3/envs/llamacpp-b10751/bin/llama-server -m /home/viet/IA/bge-reranker-v2-m3/bge-reranker-v2-m3-Q8_0.gguf --host 0.0.0.0 --port 8083 --reranking --ctx-size 8192 -b 8192 -ub 8192 -ngl 0 --device none"
+      ],
+      "launchFlags": {},
+      "modelFile": {
+        "path": "/home/viet/IA/GLM-4.7-Flash-Q4KXL/GLM-4.7-Flash-UD-Q4_K_XL.gguf",
+        "sizeBytes": 17520169312,
+        "mtimeEpoch": 1790208810,
+        "sha256": null,
+        "sha256Skipped": "17520169312 bytes > 4294967296 byte cap (OAKEN_HASH_MODEL_MAX_BYTES) -- hashing a multi-GiB GGUF on every run is not \"cheap\""
+      },
+      "hostGpus": [
+        {
+          "name": "NVIDIA GeForce RTX 5070",
+          "memoryTotal": "12227 MiB",
+          "driverVersion": "615.71.09"
+        },
+        {
+          "name": "NVIDIA GeForce RTX 3060",
+          "memoryTotal": "12288 MiB",
+          "driverVersion": "615.71.09"
+        }
+      ]
+    },
+    "backend": {
+      "name": "cuda",
+      "reason": "no --device/-ot flag seen, but nvidia-smi reported GPU(s); this repo's only tested hardware is NVIDIA (MODELS.md), so CUDA is the default inference -- this cannot rule out a Vulkan build running against the same NVIDIA card"
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 5070",
+        "memoryTotal": "12227 MiB",
+        "driverVersion": "615.71.09",
+        "peakVramUsedMiB": 11532
+      },
+      {
+        "name": "NVIDIA GeForce RTX 3060",
+        "memoryTotal": "12288 MiB",
+        "driverVersion": "615.71.09",
+        "peakVramUsedMiB": 11046
+      }
+    ]
+  },
+  "collectionAssessment": {
+    "thresholdRevision": "pending-2026-09-25",
+    "thresholdStatus": "pending_calibration",
+    "assessment": {
+      "verdict": "incomplete",
+      "checks": {
+        "schemaAdherence": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "toolSelection": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "shortChainsDepth": {
+          "observed": 0.8667,
+          "minimum": null,
+          "passed": null
+        },
+        "refusal": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "recall": {
+          "observed": null,
+          "minimum": null,
+          "passed": null
+        },
+        "abstention": {
+          "observed": null,
+          "minimum": null,
+          "passed": null
+        }
+      }
+    }
+  }
+}

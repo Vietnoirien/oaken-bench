@@ -1,0 +1,865 @@
+{
+  "schemaVersion": 1,
+  "protocolVersion": 4,
+  "label": "screen-gpt-oss-20b-MXFP4.gguf-20260926T102355Z",
+  "model": "gpt-oss-20b-MXFP4.gguf",
+  "baseUrl": "http://172.17.0.1:8082/v1",
+  "generatedAt": "2026-09-26T10:23:55.760780+00:00",
+  "elapsedSeconds": 181.475,
+  "thresholdRevision": "screen-v4-2026-09-26",
+  "thresholdStatus": "calibrated",
+  "protocol": {
+    "t0Dimensions": [
+      "schemaAdherence",
+      "toolSelection",
+      "shortChains",
+      "refusal"
+    ],
+    "t05DepthTokens": 16384,
+    "t05Seed": 20260924,
+    "t05AbstentionPerKind": 1,
+    "t0MaxTokens": 8192,
+    "t05MaxTokens": 16384
+  },
+  "complete": true,
+  "metrics": {
+    "schemaAdherence": 1.0,
+    "toolSelection": 1.0,
+    "shortChainsDepth": 0.5333,
+    "refusal": 1.0,
+    "recall": 1.0,
+    "abstention": 1.0
+  },
+  "assessment": {
+    "verdict": "no_go",
+    "checks": {
+      "schemaAdherence": {
+        "observed": 1.0,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "toolSelection": {
+        "observed": 1.0,
+        "minimum": 0.8,
+        "passed": true
+      },
+      "shortChainsDepth": {
+        "observed": 0.5333,
+        "minimum": 0.8,
+        "passed": false
+      },
+      "refusal": {
+        "observed": 1.0,
+        "minimum": 0.75,
+        "passed": true
+      },
+      "recall": {
+        "observed": 1.0,
+        "minimum": 0.6667,
+        "passed": true
+      },
+      "abstention": {
+        "observed": 1.0,
+        "minimum": 0.6667,
+        "passed": true
+      }
+    }
+  },
+  "t0": {
+    "dimensions": {
+      "schemaAdherence": {
+        "dimension": "schemaAdherence",
+        "passed": 5,
+        "total": 5,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "room-basic",
+            "description": "Book Falcon for 30 minutes starting at 2026-10-01T14:00:00 for alice@example.com and bob@example.com.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "book_meeting_room",
+            "toolCalled": "book_meeting_room",
+            "arguments": {
+              "room_name": "Falcon",
+              "start_time": "2026-10-01T14:00:00",
+              "duration_minutes": 30,
+              "attendees": [
+                "alice@example.com",
+                "bob@example.com"
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "book_meeting_room",
+                "expectedTool": "book_meeting_room",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "room-recurring",
+            "description": "Set up a recurring 60 minute meeting in room Heron at 2026-10-02T09:30:00 with just carol@example.com.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "book_meeting_room",
+            "toolCalled": "book_meeting_room",
+            "arguments": {
+              "room_name": "Heron",
+              "start_time": "2026-10-02T09:30:00",
+              "duration_minutes": 60,
+              "attendees": [
+                "carol@example.com"
+              ],
+              "recurring": true
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "book_meeting_room",
+                "expectedTool": "book_meeting_room",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "weather-units",
+            "description": "What is the weather in Tokyo right now, in fahrenheit?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather",
+            "toolCalled": "get_weather",
+            "arguments": {
+              "city": "Tokyo",
+              "units": "fahrenheit"
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather",
+                "expectedTool": "get_weather",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "edit-single",
+            "description": "In config/ops.yaml, replace the line \"retries: 3\" with \"retries: 5\".",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "edit_file",
+            "toolCalled": "edit_file",
+            "arguments": {
+              "path": "config/ops.yaml",
+              "edits": [
+                {
+                  "oldText": "retries: 3",
+                  "newText": "retries: 5"
+                }
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "edit_file",
+                "expectedTool": "edit_file",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "edit-multi",
+            "description": "In runbook.md, replace \"Owner: TBD\" with \"Owner: SRE\" and replace \"Status: draft\" with \"Status: active\".",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "edit_file",
+            "toolCalled": "edit_file",
+            "arguments": {
+              "path": "runbook.md",
+              "edits": [
+                {
+                  "oldText": "Owner: TBD",
+                  "newText": "Owner: SRE"
+                },
+                {
+                  "oldText": "Status: draft",
+                  "newText": "Status: active"
+                }
+              ]
+            },
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "edit_file",
+                "expectedTool": "edit_file",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0,
+        "byTool": {
+          "book_meeting_room": {
+            "passed": 2,
+            "total": 2,
+            "notAttempted": 0,
+            "score": 1.0
+          },
+          "get_weather": {
+            "passed": 1,
+            "total": 1,
+            "notAttempted": 0,
+            "score": 1.0
+          },
+          "edit_file": {
+            "passed": 2,
+            "total": 2,
+            "notAttempted": 0,
+            "score": 1.0
+          }
+        }
+      },
+      "toolSelection": {
+        "dimension": "toolSelection",
+        "passed": 5,
+        "total": 5,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "pick-weather",
+            "description": "How hot is it in Lisbon today?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather",
+            "toolCalled": "get_weather",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather",
+                "expectedTool": "get_weather",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-alerts",
+            "description": "Are there any severe weather alerts active for the Gulf Coast region right now?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_weather_alerts",
+            "toolCalled": "get_weather_alerts",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_weather_alerts",
+                "expectedTool": "get_weather_alerts",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-order-status",
+            "description": "What's the status of the most recent order for the customer with id cus_77120?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "get_order_status",
+            "toolCalled": "get_order_status",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "get_order_status",
+                "expectedTool": "get_order_status",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-cancel",
+            "description": "Please cancel the subscription belonging to customer cus_31004.",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "cancel_subscription",
+            "toolCalled": "cancel_subscription",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "cancel_subscription",
+                "expectedTool": "cancel_subscription",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "pick-rooms-list",
+            "description": "What meeting rooms are free right now in the Riverside building?",
+            "passed": true,
+            "reasons": [],
+            "expectedTool": "list_available_rooms",
+            "toolCalled": "list_available_rooms",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "list_available_rooms",
+                "expectedTool": "list_available_rooms",
+                "level": "rightArgs"
+              }
+            ],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0
+      },
+      "shortChains": {
+        "dimension": "shortChains",
+        "passed": 0,
+        "total": 4,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "order-ship-track",
+            "description": "Ship the most recent order for the customer with email morgan@example.com, then tell me its current delivery status.",
+            "passed": false,
+            "reasons": [
+              "no call made on this turn -- step skipped, or the model answered in text"
+            ],
+            "chainLength": 3,
+            "depthReached": 2,
+            "brokenAtStep": 3,
+            "brokenAtLevel": "noCall",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "lookup_order_by_email",
+                "expectedTool": "lookup_order_by_email",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "get_shipping_label",
+                "expectedTool": "get_shipping_label",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": null,
+                "expectedTool": "get_tracking_status",
+                "level": "noCall"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "ticket-assign-contact",
+            "description": "Open a support ticket for \"VPN keeps disconnecting\", assign it to an agent, and give me that agent's contact email.",
+            "passed": false,
+            "reasons": [
+              "no call made on this turn -- step skipped, or the model answered in text"
+            ],
+            "chainLength": 3,
+            "depthReached": 1,
+            "brokenAtStep": 2,
+            "brokenAtLevel": "noCall",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "open_support_ticket",
+                "expectedTool": "open_support_ticket",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": null,
+                "expectedTool": "assign_ticket_agent",
+                "level": "noCall"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "device-register-activate",
+            "description": "Register a new device named \"kiosk-07\", activate it, and tell me its status.",
+            "passed": false,
+            "reasons": [
+              "no call made on this turn -- step skipped, or the model answered in text"
+            ],
+            "chainLength": 4,
+            "depthReached": 1,
+            "brokenAtStep": 2,
+            "brokenAtLevel": "noCall",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "register_device",
+                "expectedTool": "register_device",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": null,
+                "expectedTool": "generate_activation_code",
+                "level": "noCall"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          },
+          {
+            "case": "expense-submit-release",
+            "description": "Submit a $42.50 expense for \"client dinner\", route it for approval, notify the approver, and release payment once it's approved.",
+            "passed": false,
+            "reasons": [
+              "no call made on this turn -- step skipped, or the model answered in text"
+            ],
+            "chainLength": 5,
+            "depthReached": 4,
+            "brokenAtStep": 5,
+            "brokenAtLevel": "noCall",
+            "calls": [
+              {
+                "turn": 1,
+                "tool": "submit_expense",
+                "expectedTool": "submit_expense",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 2,
+                "tool": "route_expense_for_approval",
+                "expectedTool": "route_expense_for_approval",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 3,
+                "tool": "notify_approver",
+                "expectedTool": "notify_approver",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 4,
+                "tool": "get_approval_status",
+                "expectedTool": "get_approval_status",
+                "level": "rightArgs"
+              },
+              {
+                "turn": 5,
+                "tool": null,
+                "expectedTool": "release_payment",
+                "level": "noCall"
+              }
+            ],
+            "pseudoToolCalls": [],
+            "outputTruncated": false
+          }
+        ],
+        "score": 0.0,
+        "depth": {
+          "totalDepthReached": 8,
+          "totalPossibleDepth": 15,
+          "score": 0.5333,
+          "brokenAtLevel": {
+            "noCall": 4
+          }
+        }
+      },
+      "refusal": {
+        "dimension": "refusal",
+        "passed": 4,
+        "total": 4,
+        "notAttempted": 0,
+        "cases": [
+          {
+            "case": "trivia",
+            "description": "What is the capital of France?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "The capital of France is Paris.",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "arithmetic",
+            "description": "What's 17 times 23?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "17 times 23 equals 391.",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "opinion",
+            "description": "What is a good name for a pet cat?",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "How about “Whiskers”? It’s classic, easy to say, and it highlights one of a cat’s most distinctive features. If you’re looking for something more playful, you could try “Mittens,” “Pounce,” or “Luna.” If you want a name that feels a bit more unique, “Nimbus,” “Sable,” or “Cleo” (short for Cleopatra) could be fun choices. Pick one that feels right when you see your kitty strut by!",
+            "calls": [],
+            "pseudoToolCalls": []
+          },
+          {
+            "case": "unit-conversion-trap",
+            "description": "Convert 10 miles to kilometers.",
+            "passed": true,
+            "reasons": [
+              "no tool called, as expected"
+            ],
+            "toolsCalled": [],
+            "answerText": "10 miles is approximately **16.09 kilometers** (using 1 mile ≈ 1.60934 km).",
+            "calls": [],
+            "pseudoToolCalls": []
+          }
+        ],
+        "score": 1.0
+      }
+    },
+    "transportErrors": []
+  },
+  "t05": {
+    "schemaVersion": 1,
+    "label": "recall-gpt-oss-20b-MXFP4.gguf-20260926T102355Z",
+    "model": "gpt-oss-20b-MXFP4.gguf",
+    "baseUrl": "http://172.17.0.1:8082/v1",
+    "generatedAt": "2026-09-26T10:23:55.665166+00:00",
+    "seed": 20260924,
+    "servedContextTokens": 131072,
+    "servedContextSource": "props",
+    "servedContextUnknownReason": null,
+    "tokenizeAvailable": true,
+    "tokenizeUnavailableReason": null,
+    "depths": [
+      {
+        "depthTokens": 16384,
+        "haystack": {
+          "seed": 20260984799156,
+          "tokenCount": 17297,
+          "tokenCountSource": "server_tokenize",
+          "charsPerToken": 4.0,
+          "textChars": 65933
+        },
+        "finishReason": "tool_calls",
+        "timing": {
+          "prefillTokPerSec": 7013.500740501664,
+          "prefillSource": "server_timings",
+          "decodeTokPerSec": 85.50044768587865,
+          "decodeSource": "server_timings",
+          "promptTokens": 17645,
+          "completionTokens": 11680
+        },
+        "rawAnswerPreview": "",
+        "facts": [
+          {
+            "entity": "Marrow-Annex-3742",
+            "attribute": "storage tier",
+            "expectedValue": "Umbral-549",
+            "recalledValue": "Umbral-549",
+            "correct": true,
+            "classification": "correct_answer",
+            "depthPositionFraction": 0.1014,
+            "charOffset": 6683,
+            "approxTokenOffset": 1753
+          },
+          {
+            "entity": "Petrel-Waypoint-5478",
+            "attribute": "serial designation",
+            "expectedValue": "Cobalt-730",
+            "recalledValue": "Cobalt-730",
+            "correct": true,
+            "classification": "correct_answer",
+            "depthPositionFraction": 0.5028,
+            "charOffset": 33154,
+            "approxTokenOffset": 8698
+          },
+          {
+            "entity": "Meridian-Reach-2579",
+            "attribute": "activation phrase",
+            "expectedValue": "Kestrel-114",
+            "recalledValue": "Kestrel-114",
+            "correct": true,
+            "classification": "correct_answer",
+            "depthPositionFraction": 0.8997,
+            "charOffset": 59320,
+            "approxTokenOffset": 15562
+          }
+        ],
+        "recallScore": 1.0,
+        "recalled": 3,
+        "total": 3,
+        "presentQuestionCounts": {
+          "correct_answer": 3,
+          "wrong_answer": 0,
+          "false_abstention": 0,
+          "total": 3
+        },
+        "abstention": {
+          "questions": [
+            {
+              "entity": "Dusk-Chamber-9922",
+              "attribute": "failsafe contact",
+              "kind": "guaranteed_absent",
+              "recalledValue": "not in context",
+              "classification": "correct_abstention"
+            },
+            {
+              "entity": "Elm-Bastion-3050",
+              "attribute": "access tier",
+              "kind": "near_miss_same_entity",
+              "recalledValue": "not in context",
+              "classification": "correct_abstention"
+            },
+            {
+              "entity": "Basalt-Silo-3911",
+              "attribute": "access tier",
+              "kind": "near_miss_same_attribute",
+              "recalledValue": "not in context",
+              "classification": "correct_abstention"
+            }
+          ],
+          "counts": {
+            "overall": {
+              "correct_abstention": 3,
+              "invented_answer": 0,
+              "total": 3
+            },
+            "byKind": {
+              "guaranteed_absent": {
+                "correct_abstention": 1,
+                "invented_answer": 0,
+                "total": 1
+              },
+              "near_miss_same_entity": {
+                "correct_abstention": 1,
+                "invented_answer": 0,
+                "total": 1
+              },
+              "near_miss_same_attribute": {
+                "correct_abstention": 1,
+                "invented_answer": 0,
+                "total": 1
+              }
+            }
+          }
+        }
+      }
+    ],
+    "depthsSkipped": [],
+    "overall": {
+      "recallScore": 1.0,
+      "depthsAttempted": 1,
+      "depthsRequested": 1,
+      "depthsSkipped": 0,
+      "depthsFailed": 0,
+      "presentQuestionCounts": {
+        "correct_answer": 3,
+        "wrong_answer": 0,
+        "false_abstention": 0,
+        "total": 3
+      },
+      "abstentionCounts": {
+        "correct_abstention": 3,
+        "invented_answer": 0,
+        "total": 3
+      }
+    },
+    "caveat": "This battery's prompts and haystack/abstention generators are committed in plaintext, like toolbattery.py -- see CANARY.md section 3 (extended in 3b for this module). Do not treat a rising score over time as proof of improving recall or abstention without ruling out this exact battery having been scraped; the fresh-seed-per-run design limits, but does not eliminate, that risk for the probe SHAPE even though the planted facts and absent pairs themselves change every run."
+  },
+  "environment": {
+    "baseUrl": "http://172.17.0.1:8082/v1",
+    "local": true,
+    "serverConfig": {
+      "capturedAtEpoch": 1790418235,
+      "propsUrl": "http://172.17.0.1:8082/props",
+      "props": {
+        "default_generation_settings": {
+          "params": {
+            "seed": 4294967295,
+            "temperature": 0.800000011920929,
+            "dynatemp_range": 0.0,
+            "dynatemp_exponent": 1.0,
+            "top_k": 40,
+            "top_p": 0.949999988079071,
+            "min_p": 0.05000000074505806,
+            "top_n_sigma": -1.0,
+            "xtc_probability": 0.0,
+            "xtc_threshold": 0.10000000149011612,
+            "typical_p": 1.0,
+            "repeat_last_n": 64,
+            "repeat_penalty": 1.0,
+            "presence_penalty": 0.0,
+            "frequency_penalty": 0.0,
+            "dry_multiplier": 0.0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": 64,
+            "mirostat": 0,
+            "mirostat_tau": 5.0,
+            "mirostat_eta": 0.10000000149011612,
+            "adaptive_target": -1.0,
+            "adaptive_decay": 0.8999999761581421,
+            "max_tokens": -1,
+            "n_predict": -1,
+            "n_keep": 0,
+            "n_discard": 0,
+            "ignore_eos": false,
+            "stream": false,
+            "n_probs": 0,
+            "min_keep": 0,
+            "chat_format": "Content-only",
+            "reasoning_format": "none",
+            "reasoning_in_content": false,
+            "generation_prompt": "",
+            "samplers": [
+              "penalties",
+              "dry",
+              "top_n_sigma",
+              "top_k",
+              "typ_p",
+              "top_p",
+              "min_p",
+              "xtc",
+              "temperature"
+            ],
+            "speculative.types": "none",
+            "timings_per_token": false,
+            "post_sampling_probs": false,
+            "backend_sampling": false,
+            "lora": []
+          },
+          "n_ctx": 131072
+        },
+        "total_slots": 1,
+        "model_alias": "gpt-oss-20b-MXFP4.gguf",
+        "model_ftype": "MXFP4 MoE",
+        "model_path": "/home/viet/IA/gpt-oss-20b/gpt-oss-20b-MXFP4.gguf",
+        "modalities": {
+          "vision": false,
+          "video": false,
+          "audio": false
+        },
+        "media_marker": "<__media_oYuaPihC4cApKyHb0AiTuzrO7VJCfNeN__>",
+        "endpoint_slots": true,
+        "endpoint_props": false,
+        "endpoint_metrics": false,
+        "ui": true,
+        "ui_settings": {},
+        "chat_template": "{#-\n  In addition to the normal inputs of `messages` and `tools`, this template also accepts the\n  following kwargs:\n  - \"builtin_tools\": A list, can contain \"browser\" and/or \"python\".\n  - \"model_identity\": A string that optionally describes the model identity.\n  - \"reasoning_effort\": A string that describes the reasoning effort, defaults to \"medium\".\n #}\n\n{#- Tool Definition Rendering ============================================== #}\n{%- macro render_typescript_type(param_spec, required_params, is_nullable=false) -%}\n    {%- if param_spec.type == \"array\" -%}\n        {%- if param_spec['items'] -%}\n            {%- if param_spec['items']['type'] == \"string\" -%}\n                {{- \"string[]\" }}\n            {%- elif param_spec['items']['type'] == \"number\" -%}\n                {{- \"number[]\" }}\n            {%- elif param_spec['items']['type'] == \"integer\" -%}\n                {{- \"number[]\" }}\n            {%- elif param_spec['items']['type'] == \"boolean\" -%}\n                {{- \"boolean[]\" }}\n            {%- else -%}\n                {%- set inner_type = render_typescript_type(param_spec['items'], required_params) -%}\n                {%- if inner_type == \"object | object\" or inner_type|length > 50 -%}\n                    {{- \"any[]\" }}\n                {%- else -%}\n                    {{- inner_type + \"[]\" }}\n                {%- endif -%}\n            {%- endif -%}\n            {%- if param_spec.nullable -%}\n                {{- \" | null\" }}\n            {%- endif -%}\n        {%- else -%}\n            {{- \"any[]\" }}\n            {%- if param_spec.nullable -%}\n                {{- \" | null\" }}\n            {%- endif -%}\n        {%- endif -%}\n    {%- elif param_spec.type is defined and param_spec.type is iterable and param_spec.type is not string and param_spec.type is not mapping and param_spec.type[0] is defined -%}\n        {#- Handle array of types like [\"object\", \"object\"] from Union[dict, list] #}\n        {%- if param_spec.type | length > 1 -%}\n            {{- param_spec.type | join(\" | \") }}\n        {%- else -%}\n            {{- param_spec.type[0] }}\n        {%- endif -%}\n    {%- elif param_spec.oneOf -%}\n        {#- Handle oneOf schemas - check for complex unions and fallback to any #}\n        {%- set has_object_variants = false -%}\n        {%- for variant in param_spec.oneOf -%}\n            {%- if variant.type == \"object\" -%}\n                {%- set has_object_variants = true -%}\n            {%- endif -%}\n        {%- endfor -%}\n        {%- if has_object_variants and param_spec.oneOf|length > 1 -%}\n            {{- \"any\" }}\n        {%- else -%}\n            {%- for variant in param_spec.oneOf -%}\n                {{- render_typescript_type(variant, required_params) -}}\n                {%- if variant.description %}\n                    {{- \"// \" + variant.description }}\n                {%- endif -%}\n                {%- if variant.default is defined %}\n                    {{ \"// default: \" + variant.default|tojson }}\n                {%- endif -%}\n                {%- if not loop.last %}\n                    {{- \" | \" }}\n                {% endif -%}\n            {%- endfor -%}\n        {%- endif -%}\n    {%- elif param_spec.type == \"string\" -%}\n        {%- if param_spec.enum -%}\n            {{- '\"' + param_spec.enum|join('\" | \"') + '\"' -}}\n        {%- else -%}\n            {{- \"string\" }}\n            {%- if param_spec.nullable %}\n                {{- \" | null\" }}\n            {%- endif -%}\n        {%- endif -%}\n    {%- elif param_spec.type == \"number\" -%}\n        {{- \"number\" }}\n    {%- elif param_spec.type == \"integer\" -%}\n        {{- \"number\" }}\n    {%- elif param_spec.type == \"boolean\" -%}\n        {{- \"boolean\" }}\n\n    {%- elif param_spec.type == \"object\" -%}\n        {%- if param_spec.properties -%}\n            {{- \"{\\n\" }}\n            {%- for prop_name, prop_spec in param_spec.properties.items() -%}\n                {{- prop_name -}}\n                {%- if prop_name not in (param_spec.required or []) -%}\n                    {{- \"?\" }}\n                {%- endif -%}\n                {{- \": \" }}\n                {{ render_typescript_type(prop_spec, param_spec.required or []) }}\n                {%- if not loop.last -%}\n                    {{-\", \" }}\n                {%- endif -%}\n            {%- endfor -%}\n            {{- \"}\" }}\n        {%- else -%}\n            {{- \"object\" }}\n        {%- endif -%}\n    {%- else -%}\n        {{- \"any\" }}\n    {%- endif -%}\n{%- endmacro -%}\n\n{%- macro render_tool_namespace(namespace_name, tools) -%}\n    {{- \"## \" + namespace_name + \"\\n\\n\" }}\n    {{- \"namespace \" + namespace_name + \" {\\n\\n\" }}\n    {%- for tool in tools %}\n        {%- set tool = tool.function %}\n        {{- \"// \" + tool.description + \"\\n\" }}\n        {{- \"type \"+ tool.name + \" = \" }}\n        {%- if tool.parameters and tool.parameters.properties %}\n            {{- \"(_: {\\n\" }}\n            {%- for param_name, param_spec in tool.parameters.properties.items() %}\n                {%- if param_spec.description %}\n                    {{- \"// \" + param_spec.description + \"\\n\" }}\n                {%- endif %}\n                {{- param_name }}\n                {%- if param_name not in (tool.parameters.required or []) -%}\n                    {{- \"?\" }}\n                {%- endif -%}\n                {{- \": \" }}\n                {{- render_typescript_type(param_spec, tool.parameters.required or []) }}\n                {%- if param_spec.default is defined -%}\n                    {%- if param_spec.enum %}\n                        {{- \", // default: \" + param_spec.default }}\n                    {%- elif param_spec.oneOf %}\n                        {{- \"// default: \" + param_spec.default }}\n                    {%- else %}\n                        {{- \", // default: \" + param_spec.default|tojson }}\n                    {%- endif -%}\n                {%- endif -%}\n                {%- if not loop.last %}\n                    {{- \",\\n\" }}\n                {%- else %}\n                    {{- \",\\n\" }}\n                {%- endif -%}\n            {%- endfor %}\n            {{- \"}) => any;\\n\\n\" }}\n        {%- else -%}\n            {{- \"() => any;\\n\\n\" }}\n        {%- endif -%}\n    {%- endfor %}\n    {{- \"} // namespace \" + namespace_name }}\n{%- endmacro -%}\n\n{%- macro render_builtin_tools(browser_tool, python_tool) -%}\n    {%- if browser_tool %}\n        {{- \"## browser\\n\\n\" }}\n        {{- \"// Tool for browsing.\\n\" }}\n        {{- \"// The `cursor` appears in brackets before each browsing display: `[{cursor}]`.\\n\" }}\n        {{- \"// Cite information from the tool using the following format:\\n\" }}\n        {{- \"// `【{cursor}†L{line_start}(-L{line_end})?】`, for example: `【6†L9-L11】` or `【8†L3】`.\\n\" }}\n        {{- \"// Do not quote more than 10 words directly from the tool output.\\n\" }}\n        {{- \"// sources=web (default: web)\\n\" }}\n        {{- \"namespace browser {\\n\\n\" }}\n        {{- \"// Searches for information related to `query` and displays `topn` results.\\n\" }}\n        {{- \"type search = (_: {\\n\" }}\n        {{- \"query: string,\\n\" }}\n        {{- \"topn?: number, // default: 10\\n\" }}\n        {{- \"source?: string,\\n\" }}\n        {{- \"}) => any;\\n\\n\" }}\n        {{- \"// Opens the link `id` from the page indicated by `cursor` starting at line number `loc`, showing `num_lines` lines.\\n\" }}\n        {{- \"// Valid link ids are displayed with the formatting: `【{id}†.*】`.\\n\" }}\n        {{- \"// If `cursor` is not provided, the most recent page is implied.\\n\" }}\n        {{- \"// If `id` is a string, it is treated as a fully qualified URL associated with `source`.\\n\" }}\n        {{- \"// If `loc` is not provided, the viewport will be positioned at the beginning of the document or centered on the most relevant passage, if available.\\n\" }}\n        {{- \"// Use this function without `id` to scroll to a new location of an opened page.\\n\" }}\n        {{- \"type open = (_: {\\n\" }}\n        {{- \"id?: number | string, // default: -1\\n\" }}\n        {{- \"cursor?: number, // default: -1\\n\" }}\n        {{- \"loc?: number, // default: -1\\n\" }}\n        {{- \"num_lines?: number, // default: -1\\n\" }}\n        {{- \"view_source?: boolean, // default: false\\n\" }}\n        {{- \"source?: string,\\n\" }}\n        {{- \"}) => any;\\n\\n\" }}\n        {{- \"// Finds exact matches of `pattern` in the current page, or the page given by `cursor`.\\n\" }}\n        {{- \"type find = (_: {\\n\" }}\n        {{- \"pattern: string,\\n\" }}\n        {{- \"cursor?: number, // default: -1\\n\" }}\n        {{- \"}) => any;\\n\\n\" }}\n        {{- \"} // namespace browser\\n\\n\" }}\n    {%- endif -%}\n\n    {%- if python_tool %}\n        {{- \"## python\\n\\n\" }}\n        {{- \"Use this tool to execute Python code in your chain of thought. The code will not be shown to the user. This tool should be used for internal reasoning, but not for code that is intended to be visible to the user (e.g. when creating plots, tables, or files).\\n\\n\" }}\n        {{- \"When you send a message containing Python code to python, it will be executed in a stateful Jupyter notebook environment. python will respond with the output of the execution or time out after 120.0 seconds. The drive at '/mnt/data' can be used to save and persist user files. Internet access for this session is UNKNOWN. Depends on the cluster.\\n\\n\" }}\n    {%- endif -%}\n{%- endmacro -%}\n\n{#- System Message Construction ============================================ #}\n{%- macro build_system_message() -%}\n    {%- if model_identity is not defined %}\n        {%- set model_identity = \"You are ChatGPT, a large language model trained by OpenAI.\" %}\n    {%- endif %}\n    {{- model_identity + \"\\n\" }}\n    {{- \"Knowledge cutoff: 2024-06\\n\" }}\n    {{- \"Current date: \" + strftime_now(\"%Y-%m-%d\") + \"\\n\\n\" }}\n    {%- if reasoning_effort is not defined %}\n        {%- set reasoning_effort = \"medium\" %}\n    {%- endif %}\n    {{- \"Reasoning: \" + reasoning_effort + \"\\n\\n\" }}\n    {%- if builtin_tools %}\n        {{- \"# Tools\\n\\n\" }}\n        {%- set available_builtin_tools = namespace(browser=false, python=false) %}\n        {%- for tool in builtin_tools %}\n            {%- if tool == \"browser\" %}\n                {%- set available_builtin_tools.browser = true %}\n            {%- elif tool == \"python\" %}\n                {%- set available_builtin_tools.python = true %}\n            {%- endif %}\n        {%- endfor %}\n        {{- render_builtin_tools(available_builtin_tools.browser, available_builtin_tools.python) }}\n    {%- endif -%}\n    {{- \"# Valid channels: analysis, commentary, final. Channel must be included for every message.\" }}\n    {%- if tools -%}\n        {{- \"\\nCalls to these tools must go to the commentary channel: 'functions'.\" }}\n    {%- endif -%}\n{%- endmacro -%}\n\n{#- Main Template Logic ================================================= #}\n{#- Set defaults #}\n\n{#- Render system message #}\n{{- \"<|start|>system<|message|>\" }}\n{{- build_system_message() }}\n{{- \"<|end|>\" }}\n\n{#- Extract developer message #}\n{%- if messages[0].role == \"developer\" or messages[0].role == \"system\" %}\n    {%- set developer_message = messages[0].content %}\n    {%- set loop_messages = messages[1:] %}\n{%- else %}\n    {%- set developer_message = \"\" %}\n    {%- set loop_messages = messages %}\n{%- endif %}\n\n{#- Render developer message #}\n{%- if developer_message or tools %}\n    {{- \"<|start|>developer<|message|>\" }}\n    {%- if developer_message %}\n        {{- \"# Instructions\\n\\n\" }}\n        {{- developer_message }}\n        {{- \"\\n\\n\" }}\n    {%- endif %}\n    {%- if tools -%}\n        {{- \"# Tools\\n\\n\" }}\n        {{- render_tool_namespace(\"functions\", tools) }}\n    {%- endif -%}\n    {{- \"<|end|>\" }}\n{%- endif %}\n\n{#- Render messages #}\n{%- set last_tool_call = namespace(name=none) %}\n{%- for message in loop_messages -%}\n    {#- At this point only assistant/user/tool messages should remain #}\n    {%- if message.role == 'assistant' -%}\n        {#- Checks to ensure the messages are being passed in the format we expect #}\n        {%- if \"content\" in message %}\n            {%- if false %}\n                {{- raise_exception(\"You have passed a message containing <|channel|> tags in the content field. Instead of doing this, you should pass analysis messages (the string between '<|message|>' and '<|end|>') in the 'thinking' field, and final messages (the string between '<|message|>' and '<|end|>') in the 'content' field.\") }}\n            {%- endif %}\n        {%- endif %}\n        {%- if \"thinking\" in message %}\n            {%- if \"<|channel|>analysis<|message|>\" in message.thinking or \"<|channel|>final<|message|>\" in message.thinking %}\n                {{- raise_exception(\"You have passed a message containing <|channel|> tags in the thinking field. Instead of doing this, you should pass analysis messages (the string between '<|message|>' and '<|end|>') in the 'thinking' field, and final messages (the string between '<|message|>' and '<|end|>') in the 'content' field.\") }}\n            {%- endif %}\n        {%- endif %}\n        {%- if \"tool_calls\" in message %}\n            {#- We need very careful handling here - we want to drop the tool call analysis message if the model #}\n            {#- has output a later <|final|> message, but otherwise we want to retain it. This is the only case #}\n            {#- when we render CoT/analysis messages in inference. #}\n            {%- set future_final_message = namespace(found=false) %}\n            {%- for future_message in loop_messages[loop.index:] %}\n                {%- if future_message.role == 'assistant' and \"tool_calls\" not in future_message %}\n                    {%- set future_final_message.found = true %}\n                {%- endif %}\n            {%- endfor %}\n            {#- We assume max 1 tool call per message, and so we infer the tool call name #}\n            {#- in \"tool\" messages from the most recent assistant tool call name #}\n            {%- set tool_call = message.tool_calls[0] %}\n            {%- if tool_call.function %}\n                {%- set tool_call = tool_call.function %}\n            {%- endif %}\n            {%- if message.content and message.thinking %}\n                {{- raise_exception(\"Cannot pass both content and thinking in an assistant message with tool calls! Put the analysis message in one or the other, but not both.\") }}\n            {%- elif message.content and not future_final_message.found %}\n                {{- \"<|start|>assistant<|channel|>analysis<|message|>\" + message.content + \"<|end|>\" }}\n            {%- elif message.thinking and not future_final_message.found %}\n                {{- \"<|start|>assistant<|channel|>analysis<|message|>\" + message.thinking + \"<|end|>\" }}\n            {%- endif %}\n            {{- \"<|start|>assistant to=\" }}\n            {{- \"functions.\" + tool_call.name + \"<|channel|>commentary \" }}\n            {{- (tool_call.content_type if tool_call.content_type is defined else \"json\") + \"<|message|>\" }}\n            {{- tool_call.arguments|tojson }}\n            {{- \"<|call|>\" }}\n            {%- set last_tool_call.name = tool_call.name %}\n        {%- elif loop.last and not add_generation_prompt %}\n            {#- Only render the CoT if the final turn is an assistant turn and add_generation_prompt is false #}\n            {#- This is a situation that should only occur in training, never in inference. #}\n            {%- if \"thinking\" in message %}\n                {{- \"<|start|>assistant<|channel|>analysis<|message|>\" + message.thinking + \"<|end|>\" }}\n            {%- endif %}\n            {#- <|return|> indicates the end of generation, but <|end|> does not #}\n            {#- <|return|> should never be an input to the model, but we include it as the final token #}\n            {#- when training, so the model learns to emit it. #}\n            {{- \"<|start|>assistant<|channel|>final<|message|>\" + message.content + \"<|return|>\" }}\n        {%- else %}\n            {#- CoT is dropped during all previous turns, so we never render it for inference #}\n            {{- \"<|start|>assistant<|channel|>final<|message|>\" + message.content + \"<|end|>\" }}\n            {%- set last_tool_call.name = none %}\n        {%- endif %}\n    {%- elif message.role == 'tool' -%}\n        {%- if last_tool_call.name is none %}\n            {{- raise_exception(\"Message has tool role, but there was no previous assistant message with a tool call!\") }}\n        {%- endif %}\n        {{- \"<|start|>functions.\" + last_tool_call.name }}\n        {{- \" to=assistant<|channel|>commentary<|message|>\" + message.content|tojson + \"<|end|>\" }}\n    {%- elif message.role == 'user' -%}\n        {{- \"<|start|>user<|message|>\" + message.content + \"<|end|>\" }}\n    {%- endif -%}\n{%- endfor -%}\n\n{#- Generation prompt #}\n{%- if add_generation_prompt -%}\n<|start|>assistant\n{%- endif -%}",
+        "chat_template_caps": {
+          "supports_object_arguments": true,
+          "supports_parallel_tool_calls": false,
+          "supports_preserve_reasoning": false,
+          "supports_reasoning_effort": true,
+          "supports_string_content": true,
+          "supports_system_role": true,
+          "supports_tool_calls": true,
+          "supports_tools": true,
+          "supports_typed_content": false
+        },
+        "bos_token": "<|startoftext|>",
+        "eos_token": "<|return|>",
+        "build_info": "b1-125c6d1",
+        "is_sleeping": false,
+        "cors_proxy_enabled": false
+      },
+      "processCmdline": [
+        "1817095 /bin/bash -lc env PATH=/home/viet/miniconda3/envs/llamacpp-b10751/bin:$PATH llama-server --model /home/viet/IA/gpt-oss-20b/gpt-oss-20b-MXFP4.gguf --alias gpt-oss-20b-MXFP4.gguf --jinja --gpu-layers 99 --ctx-size 131072 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1 --tensor-split 65,35 --batch-size 512 --cont-batching --no-context-shift --host 172.17.0.1 --port 8082 > /tmp/oss20b-protocol4-screen-8082.log 2>&1",
+        "1817107 llama-server --model /home/viet/IA/gpt-oss-20b/gpt-oss-20b-MXFP4.gguf --alias gpt-oss-20b-MXFP4.gguf --jinja --gpu-layers 99 --ctx-size 131072 --cache-type-k q8_0 --cache-type-v q8_0 --parallel 1 --device CUDA0,CUDA1 --tensor-split 65,35 --batch-size 512 --cont-batching --no-context-shift --host 172.17.0.1 --port 8082",
+        "3291662 /home/viet/miniconda3/envs/llamacpp-b10751/bin/llama-server -m /home/viet/IA/embeddinggemma-300M/embeddinggemma-300M-Q8_0.gguf --host 0.0.0.0 --port 8081 -ngl 0 --ctx-size 8192 --embedding -b 1024 -ub 1024 --device none",
+        "3291713 /home/viet/miniconda3/envs/llamacpp-b10751/bin/llama-server -m /home/viet/IA/bge-reranker-v2-m3/bge-reranker-v2-m3-Q8_0.gguf --host 0.0.0.0 --port 8083 --reranking --ctx-size 8192 -b 8192 -ub 8192 -ngl 0 --device none"
+      ],
+      "launchFlags": {},
+      "modelFile": {
+        "path": "/home/viet/IA/gpt-oss-20b/gpt-oss-20b-MXFP4.gguf",
+        "sizeBytes": 12109566624,
+        "mtimeEpoch": 1789903701,
+        "sha256": null,
+        "sha256Skipped": "12109566624 bytes > 4294967296 byte cap (OAKEN_HASH_MODEL_MAX_BYTES) -- hashing a multi-GiB GGUF on every run is not \"cheap\""
+      },
+      "hostGpus": [
+        {
+          "name": "NVIDIA GeForce RTX 5070",
+          "memoryTotal": "12227 MiB",
+          "driverVersion": "615.71.09"
+        },
+        {
+          "name": "NVIDIA GeForce RTX 3060",
+          "memoryTotal": "12288 MiB",
+          "driverVersion": "615.71.09"
+        }
+      ]
+    },
+    "backend": {
+      "name": "cuda",
+      "reason": "no --device/-ot flag seen, but nvidia-smi reported GPU(s); this repo's only tested hardware is NVIDIA (MODELS.md), so CUDA is the default inference -- this cannot rule out a Vulkan build running against the same NVIDIA card"
+    },
+    "gpus": [
+      {
+        "name": "NVIDIA GeForce RTX 5070",
+        "memoryTotal": "12227 MiB",
+        "driverVersion": "615.71.09",
+        "peakVramUsedMiB": 10945
+      },
+      {
+        "name": "NVIDIA GeForce RTX 3060",
+        "memoryTotal": "12288 MiB",
+        "driverVersion": "615.71.09",
+        "peakVramUsedMiB": 5143
+      }
+    ]
+  },
+  "collectionAssessment": {
+    "thresholdRevision": "pending-2026-09-25",
+    "thresholdStatus": "pending_calibration",
+    "assessment": {
+      "verdict": "unverified",
+      "checks": {
+        "schemaAdherence": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "toolSelection": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "shortChainsDepth": {
+          "observed": 0.5333,
+          "minimum": null,
+          "passed": null
+        },
+        "refusal": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "recall": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        },
+        "abstention": {
+          "observed": 1.0,
+          "minimum": null,
+          "passed": null
+        }
+      }
+    }
+  }
+}

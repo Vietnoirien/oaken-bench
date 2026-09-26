@@ -1,13 +1,19 @@
 {
-  "revision": "pending-2026-09-25",
-  "status": "pending_calibration",
-  "calibrationEvidence": null,
+  "revision": "screen-v4-2026-09-26",
+  "status": "calibrated",
+  "calibrationEvidence": [
+    "screen-results/screen-gemma-4-12B-it-qat-UD-Q4_K_XL.gguf-20260926T103513Z.json",
+    "screen-results/screen-gpt-oss-20b-MXFP4.gguf-20260926T102355Z.json",
+    "screen-results/screen-GLM-4.7-Flash-UD-Q4_K_XL.gguf-20260926T103321Z.json",
+    "screen-results/screen-Qwen3.6-35B-A3B-UD-Q4_K_S.gguf-20260926T103843Z.json",
+    "screen-results/screen-chain-calibration-20260926.json"
+  ],
   "minimums": {
-    "schemaAdherence": null,
-    "toolSelection": null,
-    "shortChainsDepth": null,
-    "refusal": null,
-    "recall": null,
-    "abstention": null
+    "schemaAdherence": 0.8,
+    "toolSelection": 0.8,
+    "shortChainsDepth": 0.8,
+    "refusal": 0.75,
+    "recall": 0.6667,
+    "abstention": 0.6667
   }
 }

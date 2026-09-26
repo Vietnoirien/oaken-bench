@@ -22,11 +22,11 @@ are unchanged.
 | T4 | Extend the existing engine and count regressions against the earlier suite. | Shipped. `./run.sh pi <model-id> t4-<label>` then `python3 scripts/score.py results/t4-<label>`; see [T4 setup](t4/README.md). Only reference and offline runner checks exist, with no model measurement. |
 | T5 | Write a bot that plays the game against fixed held-out baseline snapshots. | Shipped. `python3 scripts/t5_oracle.py run --bot baseline:cheapest --label cheapest-01`; see [T5 oracle](t5/oracle/README.md). |
 
-The short screening command combines T0 and T0.5. Its six thresholds and
-under-15-minute runtime target are still uncalibrated; see [Short T0 + T0.5
-screen](#short-t0--t05-screen). The harness-effect comparison for T0.5 is
-implemented, but no live model or harness comparison has been run; see
-[Comparing the T0.5 harness effect](#comparing-the-t05-harness-effect).
+The short screening command combines T0 and T0.5. Its six thresholds are
+calibrated against four models, with known classification errors; see
+[Short T0 + T0.5 screen](#short-t0--t05-screen). A live Qwen comparison of
+direct mode, pi, and dsh reached the recall ceiling at four valid depths;
+see [Comparing the T0.5 harness effect](#comparing-the-t05-harness-effect).
 
 The tiers are reported separately. A score from one tier does not combine with
 or stand in for a score from another.
@@ -402,27 +402,21 @@ shows a ceiling on these items, so it cannot resolve a harness advantage.
 python3 scripts/screen.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1
 ```
 
-T0 uses the existing five schema probes, five tool-selection probes, one
-three-call chain, and four refusal probes. T0.5 uses one 16k-token haystack
-with three planted facts and three absent pairs. Each run writes
+T0 uses the existing five schema probes, five tool-selection probes, all four
+short chains (15 dependent steps), and four refusal probes. T0.5 uses one
+16k-token haystack with three planted facts and three absent pairs. Each run writes
 `screen-results/screen-<model>-<timestamp>.json`, including the raw battery
 records, six extracted scores, elapsed seconds, and the threshold revision.
 The default port is 8082 because port 8080 belongs to another project on
 this machine. The command never starts a server.
 
-The threshold file is [screen-thresholds.json](screen-thresholds.json).
-Its current revision is `pending-2026-09-25`: the six minimums are `null`,
-and the verdict is `unverified`. The four required models have not been
-rerun on this exact short protocol, and the GPU needed for that calibration
-was unavailable. Older `toolbattery-results/` files predate the short screen
-and contain no T0.5 scores. They cannot establish these thresholds. See
-[screen-calibration.md](screen-calibration.md) for the fixed run plan and the
-evidence required before changing the revision to `calibrated`.
-
-The under-15-minute wall-clock criterion is also unverified until a live
-12 GB-class run records `elapsedSeconds`. Per-request timeouts bound normal
-T0 and T0.5 requests, but they do not prove the full command meets that
-criterion. A skipped depth, transport error, or missing score cannot produce
+The threshold file is [screen-thresholds.json](screen-thresholds.json),
+revision `screen-v4-2026-09-26`. The four required models were screened on
+this protocol. Gemma's 12 GB-class run took 54 seconds, below the 15-minute
+target. See [screen-calibration.md](screen-calibration.md) for the artefacts,
+threshold choices, and observed classification errors. These thresholds are
+a local triage rule, not an estimated probability of T2 success. A skipped
+depth, truncated output, transport error, or missing score cannot produce
 `go`. The plaintext-probe caveats in CANARY.md sections 3 and 3b apply.
 
 ## Layout
@@ -460,7 +454,7 @@ scripts/
   screen.py        short direct-mode T0 + T0.5 screen (issue #33)
 toolbattery-results/  JSON artefacts from scripts/toolbattery.py, one per run; not results/, and not committed by anything else
 recall-results/       JSON artefacts from scripts/recall.py, one per run; same conventions as toolbattery-results/
-screen-results/       JSON artefacts from scripts/screen.py; currently no calibrated verdicts
+screen-results/       JSON artefacts from scripts/screen.py; calibrated pre-revision runs keep their original verdict in collectionAssessment
 results/           one directory per run; score.json and events-summary.json are
                    committed (issue #7 -- the derived metrics outlive the trace). The rest
                    (pi-events.jsonl, session tarballs, stderr.log, run-context.json, ...) is
@@ -637,15 +631,15 @@ result; a probe result is not a T2 task score.
    stays fixed. These scores measure performance on these probes, not resistance
    to contamination. See [CANARY.md §3](CANARY.md#3-scriptstoolbatterypys-probes-are-a-new-contaminable-asset)
    and [§3b](CANARY.md#3b-scriptsrecallpy-scriptshaystackpy-and-scriptsabstainpy-the-same-asset-one-difference).
-7. **The T0 + T0.5 screen has no calibrated verdict.** Its six thresholds
-   remain pending, and its under-15-minute runtime target has not been verified
-   on a live 12 GB-class run. Do not treat `go` as a calibrated model-selection
-   decision until [screen-calibration.md](screen-calibration.md) records the
-   required evidence.
-8. **The T0.5 harness effect is not measured yet.** `harness_effect.py` can
-   compare direct mode with pi and dsh, but no live comparison has run. Its
-   result format and implementation do not establish whether either harness
-   changes recall or abstention scores.
+7. **The T0 + T0.5 screen has a small calibration set.** Four models were
+   screened. One GLM chain repeat crossed the cutoff despite GLM failing all
+   six T2 runs, while gpt-oss was rejected despite one T2 pass. Treat `go`
+   as a triage result, not a forecast of T2 success. See
+   [screen-calibration.md](screen-calibration.md).
+8. **The first T0.5 harness comparison hit a ceiling.** At four valid depths,
+   Qwen answered every present and absent item correctly in direct mode, pi,
+   and dsh. That run cannot establish a harness advantage; see
+   [the result](harness-effect-results/qwen35-131k-20260925-01.json).
 9. **T1, T3 and T4 have no model measurements.** T1 remains deferred after
    three archived 192k Gemma retests varied by work order and early exit.
    T3 and T4 have no-model runner checks;

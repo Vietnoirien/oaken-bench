@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-26",
+  "method": "T0 run_short_chains, all four committed scenarios, 8192 output tokens, 180 s per request, one server at a time",
+  "runsByModel": {
+    "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf": [
+      {
+        "depthReached": 15,
+        "depthPossible": 15,
+        "score": 1.0,
+        "elapsedSeconds": 19.549,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 15,
+        "depthPossible": 15,
+        "score": 1.0,
+        "elapsedSeconds": 22.953,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 15,
+        "depthPossible": 15,
+        "score": 1.0,
+        "elapsedSeconds": 24.727,
+        "transportErrors": 0
+      }
+    ],
+    "gpt-oss-20b-MXFP4.gguf": [
+      {
+        "depthReached": 8,
+        "depthPossible": 15,
+        "score": 0.5333,
+        "elapsedSeconds": 27.95,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 6,
+        "depthPossible": 15,
+        "score": 0.4,
+        "elapsedSeconds": 33.896,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 8,
+        "depthPossible": 15,
+        "score": 0.5333,
+        "elapsedSeconds": 42.216,
+        "transportErrors": 0
+      }
+    ],
+    "GLM-4.7-Flash-UD-Q4_K_XL.gguf": [
+      {
+        "depthReached": 11,
+        "depthPossible": 15,
+        "score": 0.7333,
+        "elapsedSeconds": 24.443,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 13,
+        "depthPossible": 15,
+        "score": 0.8667,
+        "elapsedSeconds": 20.058,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 11,
+        "depthPossible": 15,
+        "score": 0.7333,
+        "elapsedSeconds": 25.155,
+        "transportErrors": 0
+      }
+    ],
+    "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf": [
+      {
+        "depthReached": 15,
+        "depthPossible": 15,
+        "score": 1.0,
+        "elapsedSeconds": 32.394,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 15,
+        "depthPossible": 15,
+        "score": 1.0,
+        "elapsedSeconds": 28.803,
+        "transportErrors": 0
+      },
+      {
+        "depthReached": 13,
+        "depthPossible": 15,
+        "score": 0.8667,
+        "elapsedSeconds": 55.182,
+        "transportErrors": 0
+      }
+    ]
+  }
+}
