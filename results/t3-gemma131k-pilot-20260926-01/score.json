@@ -1,0 +1,133 @@
+{
+  "label": "t3-gemma131k-pilot-20260926-01",
+  "harness": "pi",
+  "model": "gemma-4-12B-it-qat-UD-Q4_K_XL.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 91,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": true,
+  "suiteHung": false,
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "hidden": {
+    "passed": 124,
+    "failed": 8,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 0.9394
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 10,
+      "message_start": 21,
+      "message_end": 21,
+      "message_update": 10074,
+      "tool_execution_start": 9,
+      "tool_execution_update": 18,
+      "tool_execution_end": 9,
+      "turn_end": 10,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 10,
+    "toolCalls": 9,
+    "usage": {
+      "input": 19374,
+      "output": 10133,
+      "cacheRead": 100971,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 8,
+      "error": 1,
+      "unknown": 0
+    },
+    "errorRate": 0.1111,
+    "errorsByTool": {
+      "bash": 1
+    },
+    "toolHistogram": {
+      "bash": 5,
+      "read": 3,
+      "edit": 1
+    },
+    "unknownTools": [],
+    "mutatingCalls": 1,
+    "repeatedCalls": 2,
+    "longestRepeatRun": 2,
+    "distinctCallRatio": 0.7778,
+    "callSequence": [
+      [
+        "bash",
+        "336e7696fdefee8d",
+        1
+      ],
+      [
+        "read",
+        "47c0d86a97c18902",
+        1
+      ],
+      [
+        "read",
+        "a21e5ebe3b896e07",
+        1
+      ],
+      [
+        "bash",
+        "8e09d9e328a4ffc7",
+        1
+      ],
+      [
+        "read",
+        "3bc3ba60732eac48",
+        1
+      ],
+      [
+        "edit",
+        "f97b8203a014bdd2",
+        1
+      ],
+      [
+        "bash",
+        "8e09d9e328a4ffc7",
+        1
+      ],
+      [
+        "bash",
+        "592d9fc94d71c068",
+        2
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 0.051,
+    "toolCallIntervals": {
+      "n": 8,
+      "p50Seconds": 2.668,
+      "p95Seconds": 6.992
+    },
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "complete",
+  "overfitGap": 0.0606
+}
