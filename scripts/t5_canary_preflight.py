@@ -24,29 +24,58 @@ GUID = re.compile(r'(?<![0-9a-fA-F])[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
 
 def assess(response, expected):
     choices = response.get('choices') or []
-    if len(choices) != 1 or choices[0].get('finish_reason') != 'stop':
-        raise ValueError('canary response did not finish cleanly')
+    if len(choices) != 1:
+        raise ValueError('malformed canary response')
+    finish = choices[0].get('finish_reason')
+    if finish not in ('stop', 'length'):
+        raise ValueError('unexpected canary finish reason')
     message = choices[0].get('message') or {}
     answer = '\n'.join(part for part in (message.get('content'), message.get('reasoning_content'))
                        if isinstance(part, str))
-    if not answer.strip():
-        raise ValueError('canary response was empty')
     candidates = {value.lower() for value in GUID.findall(answer)}
     matched = any(hashlib.sha256(value.encode('ascii')).hexdigest() == expected
                   for value in candidates)
-    return {'candidateCount': len(candidates), 'matched': matched}
+    usage = response.get('usage') or {}
+    tokens = usage.get('completion_tokens')
+    return {'finishReason': finish, 'completionTokens': tokens if type(tokens) is int and tokens >= 0 else None,
+            'candidateCount': len(candidates), 'matched': matched, 'nonempty': bool(answer.strip())}
 
 
-def request(base_url, model, prompt):
+def request(base_url, model, prompt, max_tokens):
     payload = json.dumps({'model': model, 'messages': [{'role': 'user', 'content': prompt}],
-                          'max_tokens': 1024, 'stream': False}).encode()
+                          'max_tokens': max_tokens, 'stream': False}).encode()
     req = urllib.request.Request(base_url.rstrip('/') + '/chat/completions', data=payload,
                                  headers={'Content-Type': 'application/json'})
     # A loopback or Docker-bridge endpoint must never be sent to a configured
     # HTTP proxy along with the canary question.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
-    with opener.open(req, timeout=180) as response:
+    with opener.open(req, timeout=300) as response:
         return json.load(response)
+
+
+def check(base_url, model, prompt, expected):
+    attempts = []
+    for max_tokens in (1024, 8192):
+        try:
+            result = assess(request(base_url, model, prompt, max_tokens), expected)
+        except Exception:
+            return {'status': 'failed', 'reason': 'request_or_response_error',
+                    'matched': False, 'retryCount': len(attempts), 'attempts': attempts}
+        attempts.append({'maxTokens': max_tokens,
+                         'finishReason': result['finishReason'],
+                         'completionTokens': result['completionTokens'],
+                         'candidateCount': result['candidateCount'],
+                         'matched': result['matched']})
+        if result['matched']:
+            return {'status': 'failed', 'reason': 'canary_matched', 'matched': True,
+                    'retryCount': len(attempts) - 1, 'attempts': attempts}
+        if result['finishReason'] == 'stop':
+            reason = 'clear' if result['nonempty'] else 'empty_response'
+            return {'status': 'passed' if result['nonempty'] else 'failed',
+                    'reason': reason, 'matched': False,
+                    'retryCount': len(attempts) - 1, 'attempts': attempts}
+    return {'status': 'failed', 'reason': 'incomplete_response', 'matched': False,
+            'retryCount': 1, 'attempts': attempts}
 
 
 def main():
@@ -59,15 +88,18 @@ def main():
         parser.error('--base-url must end in /v1')
     results = {}
     for name, (prompt, expected) in CANARIES.items():
-        results[name] = assess(request(args.base_url, args.model, prompt), expected)
-    report = {'schemaVersion': 1, 'checkedAt': datetime.now(timezone.utc).isoformat(),
+        results[name] = check(args.base_url, args.model, prompt, expected)
+        if results[name]['status'] != 'passed':
+            break
+    passed = len(results) == len(CANARIES) and all(value['status'] == 'passed' for value in results.values())
+    report = {'schemaVersion': 2, 'checkedAt': datetime.now(timezone.utc).isoformat(),
               'model': args.model,
               'preflightSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
               'runShSha256': hashlib.sha256((Path(__file__).resolve().parents[1] / 'run.sh').read_bytes()).hexdigest(),
-              'checks': results}
+              'status': 'passed' if passed else 'failed', 'checks': results}
     args.out.write_text(json.dumps(report, indent=2) + '\n')
-    if any(value['matched'] for value in results.values()):
-        raise SystemExit('T5 canary matched: model result is uninterpretable')
+    if not passed:
+        raise SystemExit('T5 canary preflight failed; see digest-only status in canary-preflight.json')
     print('T5 canary checks completed before model run; no digest matched')
 
 

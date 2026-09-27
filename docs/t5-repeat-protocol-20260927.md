@@ -15,11 +15,14 @@ trials. Use fresh labels so each run gets a fresh container and workspace.
    real tool call and throughput.
    Confirm the server's build and alias before proceeding.
 2. Run `OAKEN_T5_NODE=/home/viet/.nvm/versions/node/v24.14.1/bin/node ./bench.sh
-   pi Qwen3.6-35B-A3B-UD-Q4_K_S.gguf t5-qwen35moe-desktop-pi-repeat-01 3600`,
-   then repeat with `-02` and `-03`. `run.sh` checks both canaries before each
-   container starts. A failed, incomplete or matching check stops that trial.
-3. For each run, verify `canary-preflight.json` predates `start.epoch`, both
-   checks have `matched: false`, `score.json` and `visible-score.json` exist,
+   pi Qwen3.6-35B-A3B-UD-Q4_K_S.gguf t5-qwen35moe-desktop-pi-repeat-02 3600`,
+   then repeat with `-03` and `-04`. The `-01` attempt stopped at preflight
+   before a model run and stays on disk as that aborted attempt. `run.sh`
+   checks both canaries before each container starts. It retries a truncated,
+   nonmatching answer once with 8192 output tokens; a match or another
+   incomplete answer stops the trial.
+3. For each run, verify `canary-preflight.json` predates `start.epoch`, its
+   status is `passed`, both checks have `matched: false`, `score.json` and `visible-score.json` exist,
    and the raw trace/workspace archive exists under `$OAKEN_ARCHIVE` (default
    `~/.cache/oaken-bench/<label>/`). Compare recorded image, prompt, frozen
    input, server configuration, oracle digests, and Node versions across runs.

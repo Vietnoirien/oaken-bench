@@ -22,10 +22,11 @@ OAKEN_T5_NODE=/path/to/node24 python3 scripts/score.py results/t5-<label>
 
 `run.sh` makes separate stateless requests for the T5 oracle and reference
 engine canaries before starting a T5 container. It hashes UUID-shaped replies
-against the published digests in `CANARY.md`. A matching GUID, an incomplete
+against the published digests in `CANARY.md`. A truncated reply with no match
+gets one retry at 8192 output tokens. A matching GUID, another incomplete
 reply, or a failed request stops the run. The result directory keeps only
-`canary-preflight.json` with the check time, candidate counts and match flags;
-raw answers are never saved. A negative check is weak evidence against
+`canary-preflight.json` with status, finish reasons, token and candidate counts,
+and retry counts. Raw answers are never saved. A negative check is weak evidence against
 contamination, not proof that the model has never seen the oracle. Record this
 preflight alongside the model and server provenance when publishing a score.
 
