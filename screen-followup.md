@@ -72,3 +72,58 @@ first seed's 32k request is missing evidence, not a pass or a failure. The
 second seed completed at that depth with the same output limit. Gemma is still
 at the ceiling on every completed depth, so these two seeds do not reveal a
 useful recall or abstention cutoff for this model.
+
+## gpt-oss pilot, September 27
+
+gpt-oss-20b MXFP4 ran both seeds on the guarded `oss20b` preset, on llama.cpp
+`b1-125c6d1` at 131k/q8_0. The smoke test passed at 117.4 tokens/s with
+1088 / 6826 MiB free on the 5070 / 3060. The server log has no CUDA
+allocation failure and is archived privately at
+`~/.cache/oaken-bench/screen-followup-20260927-gpt-oss/server.log`.
+
+| Seed | Chain depth | 16k recall / abstention | 32k recall / abstention | 64k recall / abstention | Wall time |
+|---|---:|---|---:|---|---:|
+| 20260927 | 7/15 | Incomplete: server HTTP 500, peg-native format error | 2/3, 5/6 | Incomplete: output hit 16,384-token limit | 535.0 s |
+| 20260928 | 5/15 | 3/3, 6/6 | 3/3, 6/6 | 3/3, 6/6 | 347.5 s |
+
+The artifacts are `screen-results/screen-followup-gpt-oss-seed20260927.json`
+and `screen-results/screen-followup-gpt-oss-seed20260928.json`. Both chain
+scores are below the calibrated screen's 12/15 boundary, but these follow-up
+cases do not change that boundary or produce new go/no-go verdicts. The first
+seed has only one scored recall depth. Its HTTP 500 and truncated output stay
+visible as missing evidence. The second seed shows that gpt-oss can answer all
+18 questions at the three depths in a complete run, even while its chains
+reach only 5/15.
+
+## GLM attempt, September 27
+
+The `glm47flash` guarded launch passed its smoke test at 87.8 tokens/s with
+665 / 926 MiB free on the 5070 / 3060. Its first follow-up chain request
+crashed llama-server with a CUDA illegal-memory-access error. The client got
+`RemoteDisconnected` before an artifact could be written. The server stopped,
+and the crash log is archived at
+`~/.cache/oaken-bench/screen-followup-20260927-glm/server.log`. This attempt
+measures a runtime failure, not GLM's chain or recall ability. No GLM
+follow-up score exists for these seeds.
+
+## Qwen pilot, September 27
+
+Qwen3.6-35B-A3B ran both seeds on the guarded `qwen35moe-desktop` preset, on
+llama.cpp `b1-125c6d1` at 131k/q8_0. The smoke test passed at 96.1 tokens/s
+with 818 / 322 MiB free on the 5070 / 3060. The server log has no CUDA
+allocation failure and is archived privately at
+`~/.cache/oaken-bench/screen-followup-20260927-qwen/server.log`. The server
+stopped after both seeds.
+
+| Seed | Chain depth | 16k recall / abstention | 32k recall / abstention | 64k recall / abstention | Wall time |
+|---|---:|---:|---:|---:|---:|
+| 20260927 | 15/15 | 3/3, 6/6 | 3/3, 6/6 | 3/3, 6/6 | 296.3 s |
+| 20260928 | 15/15 | 3/3, 6/6 | 3/3, 6/6 | 3/3, 6/6 | 280.7 s |
+
+The artifacts are `screen-results/screen-followup-qwen-seed20260927.json`
+and `screen-results/screen-followup-qwen-seed20260928.json`. Across both seeds,
+Qwen reached 30/30 chain links, recalled 18/18 planted facts, and correctly
+abstained on 36/36 absent questions. The new cases did not reveal a lower
+recall or abstention boundary for Qwen at 64k. Its desktop expert split is
+the same one used by the calibrated short screen and differs from its older
+T2 server layout, so these results do not establish a T2 prediction.
