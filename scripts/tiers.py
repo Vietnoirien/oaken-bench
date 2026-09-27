@@ -87,6 +87,21 @@ def _t3_score(result_dir, detail=True):
     return score_run(result_dir, detail=detail)
 
 
+def _t1_score(result_dir, detail=True):
+    from t1 import score_run
+    return score_run(result_dir, detail=detail)
+
+
+def _t1_build_row(data, label, tier):
+    from t1 import summary_row
+    return summary_row(data, label, tier)
+
+
+def _t1_print_rows(label, rows):
+    from t1 import print_summary
+    return print_summary(label, rows)
+
+
 def _t4_score(result_dir, detail=True):
     from t4 import score_run
     return score_run(result_dir, detail=detail)
@@ -118,6 +133,9 @@ def _t5_print_rows(label, rows):
 
 
 TIERS = (
+    Tier(id='t1', label='T1 -- isolated missing-module implementation',
+         dir_prefix='t1-', score=_t1_score,
+         build_row=_t1_build_row, print_rows=_t1_print_rows),
     Tier(id='t2',
          label='T2 -- long-horizon greenfield (the original task)',
          dir_prefix=None,
@@ -132,10 +150,6 @@ TIERS = (
     Tier(id='t5', label='T5 -- sealed snapshot-pool strategy',
          dir_prefix='t5-', score=_t5_score,
          build_row=_t5_build_row, print_rows=_t5_print_rows),
-    # T1 (#46): add a Tier(...) here, with its own
-    # dir_prefix ('t1-') and its own
-    # score callable. Nothing else in this file, or in score.py /
-    # summarize.py, needs to change.
 )
 
 _BY_PREFIX = {t.dir_prefix: t for t in TIERS if t.dir_prefix is not None}

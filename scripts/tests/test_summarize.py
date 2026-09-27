@@ -379,7 +379,7 @@ def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
     New tiers have their own blocks. Keep this fixture focused on the T2
     rows and aggregates that existed before tiering.
     """
-    t2_block = _run_summarize().split('\n=== T3 --', 1)[0]
+    t2_block = _run_summarize().split('\n=== T1 --', 1)[0]
     heading, pre_tiering_format = t2_block.split('\n', 1)
 
     assert heading == '=== T2 -- long-horizon greenfield (the original task) ==='
@@ -387,23 +387,24 @@ def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
 
 
 def test_rows_by_tier_keeps_new_tiers_apart_from_t2():
-    """The committed T3, T4 and T5 scores cannot enter a T2 aggregate."""
+    """The committed T1, T3, T4 and T5 scores cannot enter a T2 aggregate."""
     from summarize import R, collect_rows
 
     rows = collect_rows(R)
     grouped = rows_by_tier(rows)
 
-    assert len(grouped) == 4
+    assert len(grouped) == 5
     tier_id, trows = grouped[0]
     assert tier_id == 't2'
-    assert len(trows) == len(rows) - 9
-    assert [tier for tier, _ in grouped[1:]] == ['t3', 't4', 't5']
-    assert [row['label'] for row in grouped[1][1]] == ['t3-gemma131k-pilot-20260926-01']
-    assert {row['label'] for row in grouped[2][1]} == {
+    assert len(trows) == len(rows) - sum(len(part) for _, part in grouped[1:])
+    assert [tier for tier, _ in grouped[1:]] == ['t1', 't3', 't4', 't5']
+    assert len(grouped[1][1]) == 50
+    assert [row['label'] for row in grouped[2][1]] == ['t3-gemma131k-pilot-20260926-01']
+    assert {row['label'] for row in grouped[3][1]} == {
         't4-pi-offline-smoke', 't4-qwen35moe-desktop-pi-20260926-01',
         't4-reference-sanity',
     }
-    assert [row['label'] for row in grouped[3][1]] == [
+    assert [row['label'] for row in grouped[4][1]] == [
         't5-cheapest-01', 't5-qwen35moe-desktop-pi-20260926-01',
         't5-qwen35moe-desktop-pi-repeat-02',
         't5-qwen35moe-desktop-pi-repeat-03',

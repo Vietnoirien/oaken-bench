@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "controls": {
+    "combat": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 35,
+      "valid": true
+    },
+    "economy": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 12,
+      "valid": true
+    },
+    "items": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 15,
+      "valid": true
+    },
+    "rng": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 5,
+      "valid": true
+    },
+    "run": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 12,
+      "valid": true
+    },
+    "shop": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 15,
+      "valid": true
+    },
+    "snapshot": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 24,
+      "valid": true
+    },
+    "tower": {
+      "hiddenPassed": 132,
+      "visiblePassed": 52,
+      "typecheckClean": true,
+      "targetPassed": 14,
+      "valid": true
+    }
+  }
+}

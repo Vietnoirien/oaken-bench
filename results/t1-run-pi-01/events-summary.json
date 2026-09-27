@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-run-pi-01",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 19,
+  "toolOutcomes": {
+    "ok": 18,
+    "error": 1,
+    "unknown": 0
+  },
+  "errorRate": 0.0526,
+  "errorsByTool": {
+    "bash": 1
+  },
+  "toolHistogram": {
+    "bash": 5,
+    "read": 10,
+    "write": 3,
+    "edit": 1
+  },
+  "unknownTools": [],
+  "mutatingCalls": 4,
+  "repeatedCalls": 1,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.9474,
+  "callSequence": [
+    [
+      "bash",
+      "c890c444a86e2428",
+      1
+    ],
+    [
+      "read",
+      "83e22d55fb2334dc",
+      1
+    ],
+    [
+      "read",
+      "6dcc5966d5815901",
+      1
+    ],
+    [
+      "read",
+      "9ee32bb948e58859",
+      1
+    ],
+    [
+      "read",
+      "4428ef8365a6dfca",
+      1
+    ],
+    [
+      "read",
+      "81516354cfdb387a",
+      1
+    ],
+    [
+      "read",
+      "c7995a113b1c4788",
+      1
+    ],
+    [
+      "read",
+      "e4a68a7292e061f7",
+      1
+    ],
+    [
+      "read",
+      "fd67230868629196",
+      1
+    ],
+    [
+      "read",
+      "9fc41eb3f5b6dd6f",
+      1
+    ],
+    [
+      "read",
+      "5eb4fdca56807617",
+      1
+    ],
+    [
+      "write",
+      "df2cdb0a009181d8",
+      1
+    ],
+    [
+      "write",
+      "00666cb1b5b82fd3",
+      1
+    ],
+    [
+      "write",
+      "0c36967497255965",
+      1
+    ],
+    [
+      "bash",
+      "1f1e0bd1b4eac635",
+      1
+    ],
+    [
+      "edit",
+      "cc0ff9c5b97ce35d",
+      1
+    ],
+    [
+      "bash",
+      "1f1e0bd1b4eac635",
+      1
+    ],
+    [
+      "bash",
+      "d04dc410d4b277f3",
+      1
+    ],
+    [
+      "bash",
+      "bf51301de7898d36",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 0.052,
+  "toolCallIntervals": {
+    "n": 18,
+    "p50Seconds": 1.363,
+    "p95Seconds": 27.147
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

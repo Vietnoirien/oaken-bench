@@ -6,7 +6,8 @@ Harness comparison is T2.
 
 ## Tiers
 
-T0 and T0.5 are direct model probes. T1 is deferred. T3 has a generator,
+T0 and T0.5 are direct model probes. T1 has eight validated reference controls
+and 72 scored model trials. T3 has a generator,
 runner, and one Gemma model pilot. T4 has a sealed v1.1 oracle, a runner, and
 one exploratory Qwen model run. T5 has a model-facing runner, one Qwen model
 pilot, and one CPU baseline measurement. The T5 pilot had no pre-run canary
@@ -19,7 +20,7 @@ are unchanged.
 |---|---|---|
 | T0 | Tool-call reliability over short chains, including schema use, tool choice, refusals, and recovery. Direct model call, no harness. | Shipped. `./scripts/toolbattery.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
 | T0.5 | Long-context recall and abstention when a fact is absent. Direct model call, no harness. | Shipped. `./scripts/recall.py --model your-model.gguf --base-url http://172.17.0.1:8082/v1` |
-| T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Deferred. Three new archived 192k runs varied with work order and early exits; see [the 192k retest](MODELS.md#192k-with-less-free-5070-memory-2026-09-25). No command. |
+| T1 | Isolated single-module implementation, to locate where the Gemma plateau comes from. | Full 8 × 3 × 3 study complete. Eight restored-module controls passed 132/132. See [T1 protocol](t1/README.md) and [results](t1/RESULTS.md). |
 | T2 | Long-horizon greenfield implementation, comparing pi with DeepSeek Harness on the same task. | Shipped and measured. `./bench.sh <pi|dsh> <model-id> <label>` |
 | T3 | Find and fix planted bugs against the reference engine. | Generator and runner shipped. One Gemma 4 12B Pi pilot scored 124/132 hidden after a 97/132 planted baseline; see [the pilot record](docs/t3-pilot-20260926.md) and [T3 setup](docs/T3.md). |
 | T4 | Extend the existing engine and count regressions against the earlier suite. | One exploratory Pi run: Qwen3.6-35B-A3B UD-Q4_K_S scored 132/132 v1.0 and 136/137 v1.1. This is n=1, not a variance estimate. `./run.sh pi <model-id> t4-<label>` then `python3 scripts/score.py results/t4-<label>`; see [T4 setup and result](t4/README.md). |
@@ -648,8 +649,9 @@ result; a probe result is not a T2 task score.
    passes. One run says little about repeatability, and its pre-run canary
    check covered the held-out suite once but not the reference-engine canary.
    See [the pilot record](docs/t3-pilot-20260926.md) for the sealed instance
-   and suite revisions. T1 remains deferred after three archived 192k Gemma
-   retests varied by work order and early exit. T4 has one exploratory Qwen Pi
+   and suite revisions. T1 was subsequently authorized and measured after three
+   archived 192k Gemma T2 retests varied by work order and early exit; see
+   [the T1 results](t1/RESULTS.md). T4 has one exploratory Qwen Pi
    pilot, with 132/132 v1.0 and 136/137 v1.1 passes. Its unchanged reference
    engine passes 132/132 v1.0 and 2/137 v1.1; n=1 cannot establish T4
    repeatability. T5 has one Qwen Pi pilot: 129/144 sealed wins under its fixed

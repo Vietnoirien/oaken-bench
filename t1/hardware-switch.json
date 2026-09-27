@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "timeUtc": "2026-09-27T12:46:54Z",
+  "afterTrial": "t1-snapshot-direct-01",
+  "nextTrial": "t1-snapshot-pi-01",
+  "fromGpu": "NVIDIA GeForce RTX 5070",
+  "toGpu": "NVIDIA GeForce RTX 3060",
+  "reason": "Maintainer requested desktop GPU for other work; wait for active trial to end",
+  "modelAlias": "gemma-ctx196k.gguf",
+  "matrixCapSeconds": 600,
+  "protocolImpact": "Hardware and expected throughput changed; timeout rates and wall time across the boundary are not directly comparable."
+}

@@ -13,7 +13,11 @@ OUT=/out
 
 mkdir -p "$OUT"
 rm -rf /work
-if [ "${OAKEN_TIER:-}" = t4 ]; then
+if [ "${OAKEN_TIER:-}" = t1 ]; then
+  [ -f /t1-input/workspace.tgz ] || { echo "missing T1 workspace mount" >&2; exit 64; }
+  tar xzf /t1-input/workspace.tgz --no-same-owner -C / || exit 64
+  cp -a /opt/seed/node_modules /work/node_modules || exit 64
+elif [ "${OAKEN_TIER:-}" = t4 ]; then
   [ -f /t4-input/workspace.tgz ] || { echo "missing T4 workspace mount" >&2; exit 64; }
   tar xzf /t4-input/workspace.tgz --no-same-owner -C / || exit 64
   cp -a /opt/seed/node_modules /work/node_modules || exit 64
@@ -65,6 +69,8 @@ date -u +%s > "$OUT/start.epoch"
 PROMPT="$(cat /opt/PROMPT.txt)"
 if [ "${OAKEN_TIER:-}" = t3 ]; then
   PROMPT="$(cat /opt/T3_PROMPT.txt)"
+elif [ "${OAKEN_TIER:-}" = t1 ]; then
+  PROMPT="$(cat /t1-input/PROMPT.txt)"
 fi
 set +e
 case "$HARNESS" in

@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-tower-dsh-02",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 20,
+  "toolOutcomes": {
+    "ok": 20,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "bash": 7,
+    "read": 9,
+    "write": 4
+  },
+  "unknownTools": [],
+  "mutatingCalls": 4,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "bash",
+      "690418c071ad4b11",
+      1
+    ],
+    [
+      "read",
+      "6f1985105c4491a0",
+      1
+    ],
+    [
+      "read",
+      "ef6ba856d7c37c07",
+      1
+    ],
+    [
+      "read",
+      "919ec7776ab69441",
+      1
+    ],
+    [
+      "bash",
+      "1111b497ffcf42db",
+      1
+    ],
+    [
+      "read",
+      "a5ab70e6fdc04b9b",
+      1
+    ],
+    [
+      "read",
+      "87daa12fa0625f9e",
+      1
+    ],
+    [
+      "read",
+      "01044a1110757fad",
+      1
+    ],
+    [
+      "read",
+      "1badadaa0eba704d",
+      1
+    ],
+    [
+      "read",
+      "4a14b427133b74b7",
+      1
+    ],
+    [
+      "read",
+      "5c2510b2942091e6",
+      1
+    ],
+    [
+      "write",
+      "395aee4002f1b75d",
+      1
+    ],
+    [
+      "write",
+      "949697711235683d",
+      1
+    ],
+    [
+      "write",
+      "84ffe32c55adcaee",
+      1
+    ],
+    [
+      "bash",
+      "0744a7900bacdc7b",
+      1
+    ],
+    [
+      "bash",
+      "a5d9e40c8fd58629",
+      1
+    ],
+    [
+      "bash",
+      "958fd37abba4771f",
+      1
+    ],
+    [
+      "write",
+      "64660d01af73a5ec",
+      1
+    ],
+    [
+      "bash",
+      "1672cf1b131ded67",
+      1
+    ],
+    [
+      "bash",
+      "53a991fc3c65ff10",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 10.431,
+  "toolCallIntervals": {
+    "n": 19,
+    "p50Seconds": 4.874,
+    "p95Seconds": 62.504
+  },
+  "generationSeconds": 356.98,
+  "toolExecutionSeconds": 3.862
+}

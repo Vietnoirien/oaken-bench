@@ -26,6 +26,15 @@
           "maxTokens": 8192
         },
         {
+          "id": "gemma-ctx196k.gguf",
+          "name": "Gemma4-12B QAT (local, 196608 ctx)",
+          "reasoning": false,
+          "input": ["text"],
+          "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0},
+          "contextWindow": 196608,
+          "maxTokens": 8192
+        },
+        {
           "id": "Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf",
           "name": "Qwen3.6-35B-A3B (local)",
           "reasoning": true,
