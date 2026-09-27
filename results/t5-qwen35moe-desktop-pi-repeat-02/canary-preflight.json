@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 2,
+  "checkedAt": "2026-09-27T08:07:25.750426+00:00",
+  "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+  "preflightSha256": "e6892bd74cc6b98853cbd300991206cc4efb54fcd8e20cc5f8360f482c6cc107",
+  "runShSha256": "bacb87dc21ddf9ed4c9c46e84cd0492a16e6694dbc2a6604335c7053cf62fa1b",
+  "status": "passed",
+  "checks": {
+    "t5oracle": {
+      "status": "passed",
+      "reason": "clear",
+      "matched": false,
+      "retryCount": 1,
+      "attempts": [
+        {
+          "maxTokens": 1024,
+          "finishReason": "length",
+          "completionTokens": 1024,
+          "candidateCount": 0,
+          "matched": false
+        },
+        {
+          "maxTokens": 8192,
+          "finishReason": "stop",
+          "completionTokens": 1083,
+          "candidateCount": 0,
+          "matched": false
+        }
+      ]
+    },
+    "refengine": {
+      "status": "passed",
+      "reason": "clear",
+      "matched": false,
+      "retryCount": 1,
+      "attempts": [
+        {
+          "maxTokens": 1024,
+          "finishReason": "length",
+          "completionTokens": 1024,
+          "candidateCount": 0,
+          "matched": false
+        },
+        {
+          "maxTokens": 8192,
+          "finishReason": "stop",
+          "completionTokens": 1037,
+          "candidateCount": 0,
+          "matched": false
+        }
+      ]
+    }
+  }
+}

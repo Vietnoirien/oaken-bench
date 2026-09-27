@@ -396,7 +396,7 @@ def test_rows_by_tier_keeps_new_tiers_apart_from_t2():
     assert len(grouped) == 4
     tier_id, trows = grouped[0]
     assert tier_id == 't2'
-    assert len(trows) == len(rows) - 6
+    assert len(trows) == len(rows) - 9
     assert [tier for tier, _ in grouped[1:]] == ['t3', 't4', 't5']
     assert [row['label'] for row in grouped[1][1]] == ['t3-gemma131k-pilot-20260926-01']
     assert {row['label'] for row in grouped[2][1]} == {
@@ -405,4 +405,7 @@ def test_rows_by_tier_keeps_new_tiers_apart_from_t2():
     }
     assert [row['label'] for row in grouped[3][1]] == [
         't5-cheapest-01', 't5-qwen35moe-desktop-pi-20260926-01',
+        't5-qwen35moe-desktop-pi-repeat-02',
+        't5-qwen35moe-desktop-pi-repeat-03',
+        't5-qwen35moe-desktop-pi-repeat-04',
     ]

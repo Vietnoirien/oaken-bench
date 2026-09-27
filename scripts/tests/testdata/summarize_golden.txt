@@ -108,3 +108,9 @@ T5 -- sealed snapshot-pool strategy
 t5-cheapest-01: baseline:cheapest  0.8750 95% CI [0.7917, 0.9444] n=144 oracle=892b2efaf3f7
 t5-qwen35moe-desktop-pi-20260926-01: bot.mjs  0.8958 95% CI [0.8194, 0.9583] n=144 oracle=892b2efaf3f7
   simulations=87 strategies=64 visible-minus-held-out=None seed-literals=0
+t5-qwen35moe-desktop-pi-repeat-02: bot.mjs  0.9306 95% CI [0.8611, 0.9861] n=144 oracle=892b2efaf3f7
+  simulations=0 strategies=0 visible-minus-held-out=None seed-literals=0
+t5-qwen35moe-desktop-pi-repeat-03: bot.mjs  0.8681 95% CI [0.7917, 0.9375] n=144 oracle=892b2efaf3f7
+  simulations=0 strategies=0 visible-minus-held-out=None seed-literals=0
+t5-qwen35moe-desktop-pi-repeat-04: bot.mjs  0.8750 95% CI [0.7917, 0.9444] n=144 oracle=892b2efaf3f7
+  simulations=80 strategies=37 visible-minus-held-out=None seed-literals=0
