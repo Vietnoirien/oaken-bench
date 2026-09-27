@@ -365,8 +365,8 @@ def test_committed_results_output_matches_golden_fixture():
     """Regenerate both summarize golden files when runs are committed.
 
     This fixture is the current CLI output. The pre-tiering-format fixture
-    below is the same output with only the T2 heading removed. A change to
-    an existing row still needs review before either fixture is refreshed.
+    below pins the original T2 block with only its heading removed. A change
+    to an existing T2 row still needs review before either fixture is refreshed.
     """
     actual = _run_summarize()
     expected = open(GOLDEN).read()
@@ -374,33 +374,35 @@ def test_committed_results_output_matches_golden_fixture():
 
 
 def test_the_only_diff_from_pre_tiering_output_is_the_t2_heading():
-    """Tiering adds only the T2 heading to the current results tree.
+    """The original T2 summary still differs only by its tier heading.
 
-    Keep the pre-tiering-format fixture in sync when new runs are committed;
-    new runs legitimately change rows and aggregates in both snapshots.
+    New tiers have their own blocks. Keep this fixture focused on the T2
+    rows and aggregates that existed before tiering.
     """
-    # The T5 block is new; the original T2 block must still match exactly.
-    actual_lines = _run_summarize().split('=== T4 --')[0].split('T5 -- sealed snapshot-pool strategy')[0].splitlines()
-    pre_lines = open(GOLDEN_PRE_TIERING).read().splitlines()
+    t2_block = _run_summarize().split('\n=== T3 --', 1)[0]
+    heading, pre_tiering_format = t2_block.split('\n', 1)
 
-    added = [l for l in actual_lines if l not in pre_lines]
-    removed = [l for l in pre_lines if l not in actual_lines]
-
-    assert removed == []
-    assert added == ['=== T2 -- long-horizon greenfield (the original task) ===']
+    assert heading == '=== T2 -- long-horizon greenfield (the original task) ==='
+    assert pre_tiering_format == open(GOLDEN_PRE_TIERING).read()
 
 
-def test_rows_by_tier_keeps_t5_apart_from_t2():
-    """The T5 score cannot enter a T2 aggregate."""
+def test_rows_by_tier_keeps_new_tiers_apart_from_t2():
+    """The committed T3, T4 and T5 scores cannot enter a T2 aggregate."""
     from summarize import R, collect_rows
 
     rows = collect_rows(R)
     grouped = rows_by_tier(rows)
 
-    assert len(grouped) == 3
+    assert len(grouped) == 4
     tier_id, trows = grouped[0]
     assert tier_id == 't2'
-    assert len(trows) == len(rows) - 3
-    assert grouped[1][0] == 't4'
-    assert grouped[2][0] == 't5'
-    assert [row['label'] for row in grouped[2][1]] == ['t5-cheapest-01']
+    assert len(trows) == len(rows) - 6
+    assert [tier for tier, _ in grouped[1:]] == ['t3', 't4', 't5']
+    assert [row['label'] for row in grouped[1][1]] == ['t3-gemma131k-pilot-20260926-01']
+    assert {row['label'] for row in grouped[2][1]} == {
+        't4-pi-offline-smoke', 't4-qwen35moe-desktop-pi-20260926-01',
+        't4-reference-sanity',
+    }
+    assert [row['label'] for row in grouped[3][1]] == [
+        't5-cheapest-01', 't5-qwen35moe-desktop-pi-20260926-01',
+    ]

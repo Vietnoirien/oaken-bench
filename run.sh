@@ -99,6 +99,12 @@ if [ "$OFFLINE_SMOKE" != 1 ] && ! curl -s -m 5 "$SERVER_URL/models" >/dev/null; 
   echo "llama-server not reachable at $SERVER_URL" >&2
   exit 1
 fi
+if [ "$TIER" = t5 ]; then
+  # The first live pilot checked its canaries only after scoring. A fresh
+  # stateless check must precede every graded model run, including retries.
+  python3 "$B/scripts/t5_canary_preflight.py" --base-url "$SERVER_URL" \
+    --model "$MODEL" --out "$OUT/canary-preflight.json"
+fi
 
 # run.meta (docker/entrypoint.sh) records harness/model/timeout only -- see
 # issue #14. Everything that decides whether two runs are actually

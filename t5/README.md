@@ -15,10 +15,19 @@ The runner uses the same registered model IDs and server configuration as T2.
 A `t5-` label selects the bot task:
 
 ```bash
-./run.sh pi <model-id> t5-<label> 1800
+./run.sh pi <model-id> t5-<label> 3600
 OAKEN_T5_NODE=/path/to/node24 python3 scripts/score.py results/t5-<label>
 # Or use bench.sh to run and score in one command.
 ```
+
+`run.sh` makes separate stateless requests for the T5 oracle and reference
+engine canaries before starting a T5 container. It hashes UUID-shaped replies
+against the published digests in `CANARY.md`. A matching GUID, an incomplete
+reply, or a failed request stops the run. The result directory keeps only
+`canary-preflight.json` with the check time, candidate counts and match flags;
+raw answers are never saved. A negative check is weak evidence against
+contamination, not proof that the model has never seen the oracle. Record this
+preflight alongside the model and server provenance when publishing a score.
 
 The model starts with the public contract, simulator, baseline bots, visible
 seeds, v1.0 interfaces/data, and encrypted reference engine. It writes
