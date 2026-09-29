@@ -1481,6 +1481,53 @@ CHAIN_SCENARIOS = [
         ]),
 ]
 
+FOLLOWUP_CHAIN_PROMPTS = {
+    'order-ship-track': (
+        'Ship the latest order for amira@example.com and check its delivery status.',
+        'Find the latest order for leo@example.com, ship it, then report its tracking status.',
+    ),
+    'ticket-assign-contact': (
+        'Open a ticket for "printer drops off Wi-Fi", assign an agent, and find the agent email.',
+        'File a ticket for "nightly backup fails", assign an agent, then get their contact email.',
+    ),
+    'device-register-activate': (
+        'Register device "lobby-12", activate it, and check its status.',
+        'Register device "scanner-04", activate it, and report its status.',
+    ),
+    'expense-submit-release': (
+        'Submit a $57.25 expense for "taxi fare", route it for approval, notify the approver, '
+        'and release payment once approved.',
+        'Submit a $19.80 expense for "parking", route it for approval, notify the approver, '
+        'and release payment after approval.',
+    ),
+}
+
+
+def followup_chain_scenarios(seed):
+    """Replace opaque results and their consumers together so a changed ID cannot break a chain."""
+    seeds = (20260927, 20260928)
+    if seed not in seeds:
+        raise ValueError(f'undeclared follow-up seed: {seed}')
+    variant = seeds.index(seed)
+    scenarios = []
+    for scenario in CHAIN_SCENARIOS:
+        replacements = {}
+        steps = []
+        for step in scenario.steps:
+            dependency = ({key: replacements.get(value, value) for key, value in step.dependency.items()}
+                          if step.dependency else None)
+            result = {}
+            for key, value in step.result.items():
+                match = re.fullmatch(r'([a-z]+)_[0-9a-f]{12}', value) if isinstance(value, str) else None
+                if match:
+                    replacements[value] = _seeded_id(
+                        f'followup/{seed}/{scenario.chain_id}/{key}', match.group(1))
+                result[key] = replacements.get(value, value)
+            steps.append(ChainStep(step.tool, step.decoys, dependency, result))
+        scenarios.append(ChainScenario(
+            scenario.chain_id, FOLLOWUP_CHAIN_PROMPTS[scenario.chain_id][variant], steps))
+    return scenarios
+
 
 def _run_chain(base_url, model, max_tokens, timeout, errors, scenario, api_key=None):
     chain_id, prompt, steps = scenario.chain_id, scenario.prompt, scenario.steps
