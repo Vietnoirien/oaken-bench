@@ -1,7 +1,10 @@
 """The follow-up cases must change inputs without breaking their tool dependencies."""
 import sys
 import unittest
+import json
+import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import screen_followup  # noqa: E402
@@ -29,6 +32,58 @@ class FollowupCasesTests(unittest.TestCase):
     def test_undeclared_seed_is_rejected(self):
         with self.assertRaises(ValueError):
             screen_followup.chain_cases(42)
+
+    def test_disconnect_writes_metadata_only_partial_and_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'partial.json'
+            with (patch.object(screen_followup, 'server_reachable', return_value=True),
+                  patch.object(screen_followup, 'VramSampler'),
+                  patch.object(screen_followup, 'build_environment', return_value={'backend': 'unknown'}),
+                  patch.object(screen_followup.toolbattery, 'run_short_chains',
+                               side_effect=ConnectionError('raw model reply SECRET')),
+                  patch.object(screen_followup.recall, 'run_battery') as recall):
+                status = screen_followup.main([
+                    '--model', 'fixture', '--seed', '20260927', '--out', str(out)])
+            self.assertEqual(status, 2)
+            recall.assert_not_called()
+            report = json.loads(out.read_text())
+            self.assertTrue(report['incomplete'])
+            self.assertEqual(report['runs'][0]['seed'], 20260927)
+            self.assertEqual(report['runs'][0]['phase'], 'chains')
+            self.assertEqual(report['runs'][0]['completedChains'], 0)
+            self.assertIn('elapsedSeconds', report['runs'][0])
+            self.assertNotIn('SECRET', out.read_text())
+
+    def test_unreachable_server_still_writes_partial(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'partial.json'
+            with (patch.object(screen_followup, 'server_reachable', return_value=False),
+                  patch.object(screen_followup, 'VramSampler'),
+                  patch.object(screen_followup, 'build_environment', return_value={}),
+                  patch.object(screen_followup.toolbattery, 'run_short_chains') as chains):
+                status = screen_followup.main([
+                    '--model', 'fixture', '--seed', '20260928', '--out', str(out)])
+            self.assertEqual(status, 2)
+            chains.assert_not_called()
+            run = json.loads(out.read_text())['runs'][0]
+            self.assertEqual((run['seed'], run['phase'], run['completedChains']),
+                             (20260928, 'server', 0))
+
+    def test_prior_seed_is_redacted_when_next_seed_disconnects(self):
+        chains = {'cases': [{'depthReached': 1, 'calls': ['SECRET'], 'outputTruncated': False}],
+                  'notAttempted': 0}
+        recall = {'overall': {'depthsAttempted': 3, 'depthsSkipped': 0, 'depthsFailed': 0},
+                  'reply': 'SECRET'}
+        with (patch.object(screen_followup, 'VramSampler'),
+              patch.object(screen_followup, 'build_environment', return_value={}),
+              patch.object(screen_followup.toolbattery, 'run_short_chains',
+                           side_effect=[chains, ConnectionError('SECRET')]),
+              patch.object(screen_followup.recall, 'run_battery', return_value=recall)):
+            report = screen_followup.run('http://localhost/v1', 'fixture')
+        self.assertTrue(report['incomplete'])
+        self.assertEqual(report['runs'][0]['completedChains'], 1)
+        self.assertEqual(report['runs'][0]['completedRecallDepths'], 3)
+        self.assertNotIn('SECRET', json.dumps(report))
 
 
 if __name__ == '__main__':
