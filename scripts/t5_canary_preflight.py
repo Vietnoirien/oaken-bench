@@ -78,6 +78,33 @@ def check(base_url, model, prompt, expected):
             'retryCount': 1, 'attempts': attempts}
 
 
+def run_preflight(base_url, model, canaries, implementation, *, run_sh=None, schema_version=1):
+    """Keep raw canary replies out of both runner modes and record the code that made the verdict."""
+    results = {}
+    for name, (prompt, expected) in canaries.items():
+        results[name] = check(base_url, model, prompt, expected)
+        if results[name]['status'] != 'passed':
+            break
+    passed = len(results) == len(canaries) and all(value['status'] == 'passed' for value in results.values())
+    report = {'schemaVersion': schema_version,
+              'checkedAt': datetime.now(timezone.utc).isoformat(), 'model': model,
+              'preflightSha256': hashlib.sha256(implementation.read_bytes()).hexdigest(),
+              'status': 'passed' if passed else 'failed', 'checks': results}
+    if run_sh is not None:
+        report['runShSha256'] = hashlib.sha256(run_sh.read_bytes()).hexdigest()
+    if implementation != Path(__file__):
+        report['preflightSharedSha256'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    return report
+
+
+def write_preflight(out, base_url, model, canaries, implementation, *, run_sh=None, schema_version=1):
+    """Write the failed verdict before callers can expose a benchmark workspace."""
+    report = run_preflight(base_url, model, canaries, implementation, run_sh=run_sh,
+                           schema_version=schema_version)
+    out.write_text(json.dumps(report, indent=2) + '\n')
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base-url', required=True, help='OpenAI-compatible URL ending in /v1')
@@ -86,19 +113,9 @@ def main():
     args = parser.parse_args()
     if not args.base_url.endswith('/v1'):
         parser.error('--base-url must end in /v1')
-    results = {}
-    for name, (prompt, expected) in CANARIES.items():
-        results[name] = check(args.base_url, args.model, prompt, expected)
-        if results[name]['status'] != 'passed':
-            break
-    passed = len(results) == len(CANARIES) and all(value['status'] == 'passed' for value in results.values())
-    report = {'schemaVersion': 2, 'checkedAt': datetime.now(timezone.utc).isoformat(),
-              'model': args.model,
-              'preflightSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-              'runShSha256': hashlib.sha256((Path(__file__).resolve().parents[1] / 'run.sh').read_bytes()).hexdigest(),
-              'status': 'passed' if passed else 'failed', 'checks': results}
-    args.out.write_text(json.dumps(report, indent=2) + '\n')
-    if not passed:
+    report = write_preflight(args.out, args.base_url, args.model, CANARIES, Path(__file__),
+                             run_sh=Path(__file__).resolve().parents[1] / 'run.sh', schema_version=2)
+    if report['status'] != 'passed':
         raise SystemExit('T5 canary preflight failed; see digest-only status in canary-preflight.json')
     print('T5 canary checks completed before model run; no digest matched')
 

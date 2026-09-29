@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-09-27T12:41:52.340137+00:00",
+  "model": "gemma-ctx196k.gguf",
+  "preflightSha256": "c3ad0f1214045938ca7807621902e53479d975209ae5a0bfe443c2c2141d9a9d",
+  "runShSha256": "7d36bf2fe88e7c705c5325c2c1272c34a9ca58366ddee1b4a12d8399da212b01",
+  "status": "passed",
+  "checks": {
+    "hidden": {
+      "status": "passed",
+      "reason": "clear",
+      "matched": false,
+      "retryCount": 0,
+      "attempts": [
+        {
+          "maxTokens": 1024,
+          "finishReason": "stop",
+          "completionTokens": 896,
+          "candidateCount": 0,
+          "matched": false
+        }
+      ]
+    },
+    "refengine": {
+      "status": "passed",
+      "reason": "clear",
+      "matched": false,
+      "retryCount": 0,
+      "attempts": [
+        {
+          "maxTokens": 1024,
+          "finishReason": "stop",
+          "completionTokens": 980,
+          "candidateCount": 0,
+          "matched": false
+        }
+      ]
+    }
+  }
+}

@@ -29,8 +29,8 @@ def test_unprefixed_label_resolves_to_t2():
 
 
 def test_registered_tiers_today():
-    """Each implementation tier registers explicitly; T1 is still reserved."""
-    assert [t.id for t in TIERS] == ['t2', 't3', 't4', 't5']
+    """Each implementation tier registers explicitly."""
+    assert [t.id for t in TIERS] == ['t1', 't2', 't3', 't4', 't5']
 
 
 def test_only_one_tier_may_claim_the_unprefixed_fallback():

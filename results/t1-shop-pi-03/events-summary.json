@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-shop-pi-03",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 8,
+  "toolOutcomes": {
+    "ok": 8,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "bash": 1,
+    "read": 7
+  },
+  "unknownTools": [],
+  "mutatingCalls": 0,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "bash",
+      "c890c444a86e2428",
+      1
+    ],
+    [
+      "read",
+      "0ea7a4d55a6097ab",
+      1
+    ],
+    [
+      "read",
+      "5217a41a705e437a",
+      1
+    ],
+    [
+      "read",
+      "2b63109b132df77a",
+      1
+    ],
+    [
+      "read",
+      "42105b9b050fb2fc",
+      1
+    ],
+    [
+      "read",
+      "c16c16a5a0922901",
+      1
+    ],
+    [
+      "read",
+      "f1c86b1c5adedf72",
+      1
+    ],
+    [
+      "read",
+      "e739a548791bc1cd",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 0.05,
+  "toolCallIntervals": {
+    "n": 7,
+    "p50Seconds": 2.439,
+    "p95Seconds": 5.527
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

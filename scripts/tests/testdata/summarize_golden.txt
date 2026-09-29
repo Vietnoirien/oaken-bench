@@ -86,6 +86,58 @@ cmp '~'  counted by the version-1 extractor (pre-#10): overstated, and by a diff
 
 bar = 80% hidden.  runs clearing it: ['ceiling-claude', 'dsh-gemma192k-03', 'dsh-qwen35kvq4-262k-01', 'dsh-qwen35kvq4-262k-03', 'dsh-qwen35q4ks-02', 'dsh-qwen35q4ks-b10751-01', 'dsh-qwen35q4ks-b10751-02', 'dsh-qwen35q4ks-b10751-03', 'pi-oss20b-02', 'pi-qwen35kvq4-262k-01', 'pi-qwen35kvq4-262k-02', 'pi-qwen35q4ks-b10751-01', 'pi-qwen35q4ks-b10751-02', 'pi-qwen35q4ks-b10751-03']
 
+=== T1 -- isolated missing-module implementation ===
+t1-combat-dsh-01: 0/35 target, 85/132 full, typecheck=clean, 91s, crash
+t1-combat-dsh-02: 7/35 target, 92/132 full, typecheck=clean, 210s, crash
+t1-combat-dsh-03: 0/35 target, 85/132 full, typecheck=clean, 210s, crash
+t1-combat-pi-01: 14/35 target, 108/132 full, typecheck=dirty, 391s, scored
+t1-combat-pi-02: 15/35 target, 109/132 full, typecheck=dirty, 573s, scored
+t1-combat-pi-03: 20/35 target, 117/132 full, typecheck=dirty, 331s, scored
+t1-economy-dsh-01: 12/12 target, 132/132 full, typecheck=clean, 120s, scored
+t1-economy-dsh-02: 11/12 target, 131/132 full, typecheck=dirty, 90s, scored
+t1-economy-dsh-03: 12/12 target, 132/132 full, typecheck=clean, 120s, scored
+t1-economy-dsh-pilot: 12/12 target, 132/132 full, typecheck=clean, 90s, scored
+t1-economy-pi-01: 9/12 target, 118/132 full, typecheck=dirty, 150s, scored
+t1-economy-pi-02: 12/12 target, 132/132 full, typecheck=clean, 90s, scored
+t1-economy-pi-03: 11/12 target, 131/132 full, typecheck=dirty, 120s, scored
+t1-economy-pi-pilot: 12/12 target, 132/132 full, typecheck=clean, 121s, scored
+t1-items-dsh-01: 15/15 target, 132/132 full, typecheck=dirty, 120s, scored
+t1-items-dsh-02: 2/15 target, 43/132 full, typecheck=clean, 120s, crash
+t1-items-dsh-03: 15/15 target, 132/132 full, typecheck=dirty, 240s, scored
+t1-items-pi-01: 15/15 target, 132/132 full, typecheck=dirty, 180s, scored
+t1-items-pi-02: 15/15 target, 132/132 full, typecheck=dirty, 90s, scored
+t1-items-pi-03: 15/15 target, 132/132 full, typecheck=dirty, 90s, scored
+t1-rng-dsh-01: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-dsh-02: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-dsh-03: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-pi-01: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-pi-02: 5/5 target, 132/132 full, typecheck=clean, 30s, scored
+t1-rng-pi-03: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-run-dsh-01: 11/12 target, 130/132 full, typecheck=clean, 270s, scored
+t1-run-dsh-02: 12/12 target, 131/132 full, typecheck=clean, 151s, scored
+t1-run-dsh-03: 0/12 target, 89/132 full, typecheck=clean, 240s, crash
+t1-run-pi-01: 12/12 target, 131/132 full, typecheck=clean, 150s, scored
+t1-run-pi-02: 0/12 target, 89/132 full, typecheck=dirty, 151s, scored
+t1-run-pi-03: 12/12 target, 132/132 full, typecheck=dirty, 331s, scored
+t1-shop-dsh-01: 11/15 target, 128/132 full, typecheck=clean, 181s, scored
+t1-shop-dsh-02: 15/15 target, 132/132 full, typecheck=dirty, 301s, scored
+t1-shop-dsh-03: 10/15 target, 127/132 full, typecheck=clean, 270s, scored
+t1-shop-pi-01: 15/15 target, 132/132 full, typecheck=dirty, 241s, scored
+t1-shop-pi-02: 15/15 target, 132/132 full, typecheck=clean, 180s, scored
+t1-shop-pi-03: 0/15 target, 87/132 full, typecheck=clean, 120s, scored
+t1-snapshot-dsh-01: 20/24 target, 128/132 full, typecheck=clean, 361s, scored
+t1-snapshot-dsh-02: 24/24 target, 132/132 full, typecheck=clean, 240s, scored
+t1-snapshot-dsh-03: 24/24 target, 132/132 full, typecheck=clean, 271s, scored
+t1-snapshot-pi-01: 24/24 target, 132/132 full, typecheck=clean, 180s, scored
+t1-snapshot-pi-02: 24/24 target, 132/132 full, typecheck=clean, 572s, scored
+t1-snapshot-pi-03: 24/24 target, 132/132 full, typecheck=clean, 150s, scored
+t1-tower-dsh-01: 14/14 target, 132/132 full, typecheck=dirty, 301s, scored
+t1-tower-dsh-02: 14/14 target, 132/132 full, typecheck=clean, 390s, scored
+t1-tower-dsh-03: 14/14 target, 132/132 full, typecheck=clean, 210s, scored
+t1-tower-pi-01: 14/14 target, 132/132 full, typecheck=dirty, 210s, scored
+t1-tower-pi-02: 14/14 target, 132/132 full, typecheck=clean, 511s, scored
+t1-tower-pi-03: 14/14 target, 132/132 full, typecheck=dirty, 271s, scored
+
 === T3 -- planted bugs (fix a buggy reference engine, issue #42) ===
 run                        outcome                          hidden     visible     gap  tc   wall  turns  tools    mut   cmp
 ----------------------------------------------------------------------------------------------------------------------------

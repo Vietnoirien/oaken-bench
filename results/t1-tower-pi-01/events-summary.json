@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-tower-pi-01",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 11,
+  "toolOutcomes": {
+    "ok": 10,
+    "error": 1,
+    "unknown": 0
+  },
+  "errorRate": 0.0909,
+  "errorsByTool": {
+    "write": 1
+  },
+  "toolHistogram": {
+    "bash": 2,
+    "read": 7,
+    "write": 1,
+    "edit": 1
+  },
+  "unknownTools": [],
+  "mutatingCalls": 2,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "bash",
+      "c890c444a86e2428",
+      1
+    ],
+    [
+      "read",
+      "a22916c0233decba",
+      1
+    ],
+    [
+      "read",
+      "bbeae08aa4181848",
+      1
+    ],
+    [
+      "read",
+      "49c4ac7589acf91d",
+      1
+    ],
+    [
+      "read",
+      "f9559e62968ffdc0",
+      1
+    ],
+    [
+      "read",
+      "a97d23471119ad7e",
+      1
+    ],
+    [
+      "read",
+      "ac625a3298d15b77",
+      1
+    ],
+    [
+      "read",
+      "685659c591817378",
+      1
+    ],
+    [
+      "write",
+      "590cb34c4db87d1c",
+      1
+    ],
+    [
+      "edit",
+      "4e41aa60644f3085",
+      1
+    ],
+    [
+      "bash",
+      "bf51301de7898d36",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 0.063,
+  "toolCallIntervals": {
+    "n": 10,
+    "p50Seconds": 13.393,
+    "p95Seconds": 34.249
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

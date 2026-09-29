@@ -1,6 +1,6 @@
 # T1 decision options for the maintainer
 
-Status: proposal, 2026-09-27. The [maintainer decision on #45](https://github.com/Vietnoirien/oaken-bench/issues/45#issuecomment-5831317870) defers T1. The `ready-for-agent` label on [#46](https://github.com/Vietnoirien/oaken-bench/issues/46) does not override its explicit instruction to wait for a changed decision. This note does not authorize implementation.
+Status: historical decision memo. On 2026-09-27 the maintainer authorized the full T1 study on [#45](https://github.com/Vietnoirien/oaken-bench/issues/45) and [#46](https://github.com/Vietnoirien/oaken-bench/issues/46). The deferral recommendation below is superseded. See [the T1 protocol](../t1/README.md).
 
 ## What the evidence says
 

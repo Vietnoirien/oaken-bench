@@ -1,0 +1,136 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-snapshot-pi-03",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 19,
+  "toolOutcomes": {
+    "ok": 18,
+    "error": 1,
+    "unknown": 0
+  },
+  "errorRate": 0.0526,
+  "errorsByTool": {
+    "edit": 1
+  },
+  "toolHistogram": {
+    "bash": 4,
+    "read": 9,
+    "edit": 6
+  },
+  "unknownTools": [],
+  "mutatingCalls": 6,
+  "repeatedCalls": 4,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.7895,
+  "callSequence": [
+    [
+      "bash",
+      "c890c444a86e2428",
+      1
+    ],
+    [
+      "read",
+      "0ea7a4d55a6097ab",
+      1
+    ],
+    [
+      "read",
+      "aaeff4b14cc5657d",
+      1
+    ],
+    [
+      "read",
+      "2b63109b132df77a",
+      1
+    ],
+    [
+      "bash",
+      "a50dc0affeb86ea8",
+      1
+    ],
+    [
+      "read",
+      "e739a548791bc1cd",
+      1
+    ],
+    [
+      "read",
+      "c16c16a5a0922901",
+      1
+    ],
+    [
+      "edit",
+      "b2308a43511a9da5",
+      1
+    ],
+    [
+      "read",
+      "aaeff4b14cc5657d",
+      1
+    ],
+    [
+      "edit",
+      "611d6884d07b3695",
+      1
+    ],
+    [
+      "edit",
+      "521b3bf2819bf792",
+      1
+    ],
+    [
+      "read",
+      "aaeff4b14cc5657d",
+      1
+    ],
+    [
+      "edit",
+      "2bc09962b09b928e",
+      1
+    ],
+    [
+      "read",
+      "aaeff4b14cc5657d",
+      1
+    ],
+    [
+      "edit",
+      "c613b83964f88e17",
+      1
+    ],
+    [
+      "read",
+      "aaeff4b14cc5657d",
+      1
+    ],
+    [
+      "edit",
+      "b598e52bd87f5bb0",
+      1
+    ],
+    [
+      "bash",
+      "1f1e0bd1b4eac635",
+      1
+    ],
+    [
+      "bash",
+      "0ae508828a917490",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 0.058,
+  "toolCallIntervals": {
+    "n": 18,
+    "p50Seconds": 5.836,
+    "p95Seconds": 16.407
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}
