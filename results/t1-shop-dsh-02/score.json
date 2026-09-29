@@ -1,0 +1,285 @@
+{
+  "label": "t1-shop-dsh-02",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 301,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": false,
+  "suiteHung": false,
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "permission/preset": 1,
+      "sandbox/mode": 1,
+      "approval/policy": 1,
+      "agent/inbox/spliced": 2,
+      "turn/start": 1,
+      "step/start": 33,
+      "system/message": 1,
+      "user/message": 2,
+      "request/header": 1,
+      "request/context": 1,
+      "session/title": 1,
+      "session/title-llm-request": 1,
+      "assistant/message": 33,
+      "tool/call": 32,
+      "tool/result": 32,
+      "step/end": 33,
+      "turn/end": 1
+    },
+    "steps": 33,
+    "toolCalls": 32,
+    "usage": {
+      "inputTokens": 72373,
+      "outputTokens": 22443,
+      "cacheReadTokens": 1385220
+    },
+    "compactions": 0,
+    "prunedToolResults": {
+      "count": 0,
+      "shadowedTokenCount": 0
+    },
+    "generationOutputTokens": 21898,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 30,
+      "error": 2,
+      "unknown": 0
+    },
+    "errorRate": 0.0625,
+    "errorsByTool": {
+      "bash": 1,
+      "write": 1
+    },
+    "toolHistogram": {
+      "glob": 7,
+      "read": 11,
+      "grep": 2,
+      "write": 5,
+      "bash": 6,
+      "edit": 1
+    },
+    "unknownTools": [
+      "grep"
+    ],
+    "mutatingCalls": 6,
+    "repeatedCalls": 3,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 0.9062,
+    "callSequence": [
+      [
+        "glob",
+        "1a60526d10f05ef3",
+        1
+      ],
+      [
+        "read",
+        "6f1985105c4491a0",
+        1
+      ],
+      [
+        "read",
+        "1badadaa0eba704d",
+        1
+      ],
+      [
+        "glob",
+        "660920493d1328d3",
+        1
+      ],
+      [
+        "read",
+        "919ec7776ab69441",
+        1
+      ],
+      [
+        "glob",
+        "ad7aa09f456b008e",
+        1
+      ],
+      [
+        "read",
+        "87daa12fa0625f9e",
+        1
+      ],
+      [
+        "read",
+        "5c2510b2942091e6",
+        1
+      ],
+      [
+        "grep",
+        "71cefc3879b551e6",
+        1
+      ],
+      [
+        "read",
+        "a5ab70e6fdc04b9b",
+        1
+      ],
+      [
+        "write",
+        "05586f7e05511abe",
+        1
+      ],
+      [
+        "bash",
+        "5d9806970c6f6aeb",
+        1
+      ],
+      [
+        "edit",
+        "51fc3a7495c000ae",
+        1
+      ],
+      [
+        "bash",
+        "9714bb4071c7976d",
+        1
+      ],
+      [
+        "read",
+        "449b871aeb51f584",
+        1
+      ],
+      [
+        "read",
+        "25e225f9c257b1dc",
+        1
+      ],
+      [
+        "glob",
+        "d4253dfa99023e40",
+        1
+      ],
+      [
+        "read",
+        "01044a1110757fad",
+        1
+      ],
+      [
+        "write",
+        "0a395ea33d49545a",
+        1
+      ],
+      [
+        "bash",
+        "9714bb4071c7976d",
+        1
+      ],
+      [
+        "glob",
+        "65569dcef70e5853",
+        1
+      ],
+      [
+        "write",
+        "ae5ae6df19bfe52f",
+        1
+      ],
+      [
+        "bash",
+        "9714bb4071c7976d",
+        1
+      ],
+      [
+        "bash",
+        "b87088da9c6ae485",
+        1
+      ],
+      [
+        "grep",
+        "62522f7f12490e88",
+        1
+      ],
+      [
+        "glob",
+        "40fcc97f4943914f",
+        1
+      ],
+      [
+        "read",
+        "ef6ba856d7c37c07",
+        1
+      ],
+      [
+        "glob",
+        "e64ae41b204560b0",
+        1
+      ],
+      [
+        "read",
+        "d023c899f9d35147",
+        1
+      ],
+      [
+        "write",
+        "d31e359cb6398992",
+        1
+      ],
+      [
+        "write",
+        "412fc864f6240436",
+        1
+      ],
+      [
+        "bash",
+        "9714bb4071c7976d",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 4.709,
+    "toolCallIntervals": {
+      "n": 31,
+      "p50Seconds": 2.177,
+      "p95Seconds": 40.864
+    },
+    "generationSeconds": 255.712,
+    "toolExecutionSeconds": 3.459,
+    "derivedDecodeTokensPerSecond": 85.64,
+    "parseErrors": 0
+  },
+  "outcome": "scored",
+  "overfitGap": 0.0,
+  "schemaVersion": 1,
+  "tier": "t1",
+  "module": "shop",
+  "runKind": "implementation",
+  "targetHidden": {
+    "passed": 15,
+    "failed": 0,
+    "total": 15,
+    "collected": 15,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "fullHidden": {
+    "passed": 132,
+    "failed": 0,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 1.0
+  },
+  "fixedSourceChanges": [],
+  "referenceBundleSha256": "c9a04e839d7bc53782caf3ef3a39c88f634a7350a63ce065e4e3883976dda82f",
+  "oracleBundleSha256": "fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97",
+  "scorerSha256": "fcc65ab3d76abbaa7ef83a29ef75d25f0b9f6bbfef85611f3eb8a97b8dc570cd",
+  "moduleSuccess": false
+}

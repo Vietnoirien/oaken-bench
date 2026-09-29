@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-tower-pi-03",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 19,
+  "toolOutcomes": {
+    "ok": 16,
+    "error": 3,
+    "unknown": 0
+  },
+  "errorRate": 0.1579,
+  "errorsByTool": {
+    "edit": 2,
+    "bash": 1
+  },
+  "toolHistogram": {
+    "bash": 3,
+    "read": 7,
+    "edit": 7,
+    "write": 2
+  },
+  "unknownTools": [],
+  "mutatingCalls": 9,
+  "repeatedCalls": 1,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.9474,
+  "callSequence": [
+    [
+      "bash",
+      "c890c444a86e2428",
+      1
+    ],
+    [
+      "read",
+      "738ea8aebc5b4294",
+      1
+    ],
+    [
+      "read",
+      "1285dfd4791d1902",
+      1
+    ],
+    [
+      "read",
+      "51e5cd5888b9430f",
+      1
+    ],
+    [
+      "read",
+      "1543d10b583a8f97",
+      1
+    ],
+    [
+      "read",
+      "c2df196436de7355",
+      1
+    ],
+    [
+      "read",
+      "0317616c16e232e5",
+      1
+    ],
+    [
+      "edit",
+      "a54f4b0e83d35b11",
+      1
+    ],
+    [
+      "edit",
+      "4c87fce7a4341c2e",
+      1
+    ],
+    [
+      "edit",
+      "12126575c855320a",
+      1
+    ],
+    [
+      "edit",
+      "1a385cb9e8d78bc2",
+      1
+    ],
+    [
+      "edit",
+      "0288dd9605561466",
+      1
+    ],
+    [
+      "edit",
+      "82b6e6b0558e5675",
+      1
+    ],
+    [
+      "write",
+      "62730624c5c2573c",
+      1
+    ],
+    [
+      "bash",
+      "9d1dfb90858b9b76",
+      1
+    ],
+    [
+      "read",
+      "b76f901165141029",
+      1
+    ],
+    [
+      "edit",
+      "1b382cdc87b2aaa9",
+      1
+    ],
+    [
+      "write",
+      "29d1d632953d890d",
+      1
+    ],
+    [
+      "bash",
+      "9d1dfb90858b9b76",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 0.067,
+  "toolCallIntervals": {
+    "n": 18,
+    "p50Seconds": 6.597,
+    "p95Seconds": 34.346
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

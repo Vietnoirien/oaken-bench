@@ -75,7 +75,22 @@ if [ "$TIER" = t5 ]; then
                   -v "$B/t5/PROMPT.txt:/opt/PROMPT.txt:ro" --entrypoint /bin/bash)
   PREPARED_ENTRY_ARGS=(/t5-entrypoint.sh)
 fi
+if [ "$TIER" = t1 ]; then
+  T1_MODULE="${LABEL#t1-}"
+  T1_MODULE="${T1_MODULE%%-*}"
+  PREPARED_TMP=$(mktemp -d)
+  trap 'rm -rf "$PREPARED_TMP"' EXIT
+  python3 "$B/scripts/t1.py" assemble "$T1_MODULE" "$PREPARED_TMP/input"
+  PREPARED_DOCKER_ARGS=(-e OAKEN_TIER=t1 -v "$PREPARED_TMP/input:/t1-input:ro"
+                  -v "$B/docker/entrypoint.sh:/t1-entrypoint.sh:ro"
+                  -v "$B/docker/configure_server.py:/usr/local/bin/configure_server.py:ro"
+                  --entrypoint /bin/bash)
+  PREPARED_ENTRY_ARGS=(/t1-entrypoint.sh)
+fi
 mkdir -p "$OUT"
+if [ "$TIER" = t1 ]; then
+  cp "$PREPARED_TMP/input/manifest.json" "$OUT/t1-manifest.json"
+fi
 if [ "$TIER" = t5 ]; then
   python3 "$B/scripts/t5_runner.py" provenance "$OUT/t5-run-context.json"
 fi
@@ -98,6 +113,16 @@ SERVER_ROOT="${SERVER_URL%/v1}"
 if [ "$OFFLINE_SMOKE" != 1 ] && ! curl -s -m 5 "$SERVER_URL/models" >/dev/null; then
   echo "llama-server not reachable at $SERVER_URL" >&2
   exit 1
+fi
+if [ "$TIER" = t5 ]; then
+  # The first live pilot checked its canaries only after scoring. A fresh
+  # stateless check must precede every graded model run, including retries.
+  python3 "$B/scripts/t5_canary_preflight.py" --base-url "$SERVER_URL" \
+    --model "$MODEL" --out "$OUT/canary-preflight.json"
+fi
+if [ "$TIER" = t1 ]; then
+  python3 "$B/scripts/t1_canary_preflight.py" --base-url "$SERVER_URL" \
+    --model "$MODEL" --out "$OUT/canary-preflight.json"
 fi
 
 # run.meta (docker/entrypoint.sh) records harness/model/timeout only -- see

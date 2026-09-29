@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "model": "gemma-ctx196k.gguf",
+  "image": "oaken-bench:t1-study",
+  "pilotCapSeconds": 600,
+  "matrixCapSeconds": 600,
+  "records": [
+    {
+      "label": "t1-economy-direct-pilot",
+      "mode": "direct",
+      "module": "economy",
+      "runExit": 0,
+      "wallclockSeconds": 49
+    },
+    {
+      "label": "t1-economy-pi-pilot",
+      "mode": "pi",
+      "module": "economy",
+      "runExit": 0,
+      "wallclockSeconds": 121
+    },
+    {
+      "label": "t1-economy-dsh-pilot",
+      "mode": "dsh",
+      "module": "economy",
+      "runExit": 0,
+      "wallclockSeconds": 90
+    }
+  ]
+}

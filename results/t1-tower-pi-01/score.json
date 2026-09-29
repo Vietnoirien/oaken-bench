@@ -1,0 +1,166 @@
+{
+  "label": "t1-tower-pi-01",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 210,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": false,
+  "suiteHung": false,
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 12,
+      "message_start": 25,
+      "message_end": 25,
+      "message_update": 9297,
+      "tool_execution_start": 11,
+      "tool_execution_update": 9,
+      "tool_execution_end": 11,
+      "turn_end": 12,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 12,
+    "toolCalls": 11,
+    "usage": {
+      "input": 31108,
+      "output": 9366,
+      "cacheRead": 210006,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 10,
+      "error": 1,
+      "unknown": 0
+    },
+    "errorRate": 0.0909,
+    "errorsByTool": {
+      "write": 1
+    },
+    "toolHistogram": {
+      "bash": 2,
+      "read": 7,
+      "write": 1,
+      "edit": 1
+    },
+    "unknownTools": [],
+    "mutatingCalls": 2,
+    "repeatedCalls": 0,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 1.0,
+    "callSequence": [
+      [
+        "bash",
+        "c890c444a86e2428",
+        1
+      ],
+      [
+        "read",
+        "a22916c0233decba",
+        1
+      ],
+      [
+        "read",
+        "bbeae08aa4181848",
+        1
+      ],
+      [
+        "read",
+        "49c4ac7589acf91d",
+        1
+      ],
+      [
+        "read",
+        "f9559e62968ffdc0",
+        1
+      ],
+      [
+        "read",
+        "a97d23471119ad7e",
+        1
+      ],
+      [
+        "read",
+        "ac625a3298d15b77",
+        1
+      ],
+      [
+        "read",
+        "685659c591817378",
+        1
+      ],
+      [
+        "write",
+        "590cb34c4db87d1c",
+        1
+      ],
+      [
+        "edit",
+        "4e41aa60644f3085",
+        1
+      ],
+      [
+        "bash",
+        "bf51301de7898d36",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 0.063,
+    "toolCallIntervals": {
+      "n": 10,
+      "p50Seconds": 13.393,
+      "p95Seconds": 34.249
+    },
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "scored",
+  "overfitGap": 0.0,
+  "schemaVersion": 1,
+  "tier": "t1",
+  "module": "tower",
+  "runKind": "implementation",
+  "targetHidden": {
+    "passed": 14,
+    "failed": 0,
+    "total": 14,
+    "collected": 14,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "fullHidden": {
+    "passed": 132,
+    "failed": 0,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 1.0
+  },
+  "fixedSourceChanges": [],
+  "referenceBundleSha256": "c9a04e839d7bc53782caf3ef3a39c88f634a7350a63ce065e4e3883976dda82f",
+  "oracleBundleSha256": "fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97",
+  "scorerSha256": "fcc65ab3d76abbaa7ef83a29ef75d25f0b9f6bbfef85611f3eb8a97b8dc570cd",
+  "moduleSuccess": false
+}

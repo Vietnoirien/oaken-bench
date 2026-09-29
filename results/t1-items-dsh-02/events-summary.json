@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-items-dsh-02",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 8,
+  "toolOutcomes": {
+    "ok": 8,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "bash": 2,
+    "read": 6
+  },
+  "unknownTools": [],
+  "mutatingCalls": 0,
+  "repeatedCalls": 0,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 1.0,
+  "callSequence": [
+    [
+      "bash",
+      "0cddf1d3d307104c",
+      1
+    ],
+    [
+      "read",
+      "6f1985105c4491a0",
+      1
+    ],
+    [
+      "read",
+      "a5ab70e6fdc04b9b",
+      1
+    ],
+    [
+      "read",
+      "919ec7776ab69441",
+      1
+    ],
+    [
+      "read",
+      "87daa12fa0625f9e",
+      1
+    ],
+    [
+      "read",
+      "5c2510b2942091e6",
+      1
+    ],
+    [
+      "read",
+      "f30e288e6cc360b0",
+      1
+    ],
+    [
+      "bash",
+      "2b0370ecc4cfc9c4",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 4.043,
+  "toolCallIntervals": {
+    "n": 7,
+    "p50Seconds": 3.567,
+    "p95Seconds": 10.693
+  },
+  "generationSeconds": 31.183,
+  "toolExecutionSeconds": 0.187
+}

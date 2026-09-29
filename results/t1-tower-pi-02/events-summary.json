@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-tower-pi-02",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 21,
+  "toolOutcomes": {
+    "ok": 15,
+    "error": 6,
+    "unknown": 0
+  },
+  "errorRate": 0.2857,
+  "errorsByTool": {
+    "write": 4,
+    "bash": 2
+  },
+  "toolHistogram": {
+    "bash": 6,
+    "read": 9,
+    "write": 6
+  },
+  "unknownTools": [],
+  "mutatingCalls": 6,
+  "repeatedCalls": 1,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.9524,
+  "callSequence": [
+    [
+      "bash",
+      "e0558cc40e933679",
+      1
+    ],
+    [
+      "read",
+      "0ea7a4d55a6097ab",
+      1
+    ],
+    [
+      "read",
+      "6a75c3e94e5ff6c3",
+      1
+    ],
+    [
+      "read",
+      "2b63109b132df77a",
+      1
+    ],
+    [
+      "read",
+      "42105b9b050fb2fc",
+      1
+    ],
+    [
+      "write",
+      "af0ca6a509556311",
+      1
+    ],
+    [
+      "read",
+      "db596662f04a8090",
+      1
+    ],
+    [
+      "read",
+      "5217a41a705e437a",
+      1
+    ],
+    [
+      "read",
+      "e739a548791bc1cd",
+      1
+    ],
+    [
+      "read",
+      "14cbe59265f2f1f7",
+      1
+    ],
+    [
+      "write",
+      "b82c32c9b42f1fd1",
+      1
+    ],
+    [
+      "write",
+      "7d722134d9d54512",
+      1
+    ],
+    [
+      "write",
+      "2d8513b91e192cb6",
+      1
+    ],
+    [
+      "bash",
+      "f78c1bb05dee58ff",
+      1
+    ],
+    [
+      "bash",
+      "3c857818e349f9a3",
+      1
+    ],
+    [
+      "bash",
+      "dd55d5eb08bedbe4",
+      1
+    ],
+    [
+      "bash",
+      "0097da956b36fcf8",
+      1
+    ],
+    [
+      "read",
+      "11d6bd39673d147f",
+      1
+    ],
+    [
+      "write",
+      "d541cf09eceecd2c",
+      1
+    ],
+    [
+      "write",
+      "84433c06dc50a0a8",
+      1
+    ],
+    [
+      "bash",
+      "0097da956b36fcf8",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 0.061,
+  "toolCallIntervals": {
+    "n": 20,
+    "p50Seconds": 7.623,
+    "p95Seconds": 62.842
+  },
+  "generationSeconds": null,
+  "toolExecutionSeconds": null
+}

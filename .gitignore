@@ -13,11 +13,14 @@ node_modules/
 /docker/seed/
 
 # Run artefacts. Raw traces carry agent-written solution code and stay out
-# (see CANARY.md); score.json and events-summary.json (issue #7 -- derived
-# metrics only, digests never argument text) are the published record.
+# (see CANARY.md). Publish scores, digest-only event summaries and T5's
+# metadata-only canary check; never publish model replies or tool arguments.
 /results/*/*
+/.t1-direct-results/
 !/results/*/score.json
 !/results/t5-*/visible-score.json
+!/results/t5-*/canary-preflight.json
+!/results/t1-*/canary-preflight.json
 !/results/*/events-summary.json
 __pycache__/
 *.pyc

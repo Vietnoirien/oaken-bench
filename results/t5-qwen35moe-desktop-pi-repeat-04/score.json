@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "tier": "t5",
+  "protocol": "t5-sealed-snapshot/1",
+  "contract": "t5/1",
+  "runtime": "v24.14.1",
+  "oracle": {
+    "archiveSha256": "892b2efaf3f7506b313fc305aa0fd42f7307bae65cf083224724ab85a26fb747",
+    "seedsSha256": "ca896f91705e5c183fd911b2d280753393c05d864897a0cc34286328043ef2c1",
+    "poolSha256": "15103553a3840817b9c114ff76f84c098c9b88b6688c5c4d1ca9949a7fbaabdb",
+    "frozenSha256": "6c007bd234380a064bcab063c4fabf8a2ccf0cd0973f5d5eb8337fb59910d843",
+    "refengineSha256": "c9a04e839d7bc53782caf3ef3a39c88f634a7350a63ce065e4e3883976dda82f",
+    "scorerSha256": "aa25ad755c300dbda25092f4cc87801896c16dbb93513bc846113f70c545280d"
+  },
+  "bot": {
+    "spec": "bot.mjs",
+    "sha256": "59dbdcaec39f6039bbe3bd1b0fdab4c54b1ef7fc4803391eb5e03e343e3c7669",
+    "treeSha256": "99bd2eac546a06f7a4f7843541ae79792b1d0d28992c9c853ed36cd0cb853913"
+  },
+  "seedCount": 48,
+  "matches": 144,
+  "wins": 126,
+  "losses": 18,
+  "winRate": 0.875,
+  "confidenceInterval": {
+    "method": "seed-cluster-percentile-bootstrap",
+    "level": 0.95,
+    "replicates": 10000,
+    "lower": 0.7917,
+    "upper": 0.9444
+  },
+  "invalidSnapshots": 0,
+  "meanDays": 11.0417,
+  "counters": {
+    "calls": 3220,
+    "actions": 1630,
+    "illegal": 0,
+    "malformed": 0,
+    "decideErrors": 0,
+    "dropped": 0,
+    "impure": 0
+  },
+  "behaviorMetrics": {
+    "schemaVersion": 1,
+    "traceAvailable": true,
+    "harness": "pi",
+    "simulationsRun": 80,
+    "strategiesTried": 37,
+    "visibleSeedHardCoding": {
+      "visibleRate": null,
+      "heldOutRate": 0.875,
+      "visibleMinusHeldOut": null,
+      "sourceSeedLiteralCount": 0
+    }
+  },
+  "modelRun": {
+    "schemaVersion": 1,
+    "runKind": "bot-implementation",
+    "harness": "pi",
+    "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+    "timeoutSeconds": 3600,
+    "exitCode": 0,
+    "workspaceSha256": "c7cee68463c510f7e4b60309d7113d4ef8ec0d34182d1738dc46e47272ac670c",
+    "runnerSha256": "11f7a3ed8ed7486d63d026a7f0934ca8ad405d0c621fb1541efa9b2ac4cb8325",
+    "runContextSha256": "c6c94cbaecbfbfe00defc3c6b565a53b44a13378e6ee3919e30c65ddf35d93d8",
+    "inputs": {
+      "protocol": "t5-model-run/1",
+      "revision": "fc14a947c55b7ce9c446fc162dbc8e2780b29f43",
+      "image": "oaken-bench:1.0",
+      "imageId": "sha256:db70dc755e2d68747eabb681ebcd89fd1d46ecc443f114b44cb6698277e874f6",
+      "promptSha256": "43e537131b2afd8a2cba3eed10bbb06efd50d93e57bf397f9f900b1438caae63",
+      "frozenSha256": "6c007bd234380a064bcab063c4fabf8a2ccf0cd0973f5d5eb8337fb59910d843",
+      "runnerSha256": "11f7a3ed8ed7486d63d026a7f0934ca8ad405d0c621fb1541efa9b2ac4cb8325",
+      "entrypointSha256": "35e0aec8803c3f01d53b398bc7f29aabf34a0cab4b4eed0d96d3fd4aa178ae36"
+    }
+  }
+}

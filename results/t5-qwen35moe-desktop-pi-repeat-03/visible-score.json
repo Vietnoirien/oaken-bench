@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "tier": "t5",
+  "runKind": "model-visible-evaluation",
+  "protocol": "t5-visible-head-to-head/1",
+  "evaluations": [
+    {
+      "schemaVersion": 1,
+      "protocol": "t5-visible-head-to-head/1",
+      "contract": "t5/1",
+      "runtime": "v24.21.0",
+      "spec": {
+        "sha256": "856180cd08a8830195b2d13634bcc6ce8fdecfb7766693f0ed6934dfb3d66ba4"
+      },
+      "simulator": {
+        "sha256": "cc201d96798f7acbb2ad8bedfe4913423a8501c89352f5e0a0554b1723b05b21"
+      },
+      "engine": {
+        "sha256": "d5cdfe64a20f96498541ee290efdd12cde4028629ed9bea314fb752df8a3a50b"
+      },
+      "seeds": {
+        "source": "visible",
+        "count": 100,
+        "sha256": "f9e2dbde0ae4640704fb66ee02c101cf84abe35137363d62647622606df61279",
+        "allVisible": true
+      },
+      "bots": [
+        {
+          "name": "bot.mjs",
+          "spec": "./bot/bot.mjs",
+          "sha256": "f06c63ec69066ac30200eba308863906dcd0e6939849c898ab7a3654d5a92419",
+          "treeSha256": "a43926812544ab755c81e641fe0981fdc81c47cadd7c707bdd4f316289f5848c"
+        },
+        {
+          "name": "random",
+          "spec": "baseline:random",
+          "sha256": "46675703a672d829702f72e45d066865333333e751ddd858ef62867342869bec",
+          "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+        }
+      ],
+      "stats": {
+        "a": "bot.mjs",
+        "b": "random",
+        "matches": 200,
+        "wins": 197,
+        "draws": 3,
+        "losses": 0,
+        "points": 198.5,
+        "winRate": 0.9925,
+        "meanDays": 4.02,
+        "meanTrophies": [
+          3.325,
+          0.07
+        ],
+        "runsWon": [
+          0,
+          0
+        ],
+        "invalidSnapshots": [
+          0,
+          0
+        ]
+      },
+      "counters": [
+        {
+          "calls": 2526,
+          "actions": 1786,
+          "illegal": 0,
+          "malformed": 0,
+          "decideErrors": 0,
+          "dropped": 0,
+          "impure": 0
+        },
+        {
+          "calls": 3882,
+          "actions": 3078,
+          "illegal": 0,
+          "malformed": 0,
+          "decideErrors": 0,
+          "dropped": 0,
+          "impure": 0
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "protocol": "t5-visible-head-to-head/1",
+      "contract": "t5/1",
+      "runtime": "v24.21.0",
+      "spec": {
+        "sha256": "856180cd08a8830195b2d13634bcc6ce8fdecfb7766693f0ed6934dfb3d66ba4"
+      },
+      "simulator": {
+        "sha256": "cc201d96798f7acbb2ad8bedfe4913423a8501c89352f5e0a0554b1723b05b21"
+      },
+      "engine": {
+        "sha256": "d5cdfe64a20f96498541ee290efdd12cde4028629ed9bea314fb752df8a3a50b"
+      },
+      "seeds": {
+        "source": "visible",
+        "count": 100,
+        "sha256": "f9e2dbde0ae4640704fb66ee02c101cf84abe35137363d62647622606df61279",
+        "allVisible": true
+      },
+      "bots": [
+        {
+          "name": "bot.mjs",
+          "spec": "./bot/bot.mjs",
+          "sha256": "f06c63ec69066ac30200eba308863906dcd0e6939849c898ab7a3654d5a92419",
+          "treeSha256": "a43926812544ab755c81e641fe0981fdc81c47cadd7c707bdd4f316289f5848c"
+        },
+        {
+          "name": "cheapest",
+          "spec": "baseline:cheapest",
+          "sha256": "8bd3037ec756099fa29e6e71cf433ddd7516d363e197179ab04c2cb46b60d992",
+          "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+        }
+      ],
+      "stats": {
+        "a": "bot.mjs",
+        "b": "cheapest",
+        "matches": 200,
+        "wins": 54,
+        "draws": 32,
+        "losses": 114,
+        "points": 70,
+        "winRate": 0.35,
+        "meanDays": 4.31,
+        "meanTrophies": [
+          1.09,
+          1.46
+        ],
+        "runsWon": [
+          0,
+          0
+        ],
+        "invalidSnapshots": [
+          0,
+          0
+        ]
+      },
+      "counters": [
+        {
+          "calls": 2710,
+          "actions": 1922,
+          "illegal": 0,
+          "malformed": 0,
+          "decideErrors": 0,
+          "dropped": 0,
+          "impure": 0
+        },
+        {
+          "calls": 2696,
+          "actions": 1834,
+          "illegal": 0,
+          "malformed": 0,
+          "decideErrors": 0,
+          "dropped": 0,
+          "impure": 0
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "protocol": "t5-visible-head-to-head/1",
+      "contract": "t5/1",
+      "runtime": "v24.21.0",
+      "spec": {
+        "sha256": "856180cd08a8830195b2d13634bcc6ce8fdecfb7766693f0ed6934dfb3d66ba4"
+      },
+      "simulator": {
+        "sha256": "cc201d96798f7acbb2ad8bedfe4913423a8501c89352f5e0a0554b1723b05b21"
+      },
+      "engine": {
+        "sha256": "d5cdfe64a20f96498541ee290efdd12cde4028629ed9bea314fb752df8a3a50b"
+      },
+      "seeds": {
+        "source": "visible",
+        "count": 100,
+        "sha256": "f9e2dbde0ae4640704fb66ee02c101cf84abe35137363d62647622606df61279",
+        "allVisible": true
+      },
+      "bots": [
+        {
+          "name": "bot.mjs",
+          "spec": "./bot/bot.mjs",
+          "sha256": "f06c63ec69066ac30200eba308863906dcd0e6939849c898ab7a3654d5a92419",
+          "treeSha256": "a43926812544ab755c81e641fe0981fdc81c47cadd7c707bdd4f316289f5848c"
+        },
+        {
+          "name": "merger",
+          "spec": "baseline:merger",
+          "sha256": "688803ba1b9d3a52473d804543452e559bd1f383e5a652ad7a84f86f573a0450",
+          "treeSha256": "a4bc0021a0ef44095b58370427c20b7fefcd13ff4eea1e2f3f296005012db314"
+        }
+      ],
+      "stats": {
+        "a": "bot.mjs",
+        "b": "merger",
+        "matches": 200,
+        "wins": 62,
+        "draws": 52,
+        "losses": 86,
+        "points": 88,
+        "winRate": 0.44,
+        "meanDays": 4.32,
+        "meanTrophies": [
+          1.15,
+          1.29
+        ],
+        "runsWon": [
+          0,
+          0
+        ],
+        "invalidSnapshots": [
+          0,
+          0
+        ]
+      },
+      "counters": [
+        {
+          "calls": 2720,
+          "actions": 1934,
+          "illegal": 0,
+          "malformed": 0,
+          "decideErrors": 0,
+          "dropped": 0,
+          "impure": 0
+        },
+        {
+          "calls": 2698,
+          "actions": 1840,
+          "illegal": 0,
+          "malformed": 0,
+          "decideErrors": 0,
+          "dropped": 0,
+          "impure": 0
+        }
+      ]
+    }
+  ],
+  "modelRun": {
+    "schemaVersion": 1,
+    "runKind": "bot-implementation",
+    "harness": "pi",
+    "model": "Qwen3.6-35B-A3B-UD-Q4_K_S.gguf",
+    "timeoutSeconds": 3600,
+    "exitCode": 0,
+    "workspaceSha256": "da8dc6694156dfe714af0b9fc30564895e7616ecd8cff6520493c34b209a8042",
+    "runnerSha256": "11f7a3ed8ed7486d63d026a7f0934ca8ad405d0c621fb1541efa9b2ac4cb8325",
+    "runContextSha256": "5e33f857064ecd190b1cad9b0abe4bf803aedf64b4f45243dc977504fce21008",
+    "inputs": {
+      "protocol": "t5-model-run/1",
+      "revision": "fc14a947c55b7ce9c446fc162dbc8e2780b29f43",
+      "image": "oaken-bench:1.0",
+      "imageId": "sha256:db70dc755e2d68747eabb681ebcd89fd1d46ecc443f114b44cb6698277e874f6",
+      "promptSha256": "43e537131b2afd8a2cba3eed10bbb06efd50d93e57bf397f9f900b1438caae63",
+      "frozenSha256": "6c007bd234380a064bcab063c4fabf8a2ccf0cd0973f5d5eb8337fb59910d843",
+      "runnerSha256": "11f7a3ed8ed7486d63d026a7f0934ca8ad405d0c621fb1541efa9b2ac4cb8325",
+      "entrypointSha256": "35e0aec8803c3f01d53b398bc7f29aabf34a0cab4b4eed0d96d3fd4aa178ae36"
+    }
+  }
+}

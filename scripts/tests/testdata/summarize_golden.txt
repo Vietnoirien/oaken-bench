@@ -86,9 +86,83 @@ cmp '~'  counted by the version-1 extractor (pre-#10): overstated, and by a diff
 
 bar = 80% hidden.  runs clearing it: ['ceiling-claude', 'dsh-gemma192k-03', 'dsh-qwen35kvq4-262k-01', 'dsh-qwen35kvq4-262k-03', 'dsh-qwen35q4ks-02', 'dsh-qwen35q4ks-b10751-01', 'dsh-qwen35q4ks-b10751-02', 'dsh-qwen35q4ks-b10751-03', 'pi-oss20b-02', 'pi-qwen35kvq4-262k-01', 'pi-qwen35kvq4-262k-02', 'pi-qwen35q4ks-b10751-01', 'pi-qwen35q4ks-b10751-02', 'pi-qwen35q4ks-b10751-03']
 
+=== T1 -- isolated missing-module implementation ===
+t1-combat-dsh-01: 0/35 target, 85/132 full, typecheck=clean, 91s, crash
+t1-combat-dsh-02: 7/35 target, 92/132 full, typecheck=clean, 210s, crash
+t1-combat-dsh-03: 0/35 target, 85/132 full, typecheck=clean, 210s, crash
+t1-combat-pi-01: 14/35 target, 108/132 full, typecheck=dirty, 391s, scored
+t1-combat-pi-02: 15/35 target, 109/132 full, typecheck=dirty, 573s, scored
+t1-combat-pi-03: 20/35 target, 117/132 full, typecheck=dirty, 331s, scored
+t1-economy-dsh-01: 12/12 target, 132/132 full, typecheck=clean, 120s, scored
+t1-economy-dsh-02: 11/12 target, 131/132 full, typecheck=dirty, 90s, scored
+t1-economy-dsh-03: 12/12 target, 132/132 full, typecheck=clean, 120s, scored
+t1-economy-dsh-pilot: 12/12 target, 132/132 full, typecheck=clean, 90s, scored
+t1-economy-pi-01: 9/12 target, 118/132 full, typecheck=dirty, 150s, scored
+t1-economy-pi-02: 12/12 target, 132/132 full, typecheck=clean, 90s, scored
+t1-economy-pi-03: 11/12 target, 131/132 full, typecheck=dirty, 120s, scored
+t1-economy-pi-pilot: 12/12 target, 132/132 full, typecheck=clean, 121s, scored
+t1-items-dsh-01: 15/15 target, 132/132 full, typecheck=dirty, 120s, scored
+t1-items-dsh-02: 2/15 target, 43/132 full, typecheck=clean, 120s, crash
+t1-items-dsh-03: 15/15 target, 132/132 full, typecheck=dirty, 240s, scored
+t1-items-pi-01: 15/15 target, 132/132 full, typecheck=dirty, 180s, scored
+t1-items-pi-02: 15/15 target, 132/132 full, typecheck=dirty, 90s, scored
+t1-items-pi-03: 15/15 target, 132/132 full, typecheck=dirty, 90s, scored
+t1-rng-dsh-01: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-dsh-02: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-dsh-03: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-pi-01: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-rng-pi-02: 5/5 target, 132/132 full, typecheck=clean, 30s, scored
+t1-rng-pi-03: 5/5 target, 132/132 full, typecheck=clean, 60s, scored
+t1-run-dsh-01: 11/12 target, 130/132 full, typecheck=clean, 270s, scored
+t1-run-dsh-02: 12/12 target, 131/132 full, typecheck=clean, 151s, scored
+t1-run-dsh-03: 0/12 target, 89/132 full, typecheck=clean, 240s, crash
+t1-run-pi-01: 12/12 target, 131/132 full, typecheck=clean, 150s, scored
+t1-run-pi-02: 0/12 target, 89/132 full, typecheck=dirty, 151s, scored
+t1-run-pi-03: 12/12 target, 132/132 full, typecheck=dirty, 331s, scored
+t1-shop-dsh-01: 11/15 target, 128/132 full, typecheck=clean, 181s, scored
+t1-shop-dsh-02: 15/15 target, 132/132 full, typecheck=dirty, 301s, scored
+t1-shop-dsh-03: 10/15 target, 127/132 full, typecheck=clean, 270s, scored
+t1-shop-pi-01: 15/15 target, 132/132 full, typecheck=dirty, 241s, scored
+t1-shop-pi-02: 15/15 target, 132/132 full, typecheck=clean, 180s, scored
+t1-shop-pi-03: 0/15 target, 87/132 full, typecheck=clean, 120s, scored
+t1-snapshot-dsh-01: 20/24 target, 128/132 full, typecheck=clean, 361s, scored
+t1-snapshot-dsh-02: 24/24 target, 132/132 full, typecheck=clean, 240s, scored
+t1-snapshot-dsh-03: 24/24 target, 132/132 full, typecheck=clean, 271s, scored
+t1-snapshot-pi-01: 24/24 target, 132/132 full, typecheck=clean, 180s, scored
+t1-snapshot-pi-02: 24/24 target, 132/132 full, typecheck=clean, 572s, scored
+t1-snapshot-pi-03: 24/24 target, 132/132 full, typecheck=clean, 150s, scored
+t1-tower-dsh-01: 14/14 target, 132/132 full, typecheck=dirty, 301s, scored
+t1-tower-dsh-02: 14/14 target, 132/132 full, typecheck=clean, 390s, scored
+t1-tower-dsh-03: 14/14 target, 132/132 full, typecheck=clean, 210s, scored
+t1-tower-pi-01: 14/14 target, 132/132 full, typecheck=dirty, 210s, scored
+t1-tower-pi-02: 14/14 target, 132/132 full, typecheck=clean, 511s, scored
+t1-tower-pi-03: 14/14 target, 132/132 full, typecheck=dirty, 271s, scored
+
+=== T3 -- planted bugs (fix a buggy reference engine, issue #42) ===
+run                        outcome                          hidden     visible     gap  tc   wall  turns  tools    mut   cmp
+----------------------------------------------------------------------------------------------------------------------------
+t3-gemma131k-pilot-20260926-01 complete                    124/132  93.9%  52/52 100.0%   +6.1  ok    91s     10      9      1     0
+
+  pi [gemma 131k/192k (current pipeline)]: hidden mean  93.9%  spread 93.9-93.9  best 93.9%  tools 9  compactions 0  outcomes: complete
+
+mut '?'  mutatingCalls not recorded for this run (pre-#3), NOT a confirmed zero
+mut '!!' zero writes against a nonzero tool count -- the run never touched the seed
+cmp '~'  counted by the version-1 extractor (pre-#10): overstated, and by a different factor on each harness
+
+bar = 80% hidden.  runs clearing it: ['t3-gemma131k-pilot-20260926-01']
+
 === T4 -- v1.1 extension and v1.0 regressions ===
 t4-pi-offline-smoke: v1.0 132/132; v1.1 2/137; scored
+t4-qwen35moe-desktop-pi-20260926-01: v1.0 132/132; v1.1 136/137; scored
 t4-reference-sanity: v1.0 132/132; v1.1 2/137; scored
 
 T5 -- sealed snapshot-pool strategy
 t5-cheapest-01: baseline:cheapest  0.8750 95% CI [0.7917, 0.9444] n=144 oracle=892b2efaf3f7
+t5-qwen35moe-desktop-pi-20260926-01: bot.mjs  0.8958 95% CI [0.8194, 0.9583] n=144 oracle=892b2efaf3f7
+  simulations=87 strategies=64 visible-minus-held-out=None seed-literals=0
+t5-qwen35moe-desktop-pi-repeat-02: bot.mjs  0.9306 95% CI [0.8611, 0.9861] n=144 oracle=892b2efaf3f7
+  simulations=0 strategies=0 visible-minus-held-out=None seed-literals=0
+t5-qwen35moe-desktop-pi-repeat-03: bot.mjs  0.8681 95% CI [0.7917, 0.9375] n=144 oracle=892b2efaf3f7
+  simulations=0 strategies=0 visible-minus-held-out=None seed-literals=0
+t5-qwen35moe-desktop-pi-repeat-04: bot.mjs  0.8750 95% CI [0.7917, 0.9444] n=144 oracle=892b2efaf3f7
+  simulations=80 strategies=37 visible-minus-held-out=None seed-literals=0

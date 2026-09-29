@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 2,
+  "label": "t1-combat-dsh-02",
+  "harness": "dsh",
+  "model": "gemma-ctx196k.gguf",
+  "toolCalls": 16,
+  "toolOutcomes": {
+    "ok": 16,
+    "error": 0,
+    "unknown": 0
+  },
+  "errorRate": 0.0,
+  "errorsByTool": {},
+  "toolHistogram": {
+    "glob": 3,
+    "read": 9,
+    "edit": 3,
+    "grep": 1
+  },
+  "unknownTools": [
+    "grep"
+  ],
+  "mutatingCalls": 3,
+  "repeatedCalls": 1,
+  "longestRepeatRun": 1,
+  "distinctCallRatio": 0.9375,
+  "callSequence": [
+    [
+      "glob",
+      "1a60526d10f05ef3",
+      1
+    ],
+    [
+      "read",
+      "6f1985105c4491a0",
+      1
+    ],
+    [
+      "read",
+      "4a14b427133b74b7",
+      1
+    ],
+    [
+      "glob",
+      "660920493d1328d3",
+      1
+    ],
+    [
+      "read",
+      "919ec7776ab69441",
+      1
+    ],
+    [
+      "read",
+      "5c2510b2942091e6",
+      1
+    ],
+    [
+      "glob",
+      "40fcc97f4943914f",
+      1
+    ],
+    [
+      "read",
+      "a5ab70e6fdc04b9b",
+      1
+    ],
+    [
+      "read",
+      "87daa12fa0625f9e",
+      1
+    ],
+    [
+      "edit",
+      "d2176923b211dc91",
+      1
+    ],
+    [
+      "read",
+      "4a14b427133b74b7",
+      1
+    ],
+    [
+      "edit",
+      "8df04dde3e967659",
+      1
+    ],
+    [
+      "edit",
+      "7f360e253f88a00f",
+      1
+    ],
+    [
+      "grep",
+      "bffe2c0fb6441a67",
+      1
+    ],
+    [
+      "read",
+      "ef6ba856d7c37c07",
+      1
+    ],
+    [
+      "read",
+      "d023c899f9d35147",
+      1
+    ]
+  ],
+  "toolCallsPerTurn": {
+    "mean": 1.0,
+    "max": 1
+  },
+  "parallelTurns": 0,
+  "timeToFirstToolCall": 3.14,
+  "toolCallIntervals": {
+    "n": 15,
+    "p50Seconds": 2.081,
+    "p95Seconds": 25.482
+  },
+  "generationSeconds": 99.874,
+  "toolExecutionSeconds": 0.372
+}

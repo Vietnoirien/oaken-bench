@@ -1,0 +1,216 @@
+{
+  "label": "t1-tower-pi-02",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 511,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": true,
+  "suiteHung": false,
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 22,
+      "message_start": 45,
+      "message_end": 45,
+      "message_update": 21503,
+      "tool_execution_start": 21,
+      "tool_execution_update": 21,
+      "tool_execution_end": 21,
+      "turn_end": 22,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 22,
+    "toolCalls": 21,
+    "usage": {
+      "input": 67703,
+      "output": 21646,
+      "cacheRead": 861622,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 15,
+      "error": 6,
+      "unknown": 0
+    },
+    "errorRate": 0.2857,
+    "errorsByTool": {
+      "write": 4,
+      "bash": 2
+    },
+    "toolHistogram": {
+      "bash": 6,
+      "read": 9,
+      "write": 6
+    },
+    "unknownTools": [],
+    "mutatingCalls": 6,
+    "repeatedCalls": 1,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 0.9524,
+    "callSequence": [
+      [
+        "bash",
+        "e0558cc40e933679",
+        1
+      ],
+      [
+        "read",
+        "0ea7a4d55a6097ab",
+        1
+      ],
+      [
+        "read",
+        "6a75c3e94e5ff6c3",
+        1
+      ],
+      [
+        "read",
+        "2b63109b132df77a",
+        1
+      ],
+      [
+        "read",
+        "42105b9b050fb2fc",
+        1
+      ],
+      [
+        "write",
+        "af0ca6a509556311",
+        1
+      ],
+      [
+        "read",
+        "db596662f04a8090",
+        1
+      ],
+      [
+        "read",
+        "5217a41a705e437a",
+        1
+      ],
+      [
+        "read",
+        "e739a548791bc1cd",
+        1
+      ],
+      [
+        "read",
+        "14cbe59265f2f1f7",
+        1
+      ],
+      [
+        "write",
+        "b82c32c9b42f1fd1",
+        1
+      ],
+      [
+        "write",
+        "7d722134d9d54512",
+        1
+      ],
+      [
+        "write",
+        "2d8513b91e192cb6",
+        1
+      ],
+      [
+        "bash",
+        "f78c1bb05dee58ff",
+        1
+      ],
+      [
+        "bash",
+        "3c857818e349f9a3",
+        1
+      ],
+      [
+        "bash",
+        "dd55d5eb08bedbe4",
+        1
+      ],
+      [
+        "bash",
+        "0097da956b36fcf8",
+        1
+      ],
+      [
+        "read",
+        "11d6bd39673d147f",
+        1
+      ],
+      [
+        "write",
+        "d541cf09eceecd2c",
+        1
+      ],
+      [
+        "write",
+        "84433c06dc50a0a8",
+        1
+      ],
+      [
+        "bash",
+        "0097da956b36fcf8",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 0.061,
+    "toolCallIntervals": {
+      "n": 20,
+      "p50Seconds": 7.623,
+      "p95Seconds": 62.842
+    },
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "scored",
+  "overfitGap": 0.0,
+  "schemaVersion": 1,
+  "tier": "t1",
+  "module": "tower",
+  "runKind": "implementation",
+  "targetHidden": {
+    "passed": 14,
+    "failed": 0,
+    "total": 14,
+    "collected": 14,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "fullHidden": {
+    "passed": 132,
+    "failed": 0,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 1.0
+  },
+  "fixedSourceChanges": [],
+  "referenceBundleSha256": "c9a04e839d7bc53782caf3ef3a39c88f634a7350a63ce065e4e3883976dda82f",
+  "oracleBundleSha256": "fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97",
+  "scorerSha256": "fcc65ab3d76abbaa7ef83a29ef75d25f0b9f6bbfef85611f3eb8a97b8dc570cd",
+  "moduleSuccess": true
+}

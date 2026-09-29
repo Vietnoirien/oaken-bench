@@ -1,0 +1,205 @@
+{
+  "label": "t1-snapshot-pi-03",
+  "harness": "pi",
+  "model": "gemma-ctx196k.gguf",
+  "exitCode": 0,
+  "wallclockSeconds": 150,
+  "restored": true,
+  "tamperedFrozenFiles": [],
+  "typecheckClean": true,
+  "suiteHung": false,
+  "visible": {
+    "passed": 52,
+    "failed": 0,
+    "total": 52,
+    "collected": 52,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "harnessMetrics": {
+    "events": {
+      "session": 1,
+      "agent_start": 1,
+      "turn_start": 20,
+      "message_start": 41,
+      "message_end": 41,
+      "message_update": 6427,
+      "tool_execution_start": 19,
+      "tool_execution_update": 13,
+      "tool_execution_end": 19,
+      "turn_end": 20,
+      "agent_end": 1,
+      "agent_settled": 1
+    },
+    "turns": 20,
+    "toolCalls": 19,
+    "usage": {
+      "input": 24904,
+      "output": 6549,
+      "cacheRead": 373529,
+      "cacheWrite": 0
+    },
+    "compactions": 0,
+    "compactionsAborted": 0,
+    "harnessMetricsVersion": 2,
+    "toolOutcomes": {
+      "ok": 18,
+      "error": 1,
+      "unknown": 0
+    },
+    "errorRate": 0.0526,
+    "errorsByTool": {
+      "edit": 1
+    },
+    "toolHistogram": {
+      "bash": 4,
+      "read": 9,
+      "edit": 6
+    },
+    "unknownTools": [],
+    "mutatingCalls": 6,
+    "repeatedCalls": 4,
+    "longestRepeatRun": 1,
+    "distinctCallRatio": 0.7895,
+    "callSequence": [
+      [
+        "bash",
+        "c890c444a86e2428",
+        1
+      ],
+      [
+        "read",
+        "0ea7a4d55a6097ab",
+        1
+      ],
+      [
+        "read",
+        "aaeff4b14cc5657d",
+        1
+      ],
+      [
+        "read",
+        "2b63109b132df77a",
+        1
+      ],
+      [
+        "bash",
+        "a50dc0affeb86ea8",
+        1
+      ],
+      [
+        "read",
+        "e739a548791bc1cd",
+        1
+      ],
+      [
+        "read",
+        "c16c16a5a0922901",
+        1
+      ],
+      [
+        "edit",
+        "b2308a43511a9da5",
+        1
+      ],
+      [
+        "read",
+        "aaeff4b14cc5657d",
+        1
+      ],
+      [
+        "edit",
+        "611d6884d07b3695",
+        1
+      ],
+      [
+        "edit",
+        "521b3bf2819bf792",
+        1
+      ],
+      [
+        "read",
+        "aaeff4b14cc5657d",
+        1
+      ],
+      [
+        "edit",
+        "2bc09962b09b928e",
+        1
+      ],
+      [
+        "read",
+        "aaeff4b14cc5657d",
+        1
+      ],
+      [
+        "edit",
+        "c613b83964f88e17",
+        1
+      ],
+      [
+        "read",
+        "aaeff4b14cc5657d",
+        1
+      ],
+      [
+        "edit",
+        "b598e52bd87f5bb0",
+        1
+      ],
+      [
+        "bash",
+        "1f1e0bd1b4eac635",
+        1
+      ],
+      [
+        "bash",
+        "0ae508828a917490",
+        1
+      ]
+    ],
+    "toolCallsPerTurn": {
+      "mean": 1.0,
+      "max": 1
+    },
+    "parallelTurns": 0,
+    "timeToFirstToolCall": 0.058,
+    "toolCallIntervals": {
+      "n": 18,
+      "p50Seconds": 5.836,
+      "p95Seconds": 16.407
+    },
+    "generationSeconds": null,
+    "toolExecutionSeconds": null,
+    "derivedDecodeTokensPerSecond": null,
+    "parseErrors": 0
+  },
+  "outcome": "scored",
+  "overfitGap": 0.0,
+  "schemaVersion": 1,
+  "tier": "t1",
+  "module": "snapshot",
+  "runKind": "implementation",
+  "targetHidden": {
+    "passed": 24,
+    "failed": 0,
+    "total": 24,
+    "collected": 24,
+    "uncollected": 0,
+    "rate": 1.0
+  },
+  "fullHidden": {
+    "passed": 132,
+    "failed": 0,
+    "total": 132,
+    "collected": 132,
+    "uncollected": 0,
+    "files": 8,
+    "rate": 1.0
+  },
+  "fixedSourceChanges": [],
+  "referenceBundleSha256": "c9a04e839d7bc53782caf3ef3a39c88f634a7350a63ce065e4e3883976dda82f",
+  "oracleBundleSha256": "fff6d7c5e9bba656c4b2f23499d1d96f89d9d3f6f9b1f4759c4873d3f8a00a97",
+  "scorerSha256": "fcc65ab3d76abbaa7ef83a29ef75d25f0b9f6bbfef85611f3eb8a97b8dc570cd",
+  "moduleSuccess": true
+}
