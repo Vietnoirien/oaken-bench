@@ -54,6 +54,37 @@ class FollowupCasesTests(unittest.TestCase):
             self.assertIn('elapsedSeconds', report['runs'][0])
             self.assertNotIn('SECRET', out.read_text())
 
+    def test_unreachable_server_still_writes_partial(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / 'partial.json'
+            with (patch.object(screen_followup, 'server_reachable', return_value=False),
+                  patch.object(screen_followup, 'VramSampler'),
+                  patch.object(screen_followup, 'build_environment', return_value={}),
+                  patch.object(screen_followup.toolbattery, 'run_short_chains') as chains):
+                status = screen_followup.main([
+                    '--model', 'fixture', '--seed', '20260928', '--out', str(out)])
+            self.assertEqual(status, 2)
+            chains.assert_not_called()
+            run = json.loads(out.read_text())['runs'][0]
+            self.assertEqual((run['seed'], run['phase'], run['completedChains']),
+                             (20260928, 'server', 0))
+
+    def test_prior_seed_is_redacted_when_next_seed_disconnects(self):
+        chains = {'cases': [{'depthReached': 1, 'calls': ['SECRET'], 'outputTruncated': False}],
+                  'notAttempted': 0}
+        recall = {'overall': {'depthsAttempted': 3, 'depthsSkipped': 0, 'depthsFailed': 0},
+                  'reply': 'SECRET'}
+        with (patch.object(screen_followup, 'VramSampler'),
+              patch.object(screen_followup, 'build_environment', return_value={}),
+              patch.object(screen_followup.toolbattery, 'run_short_chains',
+                           side_effect=[chains, ConnectionError('SECRET')]),
+              patch.object(screen_followup.recall, 'run_battery', return_value=recall)):
+            report = screen_followup.run('http://localhost/v1', 'fixture')
+        self.assertTrue(report['incomplete'])
+        self.assertEqual(report['runs'][0]['completedChains'], 1)
+        self.assertEqual(report['runs'][0]['completedRecallDepths'], 3)
+        self.assertNotIn('SECRET', json.dumps(report))
+
 
 if __name__ == '__main__':
     unittest.main()

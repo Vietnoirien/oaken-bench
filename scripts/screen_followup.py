@@ -22,12 +22,20 @@ def chain_cases(seed):
     return toolbattery.followup_chain_scenarios(seed)
 
 
-def run(base_url, model, api_key=None, seeds=SEEDS):
+def run(base_url, model, api_key=None, seeds=SEEDS, server_available=True):
     started = time.monotonic()
     runs = []
     failed = False
     with VramSampler() as sampler:
         for seed in seeds:
+            if not server_available:
+                failed = True
+                runs.append({'seed': seed, 'phase': 'server', 'complete': False,
+                             'failureType': 'ServerUnavailable', 'completedChains': 0,
+                             'completedChainLinks': 0, 'completedRecallDepths': 0,
+                             'chainTransportErrorCount': 0,
+                             'elapsedSeconds': round(time.monotonic() - started, 3)})
+                break
             errors = []
             phase = 'chains'
             chains = None
@@ -93,11 +101,14 @@ def main(argv=None):
     parser.add_argument('--out', type=Path)
     args = parser.parse_args(argv)
     api_key = api_key_from_env()
-    if not server_reachable(args.base_url, api_key=api_key):
+    try:
+        available = server_reachable(args.base_url, api_key=api_key)
+    except Exception:
+        available = False
+    if not available:
         print(f'ERROR: no server reachable at {args.base_url}', file=sys.stderr)
-        return 2
     report = run(args.base_url, args.model, api_key=api_key,
-                 seeds=(args.seed,) if args.seed else SEEDS)
+                 seeds=(args.seed,) if args.seed else SEEDS, server_available=available)
     label = f"screen-followup-{toolbattery._slug(args.model)}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
     out = args.out or ROOT / 'screen-results' / f'{label}.json'
     out.parent.mkdir(parents=True, exist_ok=True)
