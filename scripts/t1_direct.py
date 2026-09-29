@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """One local, single-shot T1 module completion with a frozen input workspace."""
 import argparse
-from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
@@ -14,8 +13,8 @@ from urllib.parse import urlparse
 
 from direct import chat
 from t1 import ROOT, assemble, score_run
-from t1_canary_preflight import CANARIES
-from t5_canary_preflight import check
+import t1_canary_preflight
+from t5_canary_preflight import write_preflight
 from server_config import capture
 
 
@@ -60,16 +59,10 @@ def run(module, model, base_url, label, max_tokens, timeout):
     (out / 'run-context.json').write_text(json.dumps(
         capture(base_url.removesuffix('/v1'), image_ref=os.environ.get('OAKEN_IMAGE', 'oaken-bench:1.0'),
                 port=urlparse(base_url).port, model=model), indent=2) + '\n')
-    checks = {}
-    for name, (question, expected) in CANARIES.items():
-        checks[name] = check(base_url, model, question, expected)
-        if checks[name]['status'] != 'passed':
-            break
-    passed = len(checks) == len(CANARIES) and all(c['status'] == 'passed' for c in checks.values())
-    (out / 'canary-preflight.json').write_text(json.dumps({
-        'schemaVersion': 1, 'checkedAt': datetime.now(timezone.utc).isoformat(),
-        'model': model, 'status': 'passed' if passed else 'failed', 'checks': checks}, indent=2) + '\n')
-    if not passed:
+    report = write_preflight(out / 'canary-preflight.json', base_url, model,
+                             t1_canary_preflight.CANARIES,
+                             Path(t1_canary_preflight.__file__))
+    if report['status'] != 'passed':
         raise RuntimeError('T1 direct canary check failed')
     with tempfile.TemporaryDirectory(prefix='oaken-t1-direct-') as td:
         package = assemble(Path(td) / 'package', module)
